@@ -14,231 +14,175 @@ const navigateToJob = (id: string) => {
   router.push(`/job/${id}`);
 };
 </script>
-
 <template>
   <div class="home-container">
-    
     <div class="hero-section">
-      <div class="badge">
-        <span class="dot"></span>
-        CVSynth Engine 1.0
+      <div class="status-pill">
+        <span class="pulse"></span> 
+        Engine Status: Ready
       </div>
-
-      <h1 class="headline">
-        Tailor your resume with<br/>
-        <span class="highlight">absolute precision.</span>
+      
+      <h1 class="main-title">
+        Crafting resumes with <br />
+        <span class="serif-italic">Intentional Design.</span>
       </h1>
-
-      <p class="subheadline">
-        Paste a job description, select your base LaTeX template, and let the AI extract requirements to generate an honest, targeted resume instantly.
+      
+      <p class="description">
+        CVSynth uses refined AI models to distill job descriptions into precise 
+        data points, helping you build a targeted professional narrative.
       </p>
 
-      <div class="button-group">
-        <button class="btn btn-primary">Start Building &rarr;</button>
-        <button class="btn btn-secondary">Explore Templates</button>
+      <div class="actions">
+        <button class="btn btn-dark" @click="$router.push('/parse')">New Application</button>
+        <button class="btn btn-outline">Manage Templates</button>
       </div>
     </div>
 
-    <div class="pipeline-section">
-      <div class="section-header">
-        <h2>Recent Opportunities</h2>
-        <button class="btn-text">+ New Job</button>
-      </div>
-      
-      <div class="job-grid" v-if="savedJobs.length > 0">
-        <div v-for="job in savedJobs" :key="job.id" class="job-card">
-          <h3>{{ job.title }}</h3>
-          <p class="company">🏢 {{ job.company }}</p>
-          <p class="date">📅 {{ job.date }}</p>
-          <button class="action-btn" @click="navigateToJob(job.id)">View Details</button>
+    <div class="bento-grid">
+      <div class="bento-item large">
+        <h3>Recent Applications</h3>
+        <div class="job-list-minimal">
+          <div class="job-item">
+            <span class="job-dot"></span>
+            <div class="job-info">
+              <span class="j-title">Staff Rust Engineer</span>
+              <span class="j-company">OpenSystems</span>
+            </div>
+            <span class="j-date">2m ago</span>
+          </div>
         </div>
       </div>
-      
-      <div class="empty-state" v-else>
-        <p>No jobs added yet. Click "Start Building" to parse your first JD.</p>
+      <div class="bento-item small">
+        <h3>Model Config</h3>
+        <p>Active: GPT-4o</p>
+        <span class="stat">98% Accuracy</span>
       </div>
     </div>
-
   </div>
 </template>
 
 <style scoped>
 .home-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 80px 40px;
-  min-height: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 100px 40px;
 }
 
-/* --- HERO SECTION --- */
 .hero-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   text-align: center;
-  max-width: 800px;
   margin-bottom: 80px;
 }
 
-.badge {
-  display: flex;
+.status-pill {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: rgba(0, 229, 153, 0.05);
-  border: 1px solid rgba(0, 229, 153, 0.2);
-  color: #00e599;
-  padding: 6px 16px;
+  background: #f0f0ed;
+  padding: 6px 14px;
   border-radius: 100px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  margin-bottom: 30px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #555550;
+  margin-bottom: 24px;
+  border: 1px solid #e5e5e0;
 }
 
-.badge .dot {
+.pulse {
   width: 6px;
   height: 6px;
-  background-color: #00e599;
+  background: #10b981;
   border-radius: 50%;
-  box-shadow: 0 0 8px #00e599;
+  animation: pulse-ring 2s infinite;
 }
 
-.headline {
-  font-size: 4rem;
-  font-weight: 800;
+@keyframes pulse-ring {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  50% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.7; }
+}
+
+.main-title {
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  letter-spacing: -0.04em;
   line-height: 1.1;
-  margin: 0 0 20px 0;
-  color: #ffffff;
-  letter-spacing: -0.03em;
+  margin-bottom: 24px;
 }
 
-.highlight {
-  color: #00e599;
-  text-shadow: 0 0 40px rgba(0, 229, 153, 0.3); 
+.serif-italic {
+  font-family: 'Playfair Display', serif; /* Or any premium serif */
+  font-style: italic;
+  font-weight: 400;
+  color: #71716e;
 }
 
-.subheadline {
-  font-size: 1.2rem;
-  color: #a1a1aa; 
-  max-width: 600px;
+.description {
+  font-size: 1.1rem;
+  color: #71716e;
+  max-width: 540px;
+  margin: 0 auto 40px;
   line-height: 1.6;
-  margin: 0 0 40px 0;
 }
 
-/* Buttons */
-.button-group {
-  display: flex;
-  gap: 16px;
-}
+.actions { display: flex; gap: 12px; justify-content: center; }
 
 .btn {
   padding: 12px 24px;
   border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 500;
+  font-size: 0.95rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
 }
 
-.btn-primary {
-  background-color: #00e599;
-  color: #000000;
-  border: 1px solid #00e599;
-  font-weight: 600;
-}
-
-.btn-primary:hover {
-  background-color: #00c785;
-  border-color: #00c785;
-}
-
-.btn-secondary {
-  background-color: #111111;
-  color: #ededed;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.btn-secondary:hover {
-  background-color: #1a1a1a;
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-/* --- BOTTOM PIPELINE SECTION --- */
-.pipeline-section {
-  width: 100%;
-  max-width: 1000px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding-top: 40px;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.section-header h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.btn-text {
-  background: transparent;
-  color: #00e599;
+.btn-dark {
+  background: #1a1a1a;
+  color: white;
   border: none;
-  font-weight: 500;
-  cursor: pointer;
 }
 
-.btn-text:hover {
-  text-decoration: underline;
+.btn-dark:hover { background: #333; transform: translateY(-1px); }
+
+.btn-outline {
+  background: white;
+  color: #1a1a1a;
+  border: 1px solid #e5e5e0;
 }
 
-.job-grid {
+.btn-outline:hover { background: #f9f9f7; }
+
+/* Bento Grid */
+.bento-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: 2fr 1fr;
   gap: 20px;
 }
 
-.job-card {
-  background-color: #0a0a0a;
+.bento-item {
+  background: white;
+  border: 1px solid #e5e5e0;
+  border-radius: 16px;
   padding: 24px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
-.job-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(0, 229, 153, 0.3);
+.bento-item h3 {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #a1a19a;
+  margin: 0 0 20px 0;
 }
 
-.job-card h3 { margin: 0 0 12px 0; color: #ededed; font-size: 1.1rem; }
-.company, .date { margin: 6px 0; font-size: 0.9rem; color: #888888; }
-
-.action-btn {
-  margin-top: 18px;
-  width: 100%;
-  padding: 10px;
-  background-color: rgba(0, 229, 153, 0.1);
-  border: 1px solid rgba(0, 229, 153, 0.2);
-  border-radius: 6px;
-  color: #00e599;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
+.job-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f4f4f2;
 }
 
-.action-btn:hover { background-color: rgba(0, 229, 153, 0.2); }
-
-.empty-state {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px dashed rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 40px;
-  text-align: center;
-  color: #71717a;
-}
+.j-title { font-weight: 600; display: block; }
+.j-company { font-size: 0.85rem; color: #71716e; }
+.j-date { margin-left: auto; font-size: 0.8rem; color: #a1a19a; }
 </style>

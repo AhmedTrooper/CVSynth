@@ -9,6 +9,7 @@ const tabs = [
 ];
 </script>
 
+
 <template>
   <div class="app-container">
     <aside class="sidebar">
@@ -22,7 +23,7 @@ const tabs = [
           :key="tab.path"
           :to="tab.path"
           class="nav-button"
-          :class="{ active: route.path === tab.path }"
+          active-class="active"
         >
           <span class="icon">{{ tab.icon }}</span> 
           <span class="tab-label">{{ tab.label }}</span>
@@ -37,27 +38,21 @@ const tabs = [
 </template>
 
 <style scoped>
-/* PREMIUM DARK GRID VIBE */
+/* PREMIUM LIGHT "EDITORIAL" VIBE */
 .app-container {
   display: flex;
   height: 100vh;
   width: 100vw;
-  background-color: #030303; /* Pitch black */
-  /* The subtle grid pattern */
-  background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-  color: #ededed;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #fcfcf9; /* Warm 'Paper' White */
+  color: #1a1a1a; /* Soft Charcoal instead of pure black */
+  font-family: 'Inter', -apple-system, sans-serif;
   overflow: hidden;
 }
 
-/* --- SLIM, FLAT SIDEBAR --- */
 .sidebar {
-  width: 80px;
-  background: #000000;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  width: 72px;
+  background: #f4f4f2; /* Subtle warm gray */
+  border-right: 1px solid #e5e5e0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -65,106 +60,67 @@ const tabs = [
 }
 
 .logo-container {
-  padding: 25px 0;
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 30px 0;
 }
 
 .logo-icon {
-  width: 28px;
-  height: 28px;
-  background: #00e599; /* Neon Emerald Accent */
-  border-radius: 6px;
-  box-shadow: 0 0 15px rgba(0, 229, 153, 0.4);
+  width: 32px;
+  height: 32px;
+  background: #1a1a1a;
+  border-radius: 8px;
+  /* No glow, just a sharp, clean shape */
 }
 
-/* --- NAVIGATION --- */
 .nav-menu {
   display: flex;
   flex-direction: column;
-  padding: 20px 0;
-  gap: 15px;
-  width: 100%;
-  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
 }
 
 .nav-button {
-  position: relative;
-  background: transparent;
-  border: 1px solid transparent;
-  color: #888888;
-  padding: 0;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   display: flex;
   justify-content: center;
   align-items: center;
-  border-radius: 10px;
-  cursor: pointer;
+  border-radius: 8px;
+  color: #71716e;
+  transition: all 0.15s ease;
   text-decoration: none;
-  transition: all 0.2s ease;
 }
 
 .nav-button:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #ededed;
+  background: #eaea00;
+  color: #1a1a1a;
 }
 
 .nav-button.active {
-  background: rgba(0, 229, 153, 0.1);
-  border: 1px solid rgba(0, 229, 153, 0.3);
-  color: #00e599;
+  background: #ffffff;
+  color: #1a1a1a;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.05);
 }
 
-.nav-button .icon {
-  font-size: 1.4rem;
-  filter: grayscale(100%) brightness(120%);
-  transition: all 0.2s ease;
-}
+.icon { font-size: 1.2rem; }
 
-.nav-button.active .icon {
-  filter: none;
-}
-
-/* --- TOOLTIP --- */
 .tab-label {
   position: absolute;
-  left: 100%;
-  margin-left: 15px;
-  background: #111111;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #ededed;
+  left: 60px;
+  background: #1a1a1a;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
-  transform: translateX(-5px);
-  transition: all 0.2s ease;
-  z-index: 100;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  transition: opacity 0.15s ease;
 }
 
-.nav-button:hover .tab-label {
-  opacity: 1;
-  transform: translateX(0);
-}
+.nav-button:hover .tab-label { opacity: 1; }
 
-/* --- MAIN CONTENT AREA --- */
 .content-area {
   flex-grow: 1;
-  padding: 0; 
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
 }
-
-::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #555; }
 </style>

@@ -10,7 +10,7 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
     fs::create_dir_all(&app_dir).expect("Failed to create app data dir");
     let db_path = app_dir.join("cvsynth.db");
 
-    let conn = Connection::open(db_path)?;
+    let conn = Connection::open(db_path)?; 
 
     conn.execute_batch(
         "

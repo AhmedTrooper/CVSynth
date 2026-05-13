@@ -44,7 +44,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::settings::save_model_pref,
             commands::settings::get_model_pref,
-            commands::jobs::create_job // Example of the new slug-based command
+            commands::jobs::parse_and_save_job
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

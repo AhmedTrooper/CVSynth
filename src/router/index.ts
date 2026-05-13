@@ -14,6 +14,11 @@ const routes = [
     name: 'Settings', 
     component: SettingsTab 
   },
+{ 
+  path: '/parse', 
+  name: 'JobParser', 
+  component: () => import('../components/JobParserView.vue') 
+},
   { 
     // Dynamic route for specific job details
     path: '/job/:id', 
@@ -21,6 +26,7 @@ const routes = [
     component: JobDetailView, 
     props: true // Passes the :id as a prop to the component
   },
+  
 ];
 
 export const router = createRouter({

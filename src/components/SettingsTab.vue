@@ -141,63 +141,75 @@ const handleSave = async () => {
 </template>
 
 <style scoped>
+.input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 
-/* Keep all your previous styles, just add this one line to place the dropdowns side-by-side */
-.input-row { display: flex; gap: 20px; }
-.input-row > .input-group { flex: 1; }
-
+.input-row > .input-group {
+  flex: 1;
+}
 
 .settings-container {
-  padding: 40px;
+  padding: 24px 20px 40px;
   height: 100%;
   display: flex;
   flex-direction: column;
-  max-width: 900px;
+  max-width: 960px;
   margin: 0 auto;
 }
 
-.header { margin-bottom: 40px; }
-.header h2 { margin: 0; font-weight: 600; color: #ededed; font-size: 2rem; }
+.header {
+  margin-bottom: 24px;
+}
+
+.header h2 {
+  margin: 0;
+  font-weight: 700;
+  color: var(--ink);
+  font-size: 1.6rem;
+}
 
 .settings-grid {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
   flex-grow: 1;
 }
 
 .settings-card {
-  background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 30px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: var(--shadow);
 }
 
-.card-header { margin-bottom: 24px; }
-.card-header h3 { margin: 0 0 8px 0; color: #ededed; font-size: 1.2rem; }
-.card-header p { margin: 0; color: #888; font-size: 0.9rem; line-height: 1.5; }
+.card-header { margin-bottom: 16px; }
+.card-header h3 { margin: 0 0 6px 0; color: var(--ink); font-size: 1.1rem; }
+.card-header p { margin: 0; color: var(--muted); font-size: 0.95rem; line-height: 1.5; }
 
 .input-group {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 label {
-  color: #00e599;
-  font-weight: 600;
-  font-size: 0.85rem;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.78rem;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.08em;
 }
 
 input, .custom-select {
-  background: #030303;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 16px;
-  color: #ededed;
-  font-family: monospace;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: var(--ink);
   font-size: 1rem;
   outline: none;
   transition: all 0.2s ease;
@@ -205,56 +217,61 @@ input, .custom-select {
 }
 
 input:focus, .custom-select:focus {
-  border-color: #00e599;
-  box-shadow: 0 0 0 1px rgba(0, 229, 153, 0.3);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(11, 123, 107, 0.2);
 }
 
 .custom-select { cursor: pointer; appearance: none; }
 
-/* Actions Footer */
 .actions-footer {
-  margin-top: 40px;
+  margin-top: 28px;
   display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 20px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
 }
 
 .save-btn {
-  background-color: #00e599;
-  color: #000;
+  background-color: var(--accent);
+  color: #fff;
   border: none;
-  border-radius: 8px;
-  padding: 14px 28px;
-  font-weight: 600;
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-weight: 700;
   font-size: 1rem;
   cursor: pointer;
   transition: 0.2s;
 }
 
-.save-btn:hover:not(:disabled) { background-color: #00c785; }
+.save-btn:hover:not(:disabled) { background-color: #0a6b5e; }
 .save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .success-msg {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #00e599;
-  font-weight: 500;
+  color: var(--accent);
+  font-weight: 600;
   font-size: 0.95rem;
 }
 
 .success-msg .dot {
   width: 6px;
   height: 6px;
-  background-color: #00e599;
+  background-color: var(--accent);
   border-radius: 50%;
-  box-shadow: 0 0 8px #00e599;
+  box-shadow: 0 0 6px rgba(11, 123, 107, 0.5);
 }
 
-/* Vue transition for the success message */
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+@media (min-width: 960px) {
+  .settings-container { padding: 40px 32px 60px; }
+  .header h2 { font-size: 2rem; }
+  .input-row { flex-direction: row; gap: 20px; }
+  .actions-footer { flex-direction: row; justify-content: flex-end; align-items: center; }
+}
 </style>

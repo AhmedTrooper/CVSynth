@@ -35,89 +35,123 @@ const tabs = [
 </template>
 
 <style scoped>
-/* PREMIUM LIGHT "EDITORIAL" VIBE */
 .app-container {
   display: flex;
-  height: 100vh;
+  flex-direction: column;
+  min-height: 100vh;
   width: 100vw;
-  background-color: #fcfcf9; /* Warm 'Paper' White */
-  color: #1a1a1a; /* Soft Charcoal instead of pure black */
-  font-family: 'Inter', -apple-system, sans-serif;
-  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
 }
 
 .sidebar {
-  width: 72px;
-  background: #f4f4f2; /* Subtle warm gray */
-  border-right: 1px solid #e5e5e0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  order: 2;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  position: sticky;
+  bottom: 0;
   z-index: 10;
 }
 
 .logo-container {
-  padding: 30px 0;
+  display: none;
 }
 
 .logo-icon {
-  width: 32px;
-  height: 32px;
-  background: #1a1a1a;
-  border-radius: 8px;
-  /* No glow, just a sharp, clean shape */
+  width: 36px;
+  height: 36px;
+  background: var(--ink);
+  border-radius: 10px;
 }
 
 .nav-menu {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 10px 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 10px 12px 14px;
 }
 
 .nav-button {
-  width: 44px;
-  height: 44px;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-  border-radius: 8px;
-  color: #71716e;
-  transition: all 0.15s ease;
+  gap: 6px;
+  padding: 10px 6px;
+  border-radius: 14px;
+  color: var(--muted);
   text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 
 .nav-button:hover {
-  background: #eaea00;
-  color: #1a1a1a;
+  background: var(--surface-soft);
+  color: var(--ink);
 }
 
 .nav-button.active {
-  background: #ffffff;
-  color: #1a1a1a;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.05);
+  background: var(--bg-accent);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
 }
 
-.icon { font-size: 1.2rem; }
+.icon {
+  font-size: 1.2rem;
+}
 
 .tab-label {
-  position: absolute;
-  left: 60px;
-  background: #1a1a1a;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s ease;
+  position: static;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  border-radius: 0;
+  opacity: 1;
+  pointer-events: auto;
+  font-size: 0.7rem;
 }
 
-.nav-button:hover .tab-label { opacity: 1; }
-
 .content-area {
-  flex-grow: 1;
+  flex: 1;
   overflow-y: auto;
+}
+
+@media (min-width: 960px) {
+  .app-container {
+    flex-direction: row;
+  }
+
+  .sidebar {
+    order: 0;
+    position: static;
+    width: 88px;
+    min-height: 100vh;
+    border-top: none;
+    border-right: 1px solid var(--line);
+  }
+
+  .logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 26px 0 10px;
+  }
+
+  .nav-menu {
+    display: flex;
+    flex-direction: column;
+    padding: 18px 12px;
+    gap: 12px;
+  }
+
+  .nav-button {
+    padding: 12px 6px;
+  }
+
+  .tab-label {
+    font-size: 0.65rem;
+  }
 }
 </style>

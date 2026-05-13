@@ -22,6 +22,23 @@ pub struct ResumeDetail {
     pub updated_at: String,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateResumeArgs {
+    pub name: String,
+    pub category: String,
+    pub latex_content: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateResumeArgs {
+    pub resume_id: String,
+    pub name: String,
+    pub category: String,
+    pub latex_content: String,
+}
+
 #[tauri::command]
 pub fn get_all_resumes(state: State<'_, AppState>) -> Result<Vec<ResumeItem>, String> {
     let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
@@ -82,9 +99,7 @@ pub fn get_resume_by_id(state: State<'_, AppState>, resume_id: String) -> Result
 #[tauri::command]
 pub fn create_new_resume(
     state: State<'_, AppState>,
-    name: String,
-    category: String,
-    latex_content: String,
+    args: CreateResumeArgs,
 ) -> Result<String, String> {
     let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
     
@@ -93,7 +108,7 @@ pub fn create_new_resume(
         
         conn.execute(
             "INSERT INTO base_resumes (id, name, category, latex_content) VALUES (?1, ?2, ?3, ?4)",
-            [&resume_id, &name, &category, &latex_content],
+            [&resume_id, &args.name, &args.category, &args.latex_content],
         ).map_err(|e| format!("Database error: {}", e))?;
         
         Ok(resume_id)
@@ -105,17 +120,14 @@ pub fn create_new_resume(
 #[tauri::command]
 pub fn update_resume(
     state: State<'_, AppState>,
-    resume_id: String,
-    name: String,
-    category: String,
-    latex_content: String,
+    args: UpdateResumeArgs,
 ) -> Result<(), String> {
     let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
     
     if let Some(conn) = db_guard.as_mut() {
         conn.execute(
             "UPDATE base_resumes SET name = ?1, category = ?2, latex_content = ?3, updated_at = CURRENT_TIMESTAMP WHERE id = ?4",
-            [&name, &category, &latex_content, &resume_id],
+            [&args.name, &args.category, &args.latex_content, &args.resume_id],
         ).map_err(|e| format!("Database error: {}", e))?;
         
         Ok(())

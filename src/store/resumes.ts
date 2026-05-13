@@ -47,7 +47,9 @@ export const useResumesStore = defineStore('resumes', () => {
     error.value = null;
     
     try {
-      const resumeId = await invoke<string>('create_new_resume', { name, category, latexContent: latex_content });
+      const resumeId = await invoke<string>('create_new_resume', {
+        args: { name, category, latexContent: latex_content }
+      });
       await loadAllResumes(); // Refresh list
       return resumeId;
     } catch (err: any) {
@@ -63,7 +65,9 @@ export const useResumesStore = defineStore('resumes', () => {
     error.value = null;
     
     try {
-      await invoke('update_resume', { resume_id: resumeId, name, category, latexContent: latex_content });
+      await invoke('update_resume', {
+        args: { resumeId, name, category, latexContent: latex_content }
+      });
       await loadAllResumes(); // Refresh list
     } catch (err: any) {
       error.value = err.toString();

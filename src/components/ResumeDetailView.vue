@@ -24,7 +24,7 @@ onMounted(async () => {
     resume.value = data;
     editedName.value = data.name;
     editedCategory.value = data.category;
-    editedLatex.value = data.latex_content;
+    editedLatex.value = data.latex_content || '';
   } catch (err: any) {
     error.value = err.toString();
   } finally {
@@ -74,6 +74,11 @@ const handleSave = async () => {
   } finally {
     isSaving.value = false;
   }
+};
+
+const hasLatexContent = () => {
+  const content = resume.value?.latex_content || '';
+  return content.trim().length > 0;
 };
 </script>
 
@@ -128,6 +133,12 @@ const handleSave = async () => {
     <div class="editor-section">
       <div class="editor-header">
         <h2>LaTeX Template</h2>
+        <div v-if="isEditing" class="editor-actions">
+          <button class="btn-cancel" @click="toggleEditMode">Cancel</button>
+          <button class="btn-save" @click="handleSave" :disabled="isSaving">
+            {{ isSaving ? 'Saving...' : 'Save' }}
+          </button>
+        </div>
       </div>
       
       <textarea 
@@ -137,6 +148,11 @@ const handleSave = async () => {
         placeholder="Enter your LaTeX code here..."
         spellcheck="false"
       ></textarea>
+      
+      <div v-else-if="!hasLatexContent()" class="empty-latex">
+        <p>No LaTeX content yet.</p>
+        <button class="btn-edit" @click="toggleEditMode">Add LaTeX</button>
+      </div>
       
       <pre v-else class="latex-preview">{{ resume?.latex_content }}</pre>
     </div>
@@ -153,191 +169,175 @@ const handleSave = async () => {
 
 <style scoped>
 .detail-container {
-  padding: 40px;
+  padding: 24px 20px 40px;
   max-width: 1400px;
   margin: 0 auto;
 }
 
 .detail-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 30px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding-bottom: 20px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
 }
 
 .back-btn {
-  background: none;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #888;
-  padding: 8px 16px;
-  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  padding: 8px 14px;
+  border-radius: 10px;
   cursor: pointer;
   transition: 0.2s;
   white-space: nowrap;
 }
 
-.back-btn:hover {
-  color: #ededed;
-  border-color: rgba(255, 255, 255, 0.3);
-}
+.back-btn:hover { color: var(--ink); border-color: var(--accent); }
 
 .title-section {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  flex-grow: 1;
 }
 
 .title-section h1 {
   margin: 0;
-  font-size: 2rem;
-  color: #ededed;
+  font-size: 1.6rem;
+  color: var(--ink);
 }
 
 .category {
-  background: rgba(0, 229, 153, 0.1);
-  color: #00e599;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 600;
+  background: rgba(11, 123, 107, 0.12);
+  color: var(--accent);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
   width: fit-content;
 }
 
 .edit-input {
-  background-color: #030303;
-  border: 1px solid rgba(0, 229, 153, 0.3);
-  border-radius: 6px;
-  padding: 12px;
-  color: #ededed;
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--ink);
   font-size: 1rem;
   outline: none;
 }
 
 .title-input {
-  font-size: 1.8rem;
-  font-weight: bold;
+  font-size: 1.4rem;
+  font-weight: 700;
 }
 
-.category-input {
-  width: fit-content;
-}
+.category-input { width: fit-content; }
 
 .edit-input:focus {
-  border-color: #00e599;
-  box-shadow: 0 0 0 1px rgba(0, 229, 153, 0.3);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(11, 123, 107, 0.2);
 }
 
 .actions-top {
   display: flex;
-  gap: 12px;
+  gap: 10px;
+  align-items: center;
 }
 
 .btn-edit {
-  background-color: #89b4fa;
-  color: #11111b;
+  background-color: var(--accent);
+  color: #fff;
   border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 700;
   cursor: pointer;
   transition: 0.2s;
 }
 
-.btn-edit:hover {
-  background-color: #a6c3ff;
-}
+.btn-edit:hover { background-color: #0a6b5e; }
 
 .edit-actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 
 .btn-cancel, .btn-save {
   border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 700;
   cursor: pointer;
   transition: 0.2s;
 }
 
 .btn-cancel {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ededed;
+  background: var(--surface-soft);
+  color: var(--muted);
 }
 
-.btn-cancel:hover {
-  background: rgba(255, 255, 255, 0.15);
-}
+.btn-cancel:hover { color: var(--ink); }
 
 .btn-save {
-  background-color: #00e599;
-  color: #000;
+  background-color: var(--accent);
+  color: #fff;
 }
 
-.btn-save:hover:not(:disabled) {
-  background-color: #00c785;
-}
-
-.btn-save:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+.btn-save:hover:not(:disabled) { background-color: #0a6b5e; }
+.btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .error-banner {
-  background: rgba(255, 80, 80, 0.1);
-  border: 1px solid rgba(255, 80, 80, 0.3);
-  border-radius: 8px;
+  background: rgba(180, 35, 24, 0.1);
+  border: 1px solid rgba(180, 35, 24, 0.2);
+  border-radius: 10px;
   padding: 12px 16px;
-  margin-bottom: 20px;
-  color: #ff5555;
+  margin-bottom: 16px;
+  color: var(--warning);
 }
 
 .meta-info {
-  display: flex;
-  gap: 24px;
-  margin-bottom: 30px;
+  display: grid;
+  gap: 12px;
+  margin-bottom: 24px;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--line);
   font-size: 0.9rem;
+  box-shadow: var(--shadow);
 }
 
-.meta-item {
-  color: #888;
-}
+.meta-item { color: var(--muted); }
+.meta-item strong { color: var(--accent); }
 
-.meta-item strong {
-  color: #00e599;
-}
-
-.editor-section {
-  margin-bottom: 30px;
-}
+.editor-section { margin-bottom: 24px; }
 
 .editor-header {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .editor-header h2 {
   margin: 0;
-  color: #ededed;
-  font-size: 1.2rem;
+  color: var(--ink);
+  font-size: 1.1rem;
 }
+
+.editor-actions { display: flex; gap: 10px; }
 
 .latex-editor {
   width: 100%;
-  min-height: 500px;
-  background-color: #030303;
-  border: 1px solid rgba(0, 229, 153, 0.2);
-  border-radius: 8px;
-  padding: 20px;
-  color: #a6adc8;
+  min-height: 340px;
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  color: var(--ink);
   font-family: 'Monaco', 'Menlo', monospace;
   font-size: 0.9rem;
   line-height: 1.6;
@@ -346,22 +346,18 @@ const handleSave = async () => {
 }
 
 .latex-editor:focus {
-  border-color: #00e599;
-  box-shadow: 0 0 0 2px rgba(0, 229, 153, 0.1);
-}
-
-.latex-editor.edit-mode {
-  border-color: #00e599;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(11, 123, 107, 0.12);
 }
 
 .latex-preview {
   width: 100%;
-  min-height: 500px;
-  background-color: #030303;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  padding: 20px;
-  color: #a6adc8;
+  min-height: 340px;
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  color: var(--ink);
   font-family: 'Monaco', 'Menlo', monospace;
   font-size: 0.9rem;
   line-height: 1.6;
@@ -371,18 +367,39 @@ const handleSave = async () => {
   margin: 0;
 }
 
+.empty-latex {
+  width: 100%;
+  min-height: 220px;
+  background-color: var(--surface);
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
 .footer-info {
-  padding: 16px;
-  background: rgba(0, 229, 153, 0.05);
-  border: 1px solid rgba(0, 229, 153, 0.2);
-  border-radius: 8px;
-  color: #888;
+  padding: 14px 16px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--muted);
   font-size: 0.9rem;
 }
 
 .loading {
   text-align: center;
-  color: #888;
-  padding: 60px;
+  color: var(--muted);
+  padding: 40px;
+}
+
+@media (min-width: 960px) {
+  .detail-container { padding: 40px 32px 60px; }
+  .detail-header { grid-template-columns: auto 1fr auto; align-items: center; }
+  .meta-info { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .latex-editor, .latex-preview { min-height: 520px; }
 }
 </style>

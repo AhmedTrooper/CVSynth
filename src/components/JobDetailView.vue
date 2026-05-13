@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore } from '../store/settings';
+import { useResumesStore } from '../store/resumes';
 import { useRouter } from 'vue-router';
 
 interface JobData {
@@ -19,6 +20,7 @@ interface BaseResume {
 
 const router = useRouter();
 const settingsStore = useSettingsStore();
+const resumesStore = useResumesStore();
 
 const props = defineProps<{ id: string }>();
 const emit = defineEmits(['go-back']);
@@ -36,6 +38,7 @@ const pdfUrl = ref<string | null>(null);
 // Data
 const jobDetails = ref<JobData | null>(null);
 const standardResumes = ref<BaseResume[]>([]);
+const resumesLoadError = ref<string | null>(null);
 
 // Load job details and base resumes on mount
 onMounted(async () => {
@@ -44,10 +47,15 @@ onMounted(async () => {
     // const job = await invoke('get_job_details', { jobId: props.id });
     // jobDetails.value = job;
     
-    // TODO: Fetch base resumes from backend
-    // const resumes = await invoke('get_base_resumes');
-    // standardResumes.value = resumes;
-    // if (resumes.length > 0) selectedStandardResume.value = resumes[0].id;
+    // Load base resumes from store
+    await resumesStore.loadAllResumes();
+    standardResumes.value = resumesStore.resumes.map((resume) => ({
+      id: resume.id,
+      name: resume.name,
+    }));
+    if (standardResumes.value.length > 0) {
+      selectedStandardResume.value = standardResumes.value[0].id;
+    }
     
     // For now, mock data
     jobDetails.value = {
@@ -58,11 +66,9 @@ onMounted(async () => {
       raw_job_content: 'We are looking for a Senior Rust Developer...'
     };
     
-    standardResumes.value = [
-      { id: 'base_1', name: 'Software Engineer Base' },
-      { id: 'base_2', name: 'Frontend Heavy Base' }
-    ];
-    selectedStandardResume.value = 'base_1';
+    if (!standardResumes.value.length) {
+      resumesLoadError.value = 'No resume templates found. Create one in the Resume Templates tab.';
+    }
   } catch (err: any) {
     error.value = err.toString();
   } finally {
@@ -160,6 +166,8 @@ const goBack = () => {
             </option>
           </select>
 
+          <p v-if="resumesLoadError" class="inline-warning">{{ resumesLoadError }}</p>
+
           <label style="margin-top: 16px;">Custom Instructions (Optional):</label>
           <textarea 
             v-model="customInstruction" 
@@ -243,6 +251,12 @@ label {
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+
+.inline-warning {
+  margin: 10px 0 0;
+  color: var(--warning);
+  font-size: 0.85rem;
 }
 
 @media (min-width: 960px) {

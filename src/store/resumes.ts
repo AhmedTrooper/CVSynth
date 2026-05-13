@@ -35,7 +35,7 @@ export const useResumesStore = defineStore('resumes', () => {
 
   const getResumeById = async (resumeId: string): Promise<ResumeDetail> => {
     try {
-      return await invoke<ResumeDetail>('get_resume_by_id', { resume_id: resumeId });
+      return await invoke<ResumeDetail>('get_resume_by_id', { resumeId });
     } catch (err: any) {
       error.value = err.toString();
       throw err;

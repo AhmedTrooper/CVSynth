@@ -160,6 +160,13 @@ const hasLatexContent = () => {
     <div class="footer-info">
       <p>💡 Tip: This LaTeX template will be used when tailoring resumes for job applications.</p>
     </div>
+
+    <div v-if="isEditing" class="edit-bar">
+      <button class="btn-cancel" @click="toggleEditMode">Cancel</button>
+      <button class="btn-save" @click="handleSave" :disabled="isSaving">
+        {{ isSaving ? 'Saving...' : 'Save Changes' }}
+      </button>
+    </div>
   </div>
 
   <div v-else class="loading">
@@ -333,6 +340,7 @@ const hasLatexContent = () => {
 .latex-editor {
   width: 100%;
   min-height: 340px;
+  max-height: 520px;
   background-color: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -343,6 +351,7 @@ const hasLatexContent = () => {
   line-height: 1.6;
   outline: none;
   resize: vertical;
+  overflow: auto;
 }
 
 .latex-editor:focus {
@@ -353,6 +362,7 @@ const hasLatexContent = () => {
 .latex-preview {
   width: 100%;
   min-height: 340px;
+  max-height: 520px;
   background-color: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -390,6 +400,20 @@ const hasLatexContent = () => {
   font-size: 0.9rem;
 }
 
+.edit-bar {
+  position: sticky;
+  bottom: 12px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
 .loading {
   text-align: center;
   color: var(--muted);
@@ -401,5 +425,6 @@ const hasLatexContent = () => {
   .detail-header { grid-template-columns: auto 1fr auto; align-items: center; }
   .meta-info { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .latex-editor, .latex-preview { min-height: 520px; }
+  .edit-bar { position: static; margin-top: 24px; background: transparent; border: none; box-shadow: none; padding: 0; }
 }
 </style>

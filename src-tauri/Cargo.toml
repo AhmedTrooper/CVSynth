@@ -26,6 +26,14 @@ rusqlite = "0.39.0"
 rig = "0.37.0"
 tokio = "1.52.3"
 tauri-plugin-stronghold = "2"
+nanoid = "0.5.0"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-deep-link = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-os = "2"
+tauri-plugin-process = "2"
 
 [profile.dev.package.scrypt]
 opt-level = 3

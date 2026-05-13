@@ -8,6 +8,13 @@
   "permissions": [
     "core:default",
     "opener:default",
-    "stronghold:default"
+    "stronghold:default",
+    "clipboard-manager:default",
+    "fs:default",
+    "deep-link:default",
+    "dialog:default",
+    "notification:default",
+    "os:default",
+    "process:default"
   ]
 }

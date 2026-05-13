@@ -1,9 +1,51 @@
+pub mod ai;
+pub mod commands;
+pub mod db;
+
+use rusqlite::Connection;
+use std::sync::Mutex;
+use tauri::Manager;
+
+pub struct AppState {
+    pub db: Mutex<Option<Connection>>,
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_stronghold::Builder::new(|pass| todo!()).build())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![])
+        .setup(|app| {
+            // 1. Initialize Stronghold with secure Argon2 hashing
+            let salt_path = app
+                .path()
+                .app_local_data_dir()
+                .expect("could not resolve app local data path")
+                .join("salt.txt");
+
+            app.handle()
+                .plugin(tauri_plugin_stronghold::Builder::with_argon2(&salt_path).build())
+                .expect("Failed to initialize Stronghold");
+
+            // 2. Initialize SQLite Database
+            let conn = db::init_db(app.handle()).expect("Failed to init DB");
+            app.manage(AppState {
+                db: Mutex::new(Some(conn)),
+            });
+
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::settings::save_model_pref,
+            commands::settings::get_model_pref,
+            commands::jobs::create_job // Example of the new slug-based command
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

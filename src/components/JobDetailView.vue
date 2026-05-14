@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { invoke } from '@tauri-apps/api/core';
-import { save, message } from '@tauri-apps/plugin-dialog';
+import { save, message, ask } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
 import { open } from '@tauri-apps/plugin-shell';
 import { Motion, AnimatePresence } from 'motion-v';
@@ -310,7 +310,12 @@ const updateStatus = async (newStatus: string) => {
 };
 
 const deleteJob = async () => {
-  if (!confirm('Are you sure you want to delete this job application? This action cannot be undone.')) return;
+  const confirmed = await ask('Are you sure you want to delete this job application? This action cannot be undone.', {
+    title: 'Confirm Deletion',
+    kind: 'warning'
+  });
+
+  if (!confirmed) return;
   
   try {
     await jobsStore.deleteJob(props.id);

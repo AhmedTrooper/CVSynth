@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useResumesStore, type ResumeDetail } from '../store/resumes';
 import { Motion, AnimatePresence } from 'motion-v';
+import { ask } from '@tauri-apps/plugin-dialog';
 import { 
   ArrowLeft, 
   Edit, 
@@ -91,7 +92,10 @@ const handleSave = async () => {
 
 const handleDelete = async () => {
   if (!resume.value) return;
-  const confirmed = window.confirm('Delete this resume template? This cannot be undone.');
+  const confirmed = await ask('Delete this resume template? This cannot be undone.', {
+    title: 'Confirm Deletion',
+    kind: 'warning'
+  });
   if (!confirmed) return;
 
   isDeleting.value = true;

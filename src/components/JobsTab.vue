@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useJobsStore, Job } from '../store/jobs';
 import { Motion, AnimatePresence } from 'motion-v';
+import { ask } from '@tauri-apps/plugin-dialog';
 
 import { 
   Search, 
@@ -72,7 +73,13 @@ const handleCardClick = (id: string) => {
 
 const deleteSelectedJobs = async () => {
   if (selectedJobs.value.size === 0) return;
-  if (!confirm(`Are you sure you want to delete ${selectedJobs.value.size} selected applications?`)) return;
+  
+  const confirmed = await ask(`Are you sure you want to delete ${selectedJobs.value.size} selected applications?`, {
+    title: 'Confirm Batch Deletion',
+    kind: 'warning'
+  });
+
+  if (!confirmed) return;
 
   try {
     await jobsStore.deleteJobsBatch(Array.from(selectedJobs.value));
@@ -84,7 +91,12 @@ const deleteSelectedJobs = async () => {
 };
 
 const deleteAllJobs = async () => {
-  if (!confirm('CRITICAL: This will delete ALL job applications and their tailored resumes. This action is permanent. Continue?')) return;
+  const confirmed = await ask('CRITICAL: This will delete ALL job applications and their tailored resumes. This action is permanent. Continue?', {
+    title: 'CRITICAL: Delete All Data',
+    kind: 'error'
+  });
+
+  if (!confirmed) return;
 
   try {
     await jobsStore.deleteAllJobs();

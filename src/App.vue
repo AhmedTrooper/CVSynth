@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Motion } from 'motion-v';
+import { ref } from 'vue';
+import { Motion, AnimatePresence } from 'motion-v';
 import { open } from '@tauri-apps/plugin-shell';
 import { 
   Home, 
@@ -22,6 +23,8 @@ const externalLinks = [
   { url: 'https://www.youtube.com/@AhmedTrooper', label: 'YouTube', icon: Video },
 ];
 
+const activeTooltip = ref<string | null>(null);
+
 const handleExternalClick = (url: string) => {
   open(url).catch(err => console.error('Failed to open URL:', err));
 };
@@ -41,9 +44,23 @@ const handleExternalClick = (url: string) => {
           :to="tab.path"
           class="nav-item"
           active-class="active"
+          @mouseenter="activeTooltip = tab.label"
+          @mouseleave="activeTooltip = null"
         >
           <div class="icon-wrapper">
             <component :is="tab.icon" :size="20" stroke-width="2" />
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === tab.label"
+                :initial="{ opacity: 0, x: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, x: 12, scale: 1 }"
+                :exit="{ opacity: 0, x: 5, scale: 0.9 }"
+                :transition="{ duration: 0.15 }"
+                class="flying-message sidebar-tooltip"
+              >
+                {{ tab.label }}
+              </Motion>
+            </AnimatePresence>
           </div>
           <span class="nav-label">{{ tab.label }}</span>
         </router-link>
@@ -55,9 +72,23 @@ const handleExternalClick = (url: string) => {
           :key="link.url"
           @click="handleExternalClick(link.url)"
           class="nav-item external"
+          @mouseenter="activeTooltip = link.label"
+          @mouseleave="activeTooltip = null"
         >
           <div class="icon-wrapper">
             <component :is="link.icon" :size="20" stroke-width="2" />
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === link.label"
+                :initial="{ opacity: 0, x: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, x: 12, scale: 1 }"
+                :exit="{ opacity: 0, x: 5, scale: 0.9 }"
+                :transition="{ duration: 0.15 }"
+                class="flying-message sidebar-tooltip"
+              >
+                {{ link.label }}
+              </Motion>
+            </AnimatePresence>
           </div>
           <span class="nav-label">{{ link.label }}</span>
         </button>
@@ -157,6 +188,53 @@ const handleExternalClick = (url: string) => {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+}
+
+.flying-message {
+  position: absolute;
+  bottom: 140%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  display: none; /* Hidden by default, shown on desktop */
+}
+
+.flying-message::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: var(--accent);
+}
+
+.sidebar-tooltip {
+  left: 100%;
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+  margin-left: 12px;
+}
+
+.sidebar-tooltip::after {
+  top: 50%;
+  right: 100%;
+  left: auto;
+  bottom: auto;
+  transform: translateY(-50%);
+  border-top-color: transparent;
+  border-right-color: var(--accent);
 }
 
 .content-area {
@@ -172,6 +250,9 @@ const handleExternalClick = (url: string) => {
 }
 
 @media (min-width: 960px) {
+  .flying-message {
+    display: block;
+  }
   .app-container {
     flex-direction: row;
   }

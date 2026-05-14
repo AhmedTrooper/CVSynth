@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue';
 import { useSettingsStore } from '../store/settings';
-import { CheckCircle } from '@lucide/vue';
+import { CheckCircle, Info, Save, RotateCcw } from '@lucide/vue';
+import { Motion, AnimatePresence } from 'motion-v';
 
 const store = useSettingsStore();
+
+// Tooltip State
+const activeTooltip = ref<string | null>(null);
 
 // --- 1. Draft State (Local only) ---
 const providerInput = ref('');
@@ -147,14 +151,48 @@ const handleSave = async () => {
         
         <div class="input-row">
           <div class="input-group">
-            <label>Provider</label>
+            <div class="label-row" @mouseenter="activeTooltip = 'provider'" @mouseleave="activeTooltip = null">
+              <label>Provider</label>
+              <div class="tooltip-trigger">
+                <Info :size="12" />
+                <AnimatePresence>
+                  <Motion
+                    v-if="activeTooltip === 'provider'"
+                    :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                    :animate="{ opacity: 1, y: 0, scale: 1 }"
+                    :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                    :transition="{ duration: 0.15 }"
+                    class="flying-message"
+                  >
+                    Select AI Service
+                  </Motion>
+                </AnimatePresence>
+              </div>
+            </div>
             <select v-model="providerInput" class="custom-select">
               <option v-for="p in providers" :key="p.id" :value="p.id">{{ p.name }}</option>
             </select>
           </div>
 
           <div class="input-group">
-            <label>Active Model</label>
+            <div class="label-row" @mouseenter="activeTooltip = 'model'" @mouseleave="activeTooltip = null">
+              <label>Active Model</label>
+              <div class="tooltip-trigger">
+                <Info :size="12" />
+                <AnimatePresence>
+                  <Motion
+                    v-if="activeTooltip === 'model'"
+                    :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                    :animate="{ opacity: 1, y: 0, scale: 1 }"
+                    :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                    :transition="{ duration: 0.15 }"
+                    class="flying-message"
+                  >
+                    Choose Model Logic
+                  </Motion>
+                </AnimatePresence>
+              </div>
+            </div>
             <select v-model="modelInput" class="custom-select">
               <option v-for="m in currentModels" :key="m.id" :value="m.id">{{ m.name }}</option>
             </select>
@@ -200,22 +238,50 @@ const handleSave = async () => {
       </div>
       
       <div class="button-group">
-        <button 
-          v-if="hasChanges" 
-          class="btn-secondary" 
-          @click="syncFromStore" 
-          :disabled="isSaving"
-        >
-          Discard Changes
-        </button>
+        <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'discard'" @mouseleave="activeTooltip = null">
+          <button 
+            v-if="hasChanges" 
+            class="btn-secondary" 
+            @click="syncFromStore" 
+            :disabled="isSaving"
+          >
+            <RotateCcw :size="16" /> Discard Changes
+          </button>
+          <AnimatePresence>
+            <Motion
+              v-if="activeTooltip === 'discard' && hasChanges"
+              :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+              :animate="{ opacity: 1, y: 0, scale: 1 }"
+              :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+              :transition="{ duration: 0.15 }"
+              class="flying-message"
+            >
+              Revert to last saved
+            </Motion>
+          </AnimatePresence>
+        </div>
         
-        <button 
-          class="btn-primary" 
-          @click="handleSave" 
-          :disabled="isSaving || (providerInput === store.selectedAiProvider && modelInput === store.selectedAiModel && !apiKeyInput)"
-        >
-          {{ isSaving ? 'Securing...' : 'Save Configuration' }}
-        </button>
+        <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'save'" @mouseleave="activeTooltip = null">
+          <button 
+            class="btn-primary" 
+            @click="handleSave" 
+            :disabled="isSaving || (providerInput === store.selectedAiProvider && modelInput === store.selectedAiModel && !apiKeyInput)"
+          >
+            <Save :size="16" /> {{ isSaving ? 'Securing...' : 'Save Configuration' }}
+          </button>
+          <AnimatePresence>
+            <Motion
+              v-if="activeTooltip === 'save'"
+              :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+              :animate="{ opacity: 1, y: 0, scale: 1 }"
+              :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+              :transition="{ duration: 0.15 }"
+              class="flying-message"
+            >
+              Persist settings to vault
+            </Motion>
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   </div>
@@ -253,6 +319,54 @@ const handleSave = async () => {
 
 .input-row { display: flex; gap: 20px; margin-top: 20px; }
 .input-group { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+
+.label-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: help;
+}
+
+.tooltip-trigger {
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.flying-message {
+  position: absolute;
+  bottom: 140%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.flying-message::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: var(--accent);
+}
+
+.btn-tooltip-wrapper {
+  position: relative;
+  display: flex;
+}
 
 label {
   color: var(--accent); font-weight: 700; font-size: 0.7rem;

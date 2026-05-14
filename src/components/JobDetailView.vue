@@ -10,6 +10,20 @@ import { useSettingsStore } from '../store/settings';
 import { useResumesStore } from '../store/resumes';
 import { useJobsStore, Job } from '../store/jobs';
 
+import { 
+  ArrowLeft, 
+  Trash2, 
+  ExternalLink, 
+  Save, 
+  Hammer, 
+  Download, 
+  Wand2, 
+  Check, 
+  X,
+  Play,
+  RotateCw
+} from '@lucide/vue';
+
 interface BaseResume {
   id: string;
   name: string;
@@ -21,6 +35,9 @@ const resumesStore = useResumesStore();
 const jobsStore = useJobsStore();
 
 const props = defineProps<{ id: string }>();
+
+// Tooltip State
+const activeTooltip = ref<string | null>(null);
 
 // State
 const isLoading = ref(true);
@@ -289,15 +306,57 @@ const deleteJob = async () => {
   <div class="workspace" v-if="!isLoading">
     <header class="workspace-header">
       <div class="header-left">
-        <button class="back-btn" @click="goBack">←</button>
+        <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'back'" @mouseleave="activeTooltip = null">
+          <button class="back-btn" @click="goBack"><ArrowLeft :size="16" /></button>
+          <AnimatePresence>
+            <Motion
+              v-if="activeTooltip === 'back'"
+              :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+              :animate="{ opacity: 1, y: 0, scale: 1 }"
+              :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+              :transition="{ duration: 0.15 }"
+              class="flying-message header-tooltip"
+            >
+              Back to List
+            </Motion>
+          </AnimatePresence>
+        </div>
         <div class="job-info">
           <h1 class="title">{{ jobDetails?.job_title }}</h1>
           <span class="company">{{ jobDetails?.company_name }}</span>
-          <button v-if="jobDetails?.job_url" class="link-btn" @click="openJobUrl">🔗</button>
+          <div class="btn-tooltip-wrapper" v-if="jobDetails?.job_url" @mouseenter="activeTooltip = 'job-link'" @mouseleave="activeTooltip = null">
+            <button class="link-btn" @click="openJobUrl"><ExternalLink :size="14" /></button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'job-link'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                :transition="{ duration: 0.15 }"
+                class="flying-message header-tooltip"
+              >
+                Open Job Link
+              </Motion>
+            </AnimatePresence>
+          </div>
         </div>
       </div>
       <div class="header-actions">
-        <button class="delete-btn" @click="deleteJob">Delete</button>
+        <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'delete-job'" @mouseleave="activeTooltip = null">
+          <button class="delete-btn" @click="deleteJob"><Trash2 :size="16" /></button>
+          <AnimatePresence>
+            <Motion
+              v-if="activeTooltip === 'delete-job'"
+              :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+              :animate="{ opacity: 1, y: 0, scale: 1 }"
+              :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+              :transition="{ duration: 0.15 }"
+              class="flying-message header-tooltip delete-tooltip"
+            >
+              Delete Application
+            </Motion>
+          </AnimatePresence>
+        </div>
       </div>
     </header>
 
@@ -357,9 +416,25 @@ const deleteJob = async () => {
               placeholder="Custom tailoring rules..."
             ></textarea>
           </div>
-          <button class="btn-accent w-full" @click="generateResume" :disabled="isGenerating || !selectedStandardResume">
-            {{ isGenerating ? 'Tailoring...' : 'Run Intelligence' }}
-          </button>
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'run-intelligence'" @mouseleave="activeTooltip = null">
+            <button class="btn-accent w-full" @click="generateResume" :disabled="isGenerating || !selectedStandardResume">
+              <Play v-if="!isGenerating" :size="14" />
+              <RotateCw v-else :size="14" class="spinner" />
+              {{ isGenerating ? 'Tailoring...' : 'Run Intelligence' }}
+            </button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'run-intelligence'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                :transition="{ duration: 0.15 }"
+                class="flying-message info-tooltip"
+              >
+                AI Tailoring Workflow
+              </Motion>
+            </AnimatePresence>
+          </div>
         </div>
       </aside>
 
@@ -367,27 +442,84 @@ const deleteJob = async () => {
         <div class="panel-tabs">
           <div class="left-tabs">
             <button class="tab active">SOURCE</button>
-            <button class="tab-btn" @click="saveLatexContent">SAVE</button>
+            <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'save-latex'" @mouseleave="activeTooltip = null">
+              <button class="tab-btn" @click="saveLatexContent"><Save :size="14" /></button>
+              <AnimatePresence>
+                <Motion
+                  v-if="activeTooltip === 'save-latex'"
+                  :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                  :animate="{ opacity: 1, y: 0, scale: 1 }"
+                  :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                  :transition="{ duration: 0.15 }"
+                  class="flying-message tab-tooltip"
+                >
+                  Save LaTeX
+                </Motion>
+              </AnimatePresence>
+            </div>
           </div>
           <div class="right-tabs">
             <AnimatePresence>
-              <Motion
-                v-if="compilationError"
-                :initial="{ scale: 0.9, opacity: 0 }"
-                :animate="{ scale: 1, opacity: 1 }"
-                class="tab-btn ai-btn"
-                @click="fixWithAi"
-                :disabled="isFixing"
-              >
-                {{ isFixing ? 'FIXING...' : 'AI FIX' }}
-              </Motion>
+              <div class="btn-tooltip-wrapper" v-if="compilationError" @mouseenter="activeTooltip = 'ai-fix'" @mouseleave="activeTooltip = null">
+                <Motion
+                  :initial="{ scale: 0.9, opacity: 0 }"
+                  :animate="{ scale: 1, opacity: 1 }"
+                  class="tab-btn ai-btn"
+                  @click="fixWithAi"
+                  :disabled="isFixing"
+                >
+                  <Wand2 :size="14" />
+                </Motion>
+                <AnimatePresence>
+                  <Motion
+                    v-if="activeTooltip === 'ai-fix'"
+                    :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                    :animate="{ opacity: 1, y: 0, scale: 1 }"
+                    :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                    :transition="{ duration: 0.15 }"
+                    class="flying-message tab-tooltip"
+                  >
+                    AI Debug & Fix
+                  </Motion>
+                </AnimatePresence>
+              </div>
             </AnimatePresence>
-            <button class="tab-btn accent-btn" @click="compilePdf" :disabled="!generatedLatex || isCompilingPDF">
-              {{ isCompilingPDF ? 'COMPILING...' : 'BUILD' }}
-            </button>
-            <button v-if="pdfBytesBuffer" class="tab-btn" @click="downloadPdf" :disabled="isDownloading">
-              {{ isDownloading ? 'SAVING...' : 'EXPORT' }}
-            </button>
+            <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'build-pdf'" @mouseleave="activeTooltip = null">
+              <button class="tab-btn accent-btn" @click="compilePdf" :disabled="!generatedLatex || isCompilingPDF">
+                <Hammer v-if="!isCompilingPDF" :size="14" />
+                <RotateCw v-else :size="14" class="spinner" />
+              </button>
+              <AnimatePresence>
+                <Motion
+                  v-if="activeTooltip === 'build-pdf'"
+                  :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                  :animate="{ opacity: 1, y: 0, scale: 1 }"
+                  :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                  :transition="{ duration: 0.15 }"
+                  class="flying-message tab-tooltip"
+                >
+                  Compile PDF
+                </Motion>
+              </AnimatePresence>
+            </div>
+            <div class="btn-tooltip-wrapper" v-if="pdfBytesBuffer" @mouseenter="activeTooltip = 'export-pdf'" @mouseleave="activeTooltip = null">
+              <button class="tab-btn" @click="downloadPdf" :disabled="isDownloading">
+                <Download v-if="!isDownloading" :size="14" />
+                <RotateCw v-else :size="14" class="spinner" />
+              </button>
+              <AnimatePresence>
+                <Motion
+                  v-if="activeTooltip === 'export-pdf'"
+                  :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                  :animate="{ opacity: 1, y: 0, scale: 1 }"
+                  :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                  :transition="{ duration: 0.15 }"
+                  class="flying-message tab-tooltip"
+                >
+                  Download PDF
+                </Motion>
+              </AnimatePresence>
+            </div>
           </div>
         </div>
 
@@ -552,8 +684,62 @@ const deleteJob = async () => {
   font-weight: 600;
   font-size: 0.75rem;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 .btn-accent:disabled { opacity: 0.5; }
+
+.btn-tooltip-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.flying-message {
+  position: absolute;
+  bottom: 140%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.flying-message::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: var(--accent);
+}
+
+.header-tooltip { bottom: auto; top: 140%; }
+.header-tooltip::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: var(--accent); }
+.delete-tooltip { background: var(--warning); left: auto; right: 0; transform: none; }
+.delete-tooltip::after { border-bottom-color: var(--warning); left: auto; right: 8px; transform: none; }
+
+.tab-tooltip { bottom: 140%; left: 50%; }
+.info-tooltip { bottom: 140%; left: 50%; }
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
 .main-panel {
   flex: 1;

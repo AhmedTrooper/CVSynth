@@ -2,10 +2,14 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useResumesStore } from '../store/resumes';
-import { Plus, Tag, Calendar, Hash, FileText, X } from '@lucide/vue';
+import { Plus, Tag, Calendar, Hash, FileText, X, Info } from '@lucide/vue';
+import { Motion, AnimatePresence } from 'motion-v';
 
 const router = useRouter();
 const resumesStore = useResumesStore();
+
+// Tooltip State
+const activeTooltip = ref<string | null>(null);
 
 const showNewResumeForm = ref(false);
 const newResumeName = ref('');
@@ -59,9 +63,23 @@ const handleCreateResume = async () => {
         <h1>Resume Templates</h1>
         <p class="subtitle">Your blueprint collection for high-performance CVs.</p>
       </div>
-      <button class="btn-primary" @click="toggleNewForm">
-        <Plus :size="18" /> New Template
-      </button>
+      <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'new-template'" @mouseleave="activeTooltip = null">
+        <button class="btn-primary" @click="toggleNewForm">
+          <Plus :size="18" /> New Template
+        </button>
+        <AnimatePresence>
+          <Motion
+            v-if="activeTooltip === 'new-template'"
+            :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+            :animate="{ opacity: 1, y: 0, scale: 1 }"
+            :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+            :transition="{ duration: 0.15 }"
+            class="flying-message"
+          >
+            Create base CV
+          </Motion>
+        </AnimatePresence>
+      </div>
     </header>
 
     <div v-if="resumesStore.error" class="error-banner">
@@ -121,10 +139,24 @@ const handleCreateResume = async () => {
         :key="resume.id"
         class="resume-card"
         @click="navigateToResume(resume.id)"
+        @mouseenter="activeTooltip = resume.id"
+        @mouseleave="activeTooltip = null"
       >
         <div class="resume-card-top">
           <div class="icon-box">
             <FileText :size="24" />
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === resume.id"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                :transition="{ duration: 0.15 }"
+                class="flying-message"
+              >
+                Click to Edit
+              </Motion>
+            </AnimatePresence>
           </div>
           <div class="category-badge">
             <Tag :size="12" /> {{ resume.category }}
@@ -184,6 +216,38 @@ const handleCreateResume = async () => {
 }
 
 .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(11, 123, 107, 0.2); }
+
+.btn-tooltip-wrapper {
+  position: relative;
+  display: flex;
+}
+
+.flying-message {
+  position: absolute;
+  bottom: 140%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.flying-message::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: var(--accent);
+}
 
 .error-banner {
   background: rgba(248, 51, 73, 0.1);
@@ -314,6 +378,7 @@ const handleCreateResume = async () => {
   align-items: center;
   justify-content: center;
   color: var(--accent);
+  position: relative;
 }
 
 .category-badge {

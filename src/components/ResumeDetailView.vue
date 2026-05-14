@@ -2,11 +2,23 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useResumesStore, type ResumeDetail } from '../store/resumes';
+import { Motion, AnimatePresence } from 'motion-v';
+import { 
+  ArrowLeft, 
+  Edit, 
+  Trash2, 
+  X, 
+  Save, 
+  RotateCw 
+} from '@lucide/vue';
 
 const router = useRouter();
 const resumesStore = useResumesStore();
 
 const props = defineProps<{ id: string }>();
+
+// Tooltip State
+const activeTooltip = ref<string | null>(null);
 
 const isLoading = ref(true);
 const isEditing = ref(false);
@@ -104,7 +116,21 @@ const hasLatexContent = () => {
 <template>
   <div class="detail-container" v-if="!isLoading">
     <header class="detail-header">
-      <button class="back-btn" @click="goBack">← Back to Templates</button>
+      <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'back'" @mouseleave="activeTooltip = null">
+        <button class="back-btn" @click="goBack"><ArrowLeft :size="16" /></button>
+        <AnimatePresence>
+          <Motion
+            v-if="activeTooltip === 'back'"
+            :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+            :animate="{ opacity: 1, y: 0, scale: 1 }"
+            :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+            :transition="{ duration: 0.15 }"
+            class="flying-message header-tooltip"
+          >
+            Back to Templates
+          </Motion>
+        </AnimatePresence>
+      </div>
       <div class="title-section">
         <h1 v-if="!isEditing">{{ resume?.name }}</h1>
         <input 
@@ -123,15 +149,74 @@ const hasLatexContent = () => {
         />
       </div>
       <div class="actions-top">
-        <button v-if="!isEditing" class="btn-edit" @click="toggleEditMode">✏️ Edit</button>
-        <button v-if="!isEditing" class="btn-delete" @click="handleDelete" :disabled="isDeleting">
-          {{ isDeleting ? 'Deleting...' : 'Delete' }}
-        </button>
-        <div v-else class="edit-actions">
-          <button class="btn-cancel" @click="toggleEditMode">Cancel</button>
-          <button class="btn-save" @click="handleSave" :disabled="isSaving">
-            {{ isSaving ? 'Saving...' : 'Save' }}
+        <div v-if="!isEditing" class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'edit-template'" @mouseleave="activeTooltip = null">
+          <button class="btn-edit" @click="toggleEditMode"><Edit :size="16" /></button>
+          <AnimatePresence>
+            <Motion
+              v-if="activeTooltip === 'edit-template'"
+              :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+              :animate="{ opacity: 1, y: 0, scale: 1 }"
+              :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+              :transition="{ duration: 0.15 }"
+              class="flying-message"
+            >
+              Edit Template
+            </Motion>
+          </AnimatePresence>
+        </div>
+        <div v-if="!isEditing" class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'delete-template'" @mouseleave="activeTooltip = null">
+          <button class="btn-delete" @click="handleDelete" :disabled="isDeleting">
+            <Trash2 v-if="!isDeleting" :size="16" />
+            <RotateCw v-else :size="16" class="spinner" />
           </button>
+          <AnimatePresence>
+            <Motion
+              v-if="activeTooltip === 'delete-template'"
+              :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+              :animate="{ opacity: 1, y: 0, scale: 1 }"
+              :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+              :transition="{ duration: 0.15 }"
+              class="flying-message delete-tooltip"
+            >
+              Delete Template
+            </Motion>
+          </AnimatePresence>
+        </div>
+        
+        <div v-else class="edit-actions">
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'cancel-edit'" @mouseleave="activeTooltip = null">
+            <button class="btn-cancel" @click="toggleEditMode"><X :size="16" /></button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'cancel-edit'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                :transition="{ duration: 0.15 }"
+                class="flying-message"
+              >
+                Cancel Changes
+              </Motion>
+            </AnimatePresence>
+          </div>
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'save-template'" @mouseleave="activeTooltip = null">
+            <button class="btn-save" @click="handleSave" :disabled="isSaving">
+              <Save v-if="!isSaving" :size="16" />
+              <RotateCw v-else :size="16" class="spinner" />
+            </button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'save-template'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                :transition="{ duration: 0.15 }"
+                class="flying-message"
+              >
+                Save Template
+              </Motion>
+            </AnimatePresence>
+          </div>
         </div>
       </div>
     </header>
@@ -156,10 +241,39 @@ const hasLatexContent = () => {
       <div class="editor-header">
         <h2>LaTeX Template</h2>
         <div v-if="isEditing" class="editor-actions">
-          <button class="btn-cancel" @click="toggleEditMode">Cancel</button>
-          <button class="btn-save" @click="handleSave" :disabled="isSaving">
-            {{ isSaving ? 'Saving...' : 'Save' }}
-          </button>
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'cancel-edit-editor'" @mouseleave="activeTooltip = null">
+            <button class="btn-cancel" @click="toggleEditMode"><X :size="16" /></button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'cancel-edit-editor'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                :transition="{ duration: 0.15 }"
+                class="flying-message"
+              >
+                Cancel Changes
+              </Motion>
+            </AnimatePresence>
+          </div>
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'save-template-editor'" @mouseleave="activeTooltip = null">
+            <button class="btn-save" @click="handleSave" :disabled="isSaving">
+              <Save v-if="!isSaving" :size="16" />
+              <RotateCw v-else :size="16" class="spinner" />
+            </button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'save-template-editor'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                :transition="{ duration: 0.15 }"
+                class="flying-message"
+              >
+                Save Template
+              </Motion>
+            </AnimatePresence>
+          </div>
         </div>
       </div>
       
@@ -173,7 +287,7 @@ const hasLatexContent = () => {
       
       <div v-else-if="!hasLatexContent()" class="empty-latex">
         <p>No LaTeX content yet.</p>
-        <button class="btn-edit" @click="toggleEditMode">Add LaTeX</button>
+        <button class="btn-edit" @click="toggleEditMode"><Edit :size="16" /> Add LaTeX</button>
       </div>
       
       <pre v-else class="latex-preview">{{ resume?.latex_content }}</pre>
@@ -197,6 +311,53 @@ const hasLatexContent = () => {
 </template>
 
 <style scoped>
+.btn-tooltip-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.flying-message {
+  position: absolute;
+  bottom: 140%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.flying-message::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: var(--accent);
+}
+
+.header-tooltip { bottom: auto; top: 140%; }
+.header-tooltip::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: var(--accent); }
+.delete-tooltip { background: var(--warning); }
+.delete-tooltip::after { border-bottom-color: var(--warning); }
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .detail-container {
   padding: 24px 20px 40px;
   max-width: 1400px;

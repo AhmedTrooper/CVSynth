@@ -27,8 +27,41 @@ const pdfUrl = ref<string | null>(null);
 const pdfBytesBuffer = ref<Uint8Array | null>(null);
 const isCompiling = ref(false);
 const isFixing = ref(false);
+const isRefining = ref(false);
+const refinementInstruction = ref('');
 const isDownloading = ref(false);
 const compilationError = ref<string | null>(null);
+
+// AI Refinement
+const refineWithAi = async () => {
+  if (!latexCode.value || !refinementInstruction.value.trim() || isRefining.value) return;
+  
+  isRefining.value = true;
+  try {
+    const apiKey = await settingsStore.getDecryptedKey();
+    if (!apiKey) throw new Error("API Key not found. Please set it in Settings.");
+
+    const provider = settingsStore.selectedAiProvider;
+    const model = settingsStore.selectedAiModel;
+
+    const refinedCode = await invoke<string>('refine_latex_with_ai', {
+      provider,
+      model,
+      apiKey,
+      currentLatex: latexCode.value,
+      instruction: refinementInstruction.value.trim()
+    });
+
+    latexCode.value = refinedCode;
+    refinementInstruction.value = ''; // Clear after success
+    await compilePdf();
+  } catch (err: any) {
+    console.error("AI Refinement Error:", err);
+    await message(err.toString(), { title: 'AI Refinement Failed', kind: 'error' });
+  } finally {
+    isRefining.value = false;
+  }
+};
 
 // Compile PDF
 const compilePdf = async () => {
@@ -117,7 +150,7 @@ const downloadPdf = async () => {
     <!-- Loading Overlay -->
     <AnimatePresence>
       <Motion
-        v-if="isCompiling || isFixing"
+        v-if="isCompiling || isFixing || isRefining"
         :initial="{ opacity: 0 }"
         :animate="{ opacity: 1 }"
         :exit="{ opacity: 0 }"
@@ -125,7 +158,7 @@ const downloadPdf = async () => {
       >
         <div class="loader-content">
           <RotateCw :size="48" class="spinner" />
-          <h2>{{ isFixing ? 'AI DEBUGGING...' : 'COMPILING LATEX...' }}</h2>
+          <h2>{{ isFixing ? 'AI DEBUGGING...' : isRefining ? 'AI REFINING...' : 'COMPILING LATEX...' }}</h2>
           <p>Please wait while the engine processes your code.</p>
         </div>
       </Motion>
@@ -177,12 +210,33 @@ const downloadPdf = async () => {
             <FileCode :size="14" />
             <span>LATEX SOURCE</span>
           </div>
-          <textarea 
-            v-model="latexCode" 
-            class="latex-editor" 
-            spellcheck="false"
-            placeholder="Enter your LaTeX code here..."
-          ></textarea>
+          <div class="editor-relative-wrapper">
+            <textarea 
+              v-model="latexCode" 
+              class="latex-editor" 
+              spellcheck="false"
+              placeholder="Enter your LaTeX code here..."
+            ></textarea>
+
+            <AnimatePresence>
+              <Motion 
+                v-if="latexCode"
+                class="refinement-bar"
+                :initial="{ opacity: 0, y: -10, x: '-50%' }"
+                :animate="{ opacity: 1, y: 0, x: '-50%' }"
+                :exit="{ opacity: 0, y: -10, x: '-50%' }"
+              >
+                <input 
+                  v-model="refinementInstruction" 
+                  placeholder="Refine code (e.g. 'Add a table of contents')..."
+                  @keyup.enter="refineWithAi"
+                />
+                <button @click="refineWithAi" :disabled="isRefining">
+                  {{ isRefining ? '...' : '→' }}
+                </button>
+              </Motion>
+            </AnimatePresence>
+          </div>
         </section>
 
         <!-- Preview Section -->
@@ -355,6 +409,14 @@ const downloadPdf = async () => {
   letter-spacing: 0.05em;
 }
 
+.editor-relative-wrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .latex-editor {
   flex: 1;
   width: 100%;
@@ -367,6 +429,39 @@ const downloadPdf = async () => {
   line-height: 1.6;
   resize: none;
   outline: none;
+}
+
+.refinement-bar {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  width: 90%;
+  max-width: 440px;
+  background: var(--surface-soft);
+  border: 1px solid var(--accent-soft);
+  border-radius: 20px;
+  display: flex;
+  padding: 4px 14px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  z-index: 20;
+}
+
+.refinement-bar input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--ink);
+  font-size: 0.8rem;
+  padding: 6px 0;
+  outline: none;
+}
+
+.refinement-bar button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 1rem;
+  cursor: pointer;
 }
 
 .pdf-viewer {

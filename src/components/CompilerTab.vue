@@ -336,7 +336,7 @@ const downloadPdf = async () => {
 .compiler-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
   background: var(--bg);
 }
 

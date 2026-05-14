@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { Motion, AnimatePresence } from 'motion-v';
 import { open } from '@tauri-apps/plugin-shell';
+import Titlebar from './components/Titlebar.vue';
 import { 
   Home, 
   Briefcase, 
@@ -33,6 +34,7 @@ const handleExternalClick = (url: string) => {
 </script>
 
 <template>
+  <Titlebar />
   <div class="app-container">
     <aside class="sidebar">
       <div class="logo-section">
@@ -117,7 +119,8 @@ const handleExternalClick = (url: string) => {
 .app-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: calc(100vh - 36px);
+  margin-top: 36px;
   width: 100%;
   background: var(--bg);
   color: var(--ink);
@@ -256,7 +259,7 @@ const handleExternalClick = (url: string) => {
   .sidebar {
     order: 0;
     width: 48px;
-    height: 100vh;
+    height: calc(100vh - 36px);
     flex-direction: column;
     border-top: none;
     border-right: 1px solid var(--line);

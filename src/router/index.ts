@@ -4,12 +4,18 @@ import SettingsTab from '../components/SettingsTab.vue';
 import JobDetailView from '../components/JobDetailView.vue';
 import ResumesTab from '../components/ResumesTab.vue';
 import ResumeDetailView from '../components/ResumeDetailView.vue';
+import CompilerTab from '../components/CompilerTab.vue';
 
 const routes = [
   { 
     path: '/', 
     name: 'Home', 
     component: HomeTab 
+  },
+  {
+    path: '/compiler',
+    name: 'Compiler',
+    component: CompilerTab
   },
   { 
     path: '/settings', 

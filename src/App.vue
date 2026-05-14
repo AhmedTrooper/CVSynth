@@ -8,13 +8,15 @@ import {
   FileText, 
   Settings, 
   Code, 
-  Video 
+  Video,
+  Cpu
 } from '@lucide/vue';
 
 const tabs = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/jobs', label: 'Jobs', icon: Briefcase },
   { path: '/resumes', label: 'Templates', icon: FileText },
+  { path: '/compiler', label: 'Compiler', icon: Cpu },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 

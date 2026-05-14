@@ -10,7 +10,8 @@ import {
   Settings, 
   Code, 
   Video,
-  Cpu
+  Cpu,
+  Info
 } from '@lucide/vue';
 
 const tabs = [
@@ -19,6 +20,7 @@ const tabs = [
   { path: '/resumes', label: 'Templates', icon: FileText },
   { path: '/compiler', label: 'Compiler', icon: Cpu },
   { path: '/settings', label: 'Settings', icon: Settings },
+  { path: '/about', label: 'About', icon: Info },
 ];
 
 const externalLinks = [

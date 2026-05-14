@@ -106,19 +106,65 @@ const generateResume = async () => {
   }
 };
 
-// Trigger PDF Compilation (stub for now)
+import { save } from '@tauri-apps/plugin-dialog';
+import { writeFile } from '@tauri-apps/plugin-fs';
+
+// ... inside script setup ...
+const isDownloading = ref(false);
+const pdfBytesBuffer = ref<Uint8Array | null>(null);
+
+// Trigger PDF Compilation
 const compilePdf = async () => {
   if (!generatedLatex.value) return;
   isCompilingPDF.value = true;
+  error.value = null;
   
   try {
-    // TODO: Call Tauri backend: const bytes = await invoke('compile_resume_to_pdf', { latexCode: generatedLatex.value })
-    // Mocking PDF creation for now:
-    setTimeout(() => {
-      isCompilingPDF.value = false;
-    }, 1000);
+    const pdfBytes = await invoke<number[]>('compile_resume_to_pdf', { 
+      latexCode: generatedLatex.value 
+    });
+    
+    // Store bytes for downloading later
+    pdfBytesBuffer.value = new Uint8Array(pdfBytes);
+    
+    // Convert byte array to Blob and then to a URL for preview
+    const blob = new Blob([pdfBytesBuffer.value], { type: 'application/pdf' });
+    
+    // Revoke old URL if it exists to avoid memory leaks
+    if (pdfUrl.value) {
+      URL.revokeObjectURL(pdfUrl.value);
+    }
+    
+    pdfUrl.value = URL.createObjectURL(blob);
   } catch (err: any) {
+    console.error("PDF Compilation Error:", err);
     error.value = err.toString();
+  } finally {
+    isCompilingPDF.value = false;
+  }
+};
+
+const downloadPdf = async () => {
+  if (!pdfBytesBuffer.value) return;
+  isDownloading.value = true;
+  
+  try {
+    const suggestedName = `${jobDetails.value?.company_name || 'Resume'}_${jobDetails.value?.job_title || 'Tailored'}.pdf`.replace(/[^a-z0-9.]/gi, '_');
+    
+    const filePath = await save({
+      filters: [{ name: 'PDF Document', extensions: ['pdf'] }],
+      defaultPath: suggestedName
+    });
+
+    if (filePath) {
+      await writeFile(filePath, pdfBytesBuffer.value);
+      // Optional: show a success message or notification
+    }
+  } catch (err: any) {
+    console.error("Download Error:", err);
+    error.value = `Failed to save PDF: ${err.toString()}`;
+  } finally {
+    isDownloading.value = false;
   }
 };
 
@@ -224,10 +270,22 @@ const deleteJob = async () => {
 
       <div class="panel preview-panel">
         <div class="tabs">
-          <button class="tab active">LaTeX Source</button>
-          <button class="tab secondary-btn" @click="compilePdf" :disabled="!generatedLatex || isCompilingPDF">
-            {{ isCompilingPDF ? '⚙️ Compiling...' : '📄 Compile to PDF' }}
-          </button>
+          <div class="tab-group">
+            <button class="tab active">LaTeX Source</button>
+          </div>
+          <div class="action-group">
+            <button class="tab secondary-btn" @click="compilePdf" :disabled="!generatedLatex || isCompilingPDF">
+              {{ isCompilingPDF ? '⚙️ Compiling...' : '📄 Compile to PDF' }}
+            </button>
+            <button 
+              v-if="pdfBytesBuffer" 
+              class="tab download-btn" 
+              @click="downloadPdf" 
+              :disabled="isDownloading"
+            >
+              {{ isDownloading ? '📥 Saving...' : '📥 Download PDF' }}
+            </button>
+          </div>
         </div>
 
         <textarea 
@@ -287,9 +345,12 @@ const deleteJob = async () => {
 .primary-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .tabs { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.tab-group, .action-group { display: flex; gap: 8px; align-items: center; }
 .tab { background: none; color: var(--muted); border: none; font-weight: 700; cursor: pointer; padding: 6px 8px; }
 .tab.active { border-bottom: 2px solid var(--accent); color: var(--ink); }
-.secondary-btn { background-color: var(--accent); color: #fff; border-radius: 10px; padding: 6px 14px; }
+.secondary-btn { background-color: var(--accent); color: #fff; border-radius: 10px; padding: 6px 14px; font-size: 0.9rem; }
+.download-btn { background-color: var(--surface-soft); color: var(--accent); border: 1px solid var(--accent); border-radius: 10px; padding: 6px 14px; font-size: 0.9rem; transition: 0.2s; }
+.download-btn:hover { background-color: var(--accent); color: white; }
 
 .code-editor { flex-grow: 1; background-color: var(--surface); color: var(--ink); font-family: 'Monaco', 'Menlo', monospace; padding: 14px; border: 1px solid var(--line); border-radius: 10px; resize: none; font-size: 0.9rem; min-height: 260px; }
 .code-editor:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(11, 123, 107, 0.2); }

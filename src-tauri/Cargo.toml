@@ -35,6 +35,7 @@ tauri-plugin-notification = "2"
 tauri-plugin-os = "2"
 tauri-plugin-process = "2"
 schemars = "1.2.1"
+tectonic = { version = "0.16.9", features = ["external-harfbuzz"] }
 
 [profile.dev.package.scrypt]
 opt-level = 3

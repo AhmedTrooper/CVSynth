@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue';
 import { useSettingsStore } from '../store/settings';
-import { CheckCircle, Info, Save, RotateCcw } from '@lucide/vue';
+import { CheckCircle, Info, Save, RotateCcw, Download, Database, Upload, RefreshCw, AlertTriangle } from '@lucide/vue';
 import { Motion, AnimatePresence } from 'motion-v';
+import { invoke } from '@tauri-apps/api/core';
+import { save as saveDialog, open as openDialog, ask, message } from '@tauri-apps/plugin-dialog';
+import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs';
 
 const store = useSettingsStore();
 
@@ -16,8 +19,63 @@ const apiKeyInput = ref('');
 
 // UI feedback states
 const isSaving = ref(false);
+const isExporting = ref(false);
+const isImporting = ref(false);
 const showSuccess = ref(false);
 const saveError = ref('');
+
+const exportData = async () => {
+  isExporting.value = true;
+  try {
+    const data = await invoke('export_all_data');
+    const now = new Date();
+    const timestamp = now.toISOString().replace(/[:.]/g, '-').split('T');
+    const dateStr = timestamp[0];
+    const timeStr = timestamp[1].split('Z')[0];
+    
+    const path = await saveDialog({
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+      defaultPath: `cvsynth_backup_${dateStr}_${timeStr}.json`
+    });
+    
+    if (path) {
+      await writeTextFile(path, JSON.stringify(data, null, 2));
+    }
+  } catch (error: any) {
+    saveError.value = error.toString();
+  } finally {
+    isExporting.value = false;
+  }
+};
+
+const handleImport = async (mode: 'merge' | 'overwrite') => {
+  if (mode === 'overwrite') {
+    const confirmed = await ask(
+      'This will DELETE all current jobs and resumes, replacing them with the backup. Are you sure?',
+      { title: 'CRITICAL: Overwrite Data', kind: 'warning' }
+    );
+    if (!confirmed) return;
+  }
+
+  const path = await openDialog({
+    filters: [{ name: 'JSON', extensions: ['json'] }],
+    multiple: false
+  });
+
+  if (!path) return;
+
+  isImporting.value = true;
+  try {
+    const content = await readTextFile(path as string);
+    const data = JSON.parse(content);
+    await invoke('import_data', { data, mode });
+    await message(`Successfully ${mode === 'merge' ? 'synchronized' : 'restored'} your vault.`, { title: 'Import Successful' });
+  } catch (error: any) {
+    saveError.value = `Import Error: ${error.toString()}`;
+  } finally {
+    isImporting.value = false;
+  }
+};
 
 // --- 2. Configuration Data ---
 const providers = [
@@ -345,6 +403,54 @@ const handleSave = async () => {
           />
         </div>
       </div>
+
+      <!-- Backup & Export -->
+      <div class="settings-card">
+        <div class="card-header">
+          <h3>Backup & Export</h3>
+          <p>Export your jobs, tailored resumes, and compiler state to a secure JSON file.</p>
+        </div>
+        
+        <div class="export-row">
+          <button class="btn-export" @click="exportData" :disabled="isExporting">
+            <div class="export-btn-content">
+              <Database v-if="!isExporting" :size="18" />
+              <RotateCcw v-else :size="18" class="spinner" />
+              <div class="export-text">
+                <span class="main-text">Generate Full Backup</span>
+                <span class="sub-text">Includes all relational data in JSON format</span>
+              </div>
+            </div>
+            <Download :size="18" class="download-icon" />
+          </button>
+        </div>
+      </div>
+
+      <!-- Vault Synchronization -->
+      <div class="settings-card">
+        <div class="card-header">
+          <h3>Vault Synchronization</h3>
+          <p>Import data from a backup file to merge with current data or perform a full restore.</p>
+        </div>
+        
+        <div class="import-actions">
+          <button class="btn-import-option" @click="handleImport('merge')" :disabled="isImporting">
+            <RefreshCw :size="18" :class="{ 'spinner': isImporting }" />
+            <div class="option-text">
+              <span class="option-title">Smart Sync (Merge)</span>
+              <span class="option-desc">Add new data without deleting current records</span>
+            </div>
+          </button>
+
+          <button class="btn-import-option danger" @click="handleImport('overwrite')" :disabled="isImporting">
+            <Upload :size="18" />
+            <div class="option-text">
+              <span class="option-title">Full Restore (Overwrite)</span>
+              <span class="option-desc">Replace all current data with the backup file</span>
+            </div>
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="actions-footer">
@@ -502,6 +608,120 @@ label {
 
 .custom-select {
   cursor: pointer;
+}
+
+.export-row {
+  margin-top: 24px;
+}
+
+.btn-export {
+  width: 100%;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--ink);
+}
+
+.btn-export:hover:not(:disabled) {
+  background: var(--surface);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.btn-export:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.export-btn-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-align: left;
+}
+
+.export-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.main-text {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.sub-text {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.download-icon {
+  color: var(--accent);
+  opacity: 0.8;
+}
+
+.btn-export:hover .download-icon {
+  opacity: 1;
+  transform: translateY(2px);
+}
+
+.import-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.btn-import-option {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  color: var(--ink);
+}
+
+.btn-import-option:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--surface);
+  transform: translateY(-2px);
+}
+
+.btn-import-option.danger:hover:not(:disabled) {
+  border-color: var(--warning);
+  background: rgba(248, 81, 73, 0.05);
+}
+
+.option-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.option-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.option-desc {
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+
+.btn-import-option .spinner {
+  color: var(--accent);
 }
 
 .actions-footer {

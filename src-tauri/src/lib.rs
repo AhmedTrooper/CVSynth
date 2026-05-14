@@ -69,7 +69,9 @@ pub fn run() {
             commands::compiler::get_compiler_state,
             commands::pdf::compile_resume_to_pdf,
             commands::pdf::fix_latex_with_ai,
-            commands::pdf::refine_latex_with_ai
+            commands::pdf::refine_latex_with_ai,
+            commands::data::export_all_data,
+            commands::data::import_data
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

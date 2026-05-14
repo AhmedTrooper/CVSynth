@@ -20,6 +20,8 @@ pub struct JobPayload {
     pub reference_email: Option<String>,
     pub social_link: Option<String>,
     pub job_url: Option<String>,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
 }
 
 #[tauri::command]
@@ -76,7 +78,8 @@ pub async fn get_job_by_id(state: State<'_, AppState>, id: String) -> Result<Job
             "SELECT id, company_name, job_title, work_model, employment_type, 
                 status, raw_jd, requirements, core_responsibilities,
                 custom_instruction, reference_name, 
-                reference_email, social_link, job_url 
+                reference_email, social_link, job_url,
+                created_at, updated_at
          FROM jobs WHERE id = ?1",
         )
         .map_err(|e| e.to_string())?;
@@ -98,6 +101,8 @@ pub async fn get_job_by_id(state: State<'_, AppState>, id: String) -> Result<Job
                 reference_email: row.get(11)?,
                 social_link: row.get(12)?,
                 job_url: row.get(13)?,
+                created_at: Some(row.get(14)?),
+                updated_at: Some(row.get(15)?),
             })
         })
         .map_err(|e| format!("Job not found: {}", e))?;
@@ -115,7 +120,8 @@ pub async fn get_all_jobs(state: State<'_, AppState>) -> Result<Vec<JobPayload>,
             "SELECT id, company_name, job_title, work_model, employment_type, 
                 status, raw_jd, requirements, core_responsibilities,
                 custom_instruction, reference_name, 
-                reference_email, social_link, job_url 
+                reference_email, social_link, job_url,
+                created_at, updated_at
          FROM jobs ORDER BY created_at DESC",
         )
         .map_err(|e| e.to_string())?;
@@ -137,6 +143,8 @@ pub async fn get_all_jobs(state: State<'_, AppState>) -> Result<Vec<JobPayload>,
                 reference_email: row.get(11)?,
                 social_link: row.get(12)?,
                 job_url: row.get(13)?,
+                created_at: Some(row.get(14)?),
+                updated_at: Some(row.get(15)?),
             })
         })
         .map_err(|e| e.to_string())?;

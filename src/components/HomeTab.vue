@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useSettingsStore } from '../store/settings';
 import { useJobsStore, Job } from '../store/jobs';
@@ -31,68 +31,55 @@ const refreshData = async () => {
   }
 };
 
-onMounted(async () => {
-  await refreshData();
-});
+onMounted(refreshData);
 
-watch(
-  () => route.fullPath,
-  async () => {
-    if (route.name === 'Home') {
-      await refreshData();
-    }
-  }
-);
+watch(() => route.fullPath, async () => {
+  if (route.name === 'Home') await refreshData();
+});
 </script>
 
 <template>
   <div class="home-container">
-    <div class="hero-section">
-      <div class="status-pill">
-        <span class="pulse"></span> 
-        Engine Status: Ready
+    <div class="hero">
+      <div class="status-indicator">
+        <span class="dot"></span>
+        <span class="text">Engine Ready</span>
       </div>
       
-      <h1 class="main-title">
-        Crafting resumes with <br />
-        <span class="serif-italic">Intentional Design.</span>
-      </h1>
+      <h1 class="main-title">Craft your professional narrative.</h1>
       
-      <p class="description">
-        CVSynth uses refined AI models to distill job descriptions into precise 
-        data points, helping you build a targeted professional narrative.
+      <p class="subtitle">
+        Surgical AI tailoring for high-performance LaTeX resumes.
       </p>
 
       <div class="actions">
-        <button class="btn btn-dark" @click="$router.push('/parse')">New Application</button>
-        <button class="btn btn-outline" @click="$router.push('/resumes')">Manage Templates</button>
+        <button class="btn-primary" @click="$router.push('/parse')">New Application</button>
+        <button class="btn-secondary" @click="$router.push('/resumes')">Manage Templates</button>
       </div>
     </div>
 
-    <div class="recent-jobs-section">
+    <div class="recent-section">
       <div class="section-header">
-        <h3>Recent Applications</h3>
-        <button class="link-btn" @click="$router.push('/jobs')">View All &rarr;</button>
+        <h3>RECENT APPLICATIONS</h3>
+        <button class="link-btn" @click="$router.push('/jobs')">ALL APPLICATIONS</button>
       </div>
 
-      <div v-if="savedJobs.length === 0" class="empty-block">
-        No jobs yet. Paste a job description to start.
+      <div v-if="savedJobs.length === 0" class="empty-state">
+        No active applications. Start by parsing a job description.
       </div>
       
-      <div v-else class="job-list-minimal">
+      <div v-else class="list">
         <button
-          v-for="job in savedJobs.slice(0, 5)"
+          v-for="job in savedJobs.slice(0, 8)"
           :key="job.id"
-          class="job-item"
+          class="item"
           @click="navigateToJob(job.id)"
-          type="button"
         >
-          <span class="job-dot"></span>
-          <div class="job-info">
-            <span class="j-title">{{ job.job_title }}</span>
-            <span class="j-company">{{ job.company_name }}</span>
+          <div class="item-main">
+            <span class="item-title">{{ job.job_title }}</span>
+            <span class="item-meta">{{ job.company_name }}</span>
           </div>
-          <span class="j-date">{{ job.created_at?.split(' ')[0] }}</span>
+          <span class="item-date">{{ job.created_at?.split(' ')[0] }}</span>
         </button>
       </div>
     </div>
@@ -101,163 +88,79 @@ watch(
 
 <style scoped>
 .home-container {
-  max-width: 1000px;
+  padding: 40px;
+  max-width: 800px;
   margin: 0 auto;
-  padding: 32px 20px 60px;
 }
 
-.hero-section {
-  text-align: left;
-  margin-bottom: 48px;
+.hero {
+  margin-bottom: 40px;
 }
 
-.status-pill {
+.status-indicator {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  background: var(--surface-soft);
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 0.78rem;
+  gap: 6px;
+  margin-bottom: 16px;
+  font-size: 0.65rem;
   font-weight: 700;
+  text-transform: uppercase;
   color: var(--muted);
-  margin-bottom: 18px;
-  border: 1px solid var(--line);
 }
-
-.pulse {
-  width: 6px;
-  height: 6px;
-  background: #10b981;
-  border-radius: 50%;
-  animation: pulse-ring 2s infinite;
-}
-
-@keyframes pulse-ring {
-  0% { transform: scale(0.9); opacity: 0.7; }
-  50% { transform: scale(1.1); opacity: 1; }
-  100% { transform: scale(0.9); opacity: 0.7; }
-}
+.dot { width: 6px; height: 6px; background: #238636; border-radius: 50%; }
 
 .main-title {
-  font-size: 2.4rem;
-  font-weight: 800;
-  color: var(--ink);
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-  margin-bottom: 18px;
-}
-
-.serif-italic {
-  font-family: 'Merriweather', serif;
-  font-style: italic;
-  font-weight: 400;
-  color: var(--muted);
-}
-
-.description {
-  font-size: 1rem;
-  color: var(--muted);
-  max-width: 540px;
-  margin: 0 0 28px;
-  line-height: 1.6;
-}
-
-.actions { display: flex; gap: 12px; flex-wrap: wrap; }
-
-.btn {
-  padding: 12px 18px;
-  border-radius: 12px;
-  font-size: 0.95rem;
+  font-size: 2rem;
   font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-dark {
-  background: var(--accent);
-  color: #fff;
-  border: none;
-}
-
-.btn-dark:hover { background: #0a6b5e; transform: translateY(-1px); }
-
-.btn-outline {
-  background: var(--surface);
   color: var(--ink);
-  border: 1px solid var(--line);
+  margin: 0 0 8px 0;
+  letter-spacing: -0.01em;
 }
 
-.btn-outline:hover { background: var(--surface-soft); }
+.subtitle {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
 
-.recent-jobs-section {
+.actions { display: flex; gap: 12px; }
+
+.btn-primary, .btn-secondary {
+  padding: 6px 16px;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.15s;
+}
+
+.btn-primary { background: var(--accent); color: #fff; border: none; }
+.btn-primary:hover { opacity: 0.9; }
+
+.btn-secondary { background: var(--surface-soft); color: var(--ink); border: 1px solid var(--line); }
+.btn-secondary:hover { border-color: var(--muted); }
+
+.recent-section {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 20px;
-  padding: 24px;
-  box-shadow: var(--shadow);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .section-header {
+  padding: 12px 16px;
+  background: var(--bg-accent);
+  border-bottom: 1px solid var(--line);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
 }
 
 .section-header h3 {
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  font-size: 0.65rem;
   color: var(--muted);
   margin: 0;
-}
-
-.job-list-minimal {
-  display: flex;
-  flex-direction: column;
-}
-
-.job-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--line);
-  background: transparent;
-  border-top: none;
-  border-left: none;
-  border-right: none;
-  width: 100%;
-  text-align: left;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.job-item:last-child {
-  border-bottom: none;
-}
-
-.job-dot {
-  width: 8px;
-  height: 8px;
-  background: var(--accent);
-  border-radius: 50%;
-}
-
-.j-title { font-weight: 700; display: block; color: var(--ink); font-size: 1.05rem; }
-.j-company { font-size: 0.9rem; color: var(--muted); }
-.j-date { margin-left: auto; font-size: 0.85rem; color: #8c857a; font-family: monospace; }
-
-.job-item:hover {
-  transform: translateX(4px);
-}
-
-.empty-block {
-  color: var(--muted);
-  font-size: 0.95rem;
-  padding: 20px 0;
-  text-align: center;
+  letter-spacing: 0.05em;
 }
 
 .link-btn {
@@ -265,13 +168,41 @@ watch(
   border: none;
   color: var(--accent);
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.65rem;
   cursor: pointer;
 }
 
-@media (min-width: 960px) {
-  .home-container { padding: 80px 32px 100px; }
-  .hero-section { text-align: center; }
-  .main-title { font-size: 3.4rem; }
+.list { display: flex; flex-direction: column; }
+
+.item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.item:last-child { border-bottom: none; }
+.item:hover { background: var(--surface-soft); }
+
+.item-title { display: block; font-size: 0.85rem; font-weight: 600; color: var(--ink); }
+.item-meta { font-size: 0.75rem; color: var(--muted); }
+.item-date { font-size: 0.7rem; color: var(--muted); font-family: monospace; }
+
+.empty-state {
+  padding: 32px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 600px) {
+  .home-container { padding: 20px; }
+  .main-title { font-size: 1.6rem; }
 }
 </style>

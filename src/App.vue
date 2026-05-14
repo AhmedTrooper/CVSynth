@@ -1,18 +1,19 @@
 <script setup lang="ts">
+import { Motion } from 'motion-v';
+
 const tabs = [
   { path: '/', label: 'Home', icon: '🏠' },
-  { path: '/jobs', label: 'All Jobs', icon: '💼' },
+  { path: '/jobs', label: 'Jobs', icon: '💼' },
   { path: '/resumes', label: 'Templates', icon: '📄' },
   { path: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 </script>
 
-
 <template>
   <div class="app-container">
     <aside class="sidebar">
-      <div class="logo-container">
-        <div class="logo-icon"></div>
+      <div class="logo-section">
+        <div class="logo-dot"></div>
       </div>
       
       <nav class="nav-menu">
@@ -20,17 +21,31 @@ const tabs = [
           v-for="tab in tabs" 
           :key="tab.path"
           :to="tab.path"
-          class="nav-button"
+          class="nav-item"
           active-class="active"
         >
-          <span class="icon">{{ tab.icon }}</span> 
-          <span class="tab-label">{{ tab.label }}</span>
+          <div class="icon-wrapper">
+            <span class="icon">{{ tab.icon }}</span>
+          </div>
+          <span class="nav-label">{{ tab.label }}</span>
         </router-link>
       </nav>
     </aside>
 
     <main class="content-area">
-      <router-view />
+      <router-view v-slot="{ Component, route }">
+        <transition mode="out-in">
+          <Motion
+            :key="route.path"
+            :initial="{ opacity: 0, y: 5 }"
+            :animate="{ opacity: 1, y: 0 }"
+            :transition="{ duration: 0.15, ease: 'easeOut' }"
+            class="route-wrapper"
+          >
+            <component :is="Component" />
+          </Motion>
+        </transition>
+      </router-view>
     </main>
   </div>
 </template>
@@ -48,78 +63,63 @@ const tabs = [
 
 .sidebar {
   order: 2;
-  background: var(--surface);
+  background: var(--bg-accent);
   border-top: 1px solid var(--line);
-  position: sticky;
-  bottom: 0;
-  z-index: 10;
-  flex-shrink: 0;
+  z-index: 100;
+  display: flex;
 }
 
-.logo-container {
+.logo-section {
   display: none;
-}
-
-.logo-icon {
-  width: 36px;
-  height: 36px;
-  background: var(--ink);
-  border-radius: 10px;
 }
 
 .nav-menu {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  padding: 10px 12px 14px;
+  width: 100%;
+  padding: 4px;
 }
 
-.nav-button {
+.nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 10px 6px;
-  border-radius: 14px;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 0;
   color: var(--muted);
   text-decoration: none;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  font-size: 0.65rem;
+  font-weight: 500;
+  transition: 0.15s;
 }
 
-.nav-button:hover {
-  background: var(--surface-soft);
+.nav-item:hover {
   color: var(--ink);
 }
 
-.nav-button.active {
-  background: var(--bg-accent);
-  color: var(--ink);
-  box-shadow: var(--shadow);
-  transform: translateY(-1px);
+.nav-item.active {
+  color: var(--accent);
 }
 
-.icon {
+.icon-wrapper {
   font-size: 1.2rem;
-}
-
-.tab-label {
-  position: static;
-  background: transparent;
-  color: inherit;
-  padding: 0;
-  border-radius: 0;
-  opacity: 1;
-  pointer-events: auto;
-  font-size: 0.7rem;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .content-area {
   flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.route-wrapper {
+  height: 100%;
+  width: 100%;
   overflow-y: auto;
-  min-height: 0; /* Important for flex children to scroll correctly */
 }
 
 @media (min-width: 960px) {
@@ -129,33 +129,56 @@ const tabs = [
 
   .sidebar {
     order: 0;
-    position: static;
-    width: 88px;
+    width: 48px;
     height: 100vh;
+    flex-direction: column;
     border-top: none;
     border-right: 1px solid var(--line);
+    padding: 12px 0;
   }
 
-  .logo-container {
+  .logo-section {
     display: flex;
-    align-items: center;
     justify-content: center;
-    padding: 26px 0 10px;
+    margin-bottom: 24px;
+  }
+
+  .logo-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
   }
 
   .nav-menu {
     display: flex;
     flex-direction: column;
-    padding: 18px 12px;
-    gap: 12px;
+    gap: 8px;
+    padding: 0;
   }
 
-  .nav-button {
-    padding: 12px 6px;
+  .nav-item {
+    width: 100%;
+    padding: 8px 0;
+    position: relative;
   }
 
-  .tab-label {
-    font-size: 0.65rem;
+  .nav-label {
+    display: none;
+  }
+
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: var(--accent);
+  }
+
+  .icon-wrapper {
+    font-size: 1.1rem;
   }
 }
 </style>

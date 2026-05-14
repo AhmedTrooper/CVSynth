@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useJobsStore, Job } from '../store/jobs';
 
@@ -17,12 +17,29 @@ const selectedJobs = ref<Set<string>>(new Set());
 
 const statuses = ['All', 'Drafting', 'Applied', 'Interviewing', 'Offer', 'Rejected'];
 
+// Grid Layout Logic for Virtualization
+const columns = ref(3);
+const updateColumns = () => {
+  const width = window.innerWidth;
+  if (width < 768) columns.value = 1;
+  else if (width < 1100) columns.value = 2;
+  else columns.value = 3;
+};
+
 const loadJobs = async () => {
   allJobs.value = await jobsStore.loadAllJobs();
   selectedJobs.value.clear();
 };
 
-onMounted(loadJobs);
+onMounted(() => {
+  loadJobs();
+  window.addEventListener('resize', updateColumns);
+  updateColumns();
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateColumns);
+});
 
 const handleCardClick = (id: string) => {
   if (isSelectionMode.value) {
@@ -107,6 +124,18 @@ const filteredAndSortedJobs = computed(() => {
   return result;
 });
 
+const chunkedJobs = computed(() => {
+  const jobs = filteredAndSortedJobs.value;
+  const chunks = [];
+  for (let i = 0; i < jobs.length; i += columns.value) {
+    chunks.push({
+      id: `row-${i}`,
+      items: jobs.slice(i, i + columns.value)
+    });
+  }
+  return chunks;
+});
+
 const navigateToJob = (id: string) => {
   router.push(`/job/${id}`);
 };
@@ -179,7 +208,7 @@ const getStatusClass = (status: string) => {
       </div>
     </div>
 
-    <div class="jobs-grid">
+    <div class="jobs-list-wrapper">
       <div v-if="jobsStore.isLoading" class="loading-state">
         Scanning vault...
       </div>
@@ -189,33 +218,46 @@ const getStatusClass = (status: string) => {
         <p>Try adjusting your search or filters.</p>
       </div>
       
-      <div 
-        v-for="job in filteredAndSortedJobs" 
-        :key="job.id"
-        class="job-card"
-        :class="{ 'selected': selectedJobs.has(job.id), 'selection-mode': isSelectionMode }"
-        @click="handleCardClick(job.id)"
+      <RecycleScroller
+        v-else
+        class="scroller"
+        :items="chunkedJobs"
+        :item-size="280"
+        key-field="id"
+        v-slot="{ item }"
       >
-        <div class="card-top">
-          <div v-if="isSelectionMode" class="checkbox-indicator" :class="{ 'checked': selectedJobs.has(job.id) }">
-            <span v-if="selectedJobs.has(job.id)">✓</span>
+        <div class="job-row">
+          <div 
+            v-for="job in item.items" 
+            :key="job.id"
+            class="job-card"
+            :class="{ 'selected': selectedJobs.has(job.id), 'selection-mode': isSelectionMode }"
+            @click="handleCardClick(job.id)"
+          >
+            <div class="card-top">
+              <div v-if="isSelectionMode" class="checkbox-indicator" :class="{ 'checked': selectedJobs.has(job.id) }">
+                <span v-if="selectedJobs.has(job.id)">✓</span>
+              </div>
+              <span :class="getStatusClass(job.status)">{{ job.status }}</span>
+              <span class="date">{{ job.created_at?.split(' ')[0] }}</span>
+            </div>
+            
+            <h2 class="job-title">{{ job.job_title }}</h2>
+            <p class="company-name">{{ job.company_name }}</p>
+            
+            <div class="tags">
+              <span class="tag">{{ job.work_model }}</span>
+              <span class="tag">{{ job.employment_type }}</span>
+            </div>
+            
+            <div class="card-footer">
+              <span class="view-link">View Details &rarr;</span>
+            </div>
           </div>
-          <span :class="getStatusClass(job.status)">{{ job.status }}</span>
-          <span class="date">{{ job.created_at?.split(' ')[0] }}</span>
+          <!-- Spacer for grid alignment if row is not full -->
+          <div v-for="n in (columns - item.items.length)" :key="'spacer-' + n" class="job-card-spacer"></div>
         </div>
-        
-        <h2 class="job-title">{{ job.job_title }}</h2>
-        <p class="company-name">{{ job.company_name }}</p>
-        
-        <div class="tags">
-          <span class="tag">{{ job.work_model }}</span>
-          <span class="tag">{{ job.employment_type }}</span>
-        </div>
-        
-        <div class="card-footer">
-          <span class="view-link">View Details &rarr;</span>
-        </div>
-      </div>
+      </RecycleScroller>
     </div>
   </div>
 </template>
@@ -225,6 +267,34 @@ const getStatusClass = (status: string) => {
   padding: 40px;
   max-width: 1200px;
   margin: 0 auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.jobs-list-wrapper {
+  flex: 1;
+  min-height: 0;
+}
+
+.scroller {
+  height: 100%;
+}
+
+.job-row {
+  display: flex;
+  gap: 24px;
+  padding-bottom: 24px;
+}
+
+.job-card, .job-card-spacer {
+  flex: 1;
+  min-width: 0;
+}
+
+.job-card-spacer {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .page-header {
@@ -313,6 +383,12 @@ const getStatusClass = (status: string) => {
   border-radius: 10px;
   padding: 0 16px;
   border: 1px solid var(--line);
+  transition: all 0.2s ease;
+}
+
+.search-box:focus-within {
+  border-color: #484f58;
+  box-shadow: 0 0 0 3px rgba(139, 148, 158, 0.1);
 }
 
 .search-box input {
@@ -337,19 +413,9 @@ const getStatusClass = (status: string) => {
 }
 
 .filter-group select {
-  background: var(--surface-soft);
-  border: 1px solid var(--line);
   padding: 8px 12px;
-  border-radius: 8px;
-  color: var(--ink);
   font-weight: 600;
   cursor: pointer;
-}
-
-.jobs-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
-  gap: 24px;
 }
 
 .job-card {
@@ -415,11 +481,11 @@ const getStatusClass = (status: string) => {
   text-transform: uppercase;
 }
 
-.status-badge.drafting { background: #f3f4f6; color: #4b5563; }
-.status-badge.applied { background: #e0f2fe; color: #0369a1; }
-.status-badge.interviewing { background: #fef3c7; color: #92400e; }
-.status-badge.offer { background: #dcfce7; color: #166534; }
-.status-badge.rejected { background: #fee2e2; color: #991b1b; }
+.status-badge.drafting { background: rgba(139, 148, 158, 0.15); color: #8b949e; }
+.status-badge.applied { background: rgba(56, 139, 253, 0.15); color: #58a6ff; }
+.status-badge.interviewing { background: rgba(210, 153, 34, 0.15); color: #d29922; }
+.status-badge.offer { background: rgba(47, 129, 50, 0.15); color: #3fb950; }
+.status-badge.rejected { background: rgba(248, 51, 73, 0.15); color: #f85149; }
 
 .date { font-size: 0.8rem; color: var(--muted); font-family: monospace; }
 

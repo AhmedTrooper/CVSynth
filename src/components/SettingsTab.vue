@@ -259,12 +259,13 @@ label {
 }
 
 .form-input, .custom-select {
-  background: var(--surface-soft);
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  width: 100%;
   padding: 12px 16px;
-  color: var(--ink);
   font-size: 1rem;
+}
+
+.custom-select {
+  cursor: pointer;
 }
 
 .actions-footer {

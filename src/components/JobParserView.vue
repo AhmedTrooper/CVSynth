@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useJobsStore } from '../store/jobs';
+import { Motion } from 'motion-v';
 
 const router = useRouter();
 const jobsStore = useJobsStore();
@@ -13,7 +14,6 @@ const handleParse = async () => {
   
   try {
     const slug = await jobsStore.parseNewJob(rawJobDescription.value, jobUrl.value);
-    // On success, instantly route them to the dynamic detail view for this job!
     router.push(`/job/${slug}`);
   } catch (e) {
     console.error(e);
@@ -23,47 +23,56 @@ const handleParse = async () => {
 
 <template>
   <div class="parser-container">
-    <div class="header">
-      <button class="back-btn" @click="router.push('/')">&larr; Back</button>
-      <h2>Parse New Job</h2>
-    </div>
+    <header class="header">
+      <button class="back-btn" @click="router.push('/')">←</button>
+      <h2>NEW APPLICATION</h2>
+    </header>
 
-    <div class="editor-layout">
-      <div class="input-section">
-        <div class="url-group">
-          <label>Job Listing URL (Optional)</label>
+    <div class="workspace">
+      <div class="input-panel">
+        <div class="field-group">
+          <label>URL (OPTIONAL)</label>
           <input 
             v-model="jobUrl" 
             type="url" 
-            placeholder="https://linkedin.com/jobs/view/..."
-            class="url-input"
+            placeholder="Link to job posting..."
+            class="native-input"
           />
         </div>
 
-        <label>Paste Raw Job Description</label>
-        <textarea 
-          v-model="rawJobDescription" 
-          placeholder="Paste the requirements, responsibilities, and company details here..."
-          spellcheck="false"
-        ></textarea>
+        <div class="field-group expand">
+          <label>RAW DESCRIPTION</label>
+          <textarea 
+            v-model="rawJobDescription" 
+            placeholder="Paste description, requirements, etc..."
+            spellcheck="false"
+            class="native-textarea"
+          ></textarea>
+        </div>
       </div>
 
-      <div class="action-section">
+      <div class="side-panel">
         <div class="info-card">
-          <h3>What happens next?</h3>
-          <p>The AI will extract the core requirements, title, and company name to build a structured JSON profile. This profile will be used to accurately tailor your base resume.</p>
+          <h3>INTELLIGENCE</h3>
+          <p>The AI will extract structured data to automate your resume tailoring.</p>
         </div>
         
-        <div class="error-box" v-if="jobsStore.error">
+        <div v-if="jobsStore.error" class="error-msg">
           {{ jobsStore.error }}
         </div>
 
         <button 
-          class="btn-primary parse-btn" 
+          class="btn-primary" 
           @click="handleParse" 
           :disabled="jobsStore.isLoading || !rawJobDescription"
         >
-          {{ jobsStore.isLoading ? '⚙️ AI is Analyzing...' : 'Extract Data &rarr;' }}
+          <Motion
+            v-if="jobsStore.isLoading"
+            :animate="{ rotate: 360 }"
+            :transition="{ repeat: Infinity, duration: 1, ease: 'linear' }"
+            class="loader"
+          >⚙️</Motion>
+          <span v-else>RUN EXTRACTION →</span>
         </button>
       </div>
     </div>
@@ -72,92 +81,75 @@ const handleParse = async () => {
 
 <style scoped>
 .parser-container {
-  padding: 24px 20px 40px;
-  height: 100%;
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  background: var(--bg);
 }
 
 .header {
+  height: 36px;
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 20px;
+  padding: 0 12px;
+  background: var(--bg-accent);
+  border-bottom: 1px solid var(--line);
 }
 
-.header h2 { margin: 0; font-weight: 700; color: var(--ink); }
+.header h2 { font-size: 0.65rem; color: var(--muted); margin: 0; letter-spacing: 0.05em; }
 
-.back-btn {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  color: var(--muted);
-  padding: 8px 14px;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: 0.2s;
-}
+.back-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.2rem; padding: 0 4px; }
+.back-btn:hover { color: var(--ink); }
 
-.back-btn:hover { color: var(--ink); border-color: var(--accent); }
-
-.editor-layout {
+.workspace {
+  flex: 1;
   display: flex;
-  flex-direction: column;
-  gap: 20px;
-  flex-grow: 1;
   min-height: 0;
 }
 
-.input-section {
-  flex: 2;
+.input-panel {
+  flex: 1;
   display: flex;
   flex-direction: column;
+  padding: 20px;
+  gap: 20px;
 }
 
-.url-group {
-  margin-bottom: 20px;
-}
-
-.url-input {
-  width: 100%;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 12px 16px;
-  color: var(--ink);
-  font-size: 0.95rem;
-  transition: 0.2s;
-  outline: none;
-}
-
-.url-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(11, 123, 107, 0.2); }
+.field-group { display: flex; flex-direction: column; gap: 8px; }
+.field-group.expand { flex: 1; min-height: 0; }
 
 label {
-  color: var(--accent);
+  font-size: 0.65rem;
   font-weight: 700;
-  margin-bottom: 8px;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  color: var(--muted);
+  letter-spacing: 0.05em;
 }
 
-textarea {
-  flex-grow: 1;
+.native-input, .native-textarea {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 16px;
+  border-radius: var(--radius-md);
   color: var(--ink);
-  font-family: 'Monaco', 'Menlo', monospace;
-  resize: none;
+  padding: 10px 12px;
+  font-size: 0.85rem;
   outline: none;
-  transition: 0.2s;
-  min-height: 240px;
+  transition: 0.15s;
+}
+.native-input:focus, .native-textarea:focus { border-color: var(--accent); }
+
+.native-textarea {
+  flex: 1;
+  resize: none;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1.5;
 }
 
-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(11, 123, 107, 0.2); }
-
-.action-section {
-  flex: 1;
+.side-panel {
+  width: 280px;
+  background: var(--bg-accent);
+  border-left: 1px solid var(--line);
+  padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -166,40 +158,41 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(11, 123
 .info-card {
   background: var(--surface);
   border: 1px solid var(--line);
-  padding: 18px;
-  border-radius: 14px;
-  box-shadow: var(--shadow);
+  border-radius: var(--radius-md);
+  padding: 12px;
 }
+.info-card h3 { font-size: 0.65rem; color: var(--accent); margin: 0 0 6px 0; }
+.info-card p { font-size: 0.75rem; color: var(--muted); margin: 0; line-height: 1.4; }
 
-.info-card h3 { color: var(--ink); margin: 0 0 10px 0; font-size: 1.05rem; }
-.info-card p { color: var(--muted); font-size: 0.95rem; line-height: 1.5; margin: 0; }
-
-.error-box {
-  background: rgba(180, 35, 24, 0.1);
+.error-msg {
+  font-size: 0.75rem;
   color: var(--warning);
-  padding: 12px 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(180, 35, 24, 0.2);
-  font-size: 0.9rem;
+  background: rgba(248, 81, 73, 0.1);
+  padding: 8px;
+  border-radius: var(--radius-sm);
 }
-
-.parse-btn { padding: 14px; font-size: 1rem; margin-top: auto; }
 
 .btn-primary {
-  background-color: var(--accent);
+  margin-top: auto;
+  background: var(--accent);
   color: #fff;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
+  padding: 10px;
   font-weight: 700;
+  font-size: 0.75rem;
   cursor: pointer;
-  transition: 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
-
-.btn-primary:hover:not(:disabled) { background-color: #0a6b5e; }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
-@media (min-width: 960px) {
-  .parser-container { padding: 40px 32px 60px; }
-  .editor-layout { flex-direction: row; gap: 28px; }
+.loader { font-size: 1rem; }
+
+@media (max-width: 960px) {
+  .workspace { flex-direction: column; }
+  .side-panel { width: 100%; border-left: none; border-top: 1px solid var(--line); }
 }
 </style>

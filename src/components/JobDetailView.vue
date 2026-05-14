@@ -5,6 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { save, message } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
 import { open } from '@tauri-apps/plugin-shell';
+import { Motion, AnimatePresence } from 'motion-v';
 import { useSettingsStore } from '../store/settings';
 import { useResumesStore } from '../store/resumes';
 import { useJobsStore, Job } from '../store/jobs';
@@ -288,306 +289,411 @@ const deleteJob = async () => {
   <div class="workspace" v-if="!isLoading">
     <header class="workspace-header">
       <div class="header-left">
-        <button class="back-btn" @click="goBack">← Back</button>
-        <div>
-          <h1>{{ jobDetails?.job_title }}</h1>
-          <p class="company">@ {{ jobDetails?.company_name }}</p>
+        <button class="back-btn" @click="goBack">←</button>
+        <div class="job-info">
+          <h1 class="title">{{ jobDetails?.job_title }}</h1>
+          <span class="company">{{ jobDetails?.company_name }}</span>
+          <button v-if="jobDetails?.job_url" class="link-btn" @click="openJobUrl">🔗</button>
         </div>
       </div>
-      <button class="delete-btn" @click="deleteJob">🗑️ Delete Job</button>
+      <div class="header-actions">
+        <button class="delete-btn" @click="deleteJob">Delete</button>
+      </div>
     </header>
 
-    <div class="error-banner" v-if="error">
-      <span>{{ error }}</span>
-      <button @click="error = null">✕</button>
-    </div>
+    <AnimatePresence>
+      <Motion
+        v-if="error"
+        :initial="{ height: 0, opacity: 0 }"
+        :animate="{ height: 'auto', opacity: 1 }"
+        :exit="{ height: 0, opacity: 0 }"
+        class="error-banner"
+      >
+        <span>{{ error }}</span>
+        <button @click="error = null">✕</button>
+      </Motion>
+    </AnimatePresence>
 
     <div class="split-view">
-      
-      <div class="panel controls-panel">
-        <div class="card">
-          <h3>Job Details</h3>
-          <div class="detail-row">
-            <span class="label">Model:</span>
-            <span class="value">{{ jobDetails?.work_model }}</span>
-          </div>
-          <div class="detail-row">
-            <span class="label">Type:</span>
-            <span class="value">{{ jobDetails?.employment_type }}</span>
-          </div>
-          <div class="detail-row" v-if="jobDetails?.reference_name">
-            <span class="label">Referral:</span>
-            <span class="value">{{ jobDetails?.reference_name }}</span>
-          </div>
-          <div class="detail-row" v-if="jobDetails?.job_url">
-            <span class="label">Job Link:</span>
-            <button class="link-btn" @click="openJobUrl">Open in Browser ↗</button>
+      <aside class="panel info-panel">
+        <div class="section">
+          <h3>Information</h3>
+          <div class="meta-grid">
+            <span class="label">Work Model</span><span class="value">{{ jobDetails?.work_model }}</span>
+            <span class="label">Type</span><span class="value">{{ jobDetails?.employment_type }}</span>
+            <span class="label">Status</span><span class="value">{{ jobDetails?.status }}</span>
           </div>
         </div>
 
-        <div class="card" v-if="jobDetails?.requirements">
+        <div class="section scroll-section" v-if="jobDetails?.requirements">
           <h3>Requirements</h3>
-          <ul class="skills-list">
+          <ul class="tight-list">
             <li v-for="req in JSON.parse(jobDetails.requirements)" :key="req">{{ req }}</li>
           </ul>
         </div>
 
-        <div class="card" v-if="jobDetails?.core_responsibilities">
+        <div class="section scroll-section" v-if="jobDetails?.core_responsibilities">
           <h3>Responsibilities</h3>
-          <ul class="skills-list">
+          <ul class="tight-list">
             <li v-for="res in JSON.parse(jobDetails.core_responsibilities)" :key="res">{{ res }}</li>
           </ul>
         </div>
 
-        <div class="card">
-          <h3>Raw Description</h3>
-          <div class="raw-jd-preview">
-            {{ jobDetails?.raw_jd }}
+        <div class="section footer-section">
+          <h3>Configuration</h3>
+          <div class="form-group">
+            <label>Base Template</label>
+            <select v-model="selectedStandardResume" class="compact-select">
+              <option v-for="resume in standardResumes" :key="resume.id" :value="resume.id">
+                {{ resume.name }}
+              </option>
+            </select>
           </div>
-        </div>
-
-        <div class="card">
-          <h3>Tailor Settings</h3>
-          <label>Select Base Resume:</label>
-          <select v-model="selectedStandardResume" class="dropdown" :disabled="isLoadingResumes">
-            <option v-for="resume in standardResumes" :key="resume.id" :value="resume.id">
-              {{ resume.name }}
-            </option>
-          </select>
-
-          <p v-if="isLoadingResumes" class="inline-warning">Loading resume templates...</p>
-          <p v-else-if="resumesLoadError" class="inline-warning">{{ resumesLoadError }}</p>
-
-          <label style="margin-top: 16px;">Custom Instructions (Optional):</label>
-          <textarea 
-            v-model="customInstruction" 
-            class="instruction-input" 
-            placeholder="Add any custom tailoring instructions..."
-            spellcheck="false"
-          ></textarea>
-
-          <button class="primary-btn mt-4" @click="generateResume" :disabled="isGenerating || !selectedStandardResume">
-            {{ isGenerating ? '✨ AI is Tailoring...' : '✨ Generate Tailored Resume' }}
+          <div class="form-group">
+            <label>Tailor Logic</label>
+            <textarea 
+              v-model="customInstruction" 
+              class="compact-textarea" 
+              placeholder="Custom tailoring rules..."
+            ></textarea>
+          </div>
+          <button class="btn-accent w-full" @click="generateResume" :disabled="isGenerating || !selectedStandardResume">
+            {{ isGenerating ? 'Tailoring...' : 'Run Intelligence' }}
           </button>
         </div>
-      </div>
+      </aside>
 
-      <div class="panel preview-panel">
-        <div class="tabs">
-          <div class="tab-group">
-            <button class="tab active">LaTeX Source</button>
-            <button 
-              class="tab save-btn-inline" 
-              @click="saveLatexContent"
-            >💾 Save Code</button>
+      <div class="panel main-panel">
+        <div class="panel-tabs">
+          <div class="left-tabs">
+            <button class="tab active">SOURCE</button>
+            <button class="tab-btn" @click="saveLatexContent">SAVE</button>
           </div>
-          <div class="action-group">
-            <button 
-              v-if="compilationError" 
-              class="tab ai-fix-btn" 
-              @click="fixWithAi" 
-              :disabled="isFixing"
-            >
-              {{ isFixing ? '✨ Fixing...' : '✨ AI Fix' }}
+          <div class="right-tabs">
+            <AnimatePresence>
+              <Motion
+                v-if="compilationError"
+                :initial="{ scale: 0.9, opacity: 0 }"
+                :animate="{ scale: 1, opacity: 1 }"
+                class="tab-btn ai-btn"
+                @click="fixWithAi"
+                :disabled="isFixing"
+              >
+                {{ isFixing ? 'FIXING...' : 'AI FIX' }}
+              </Motion>
+            </AnimatePresence>
+            <button class="tab-btn accent-btn" @click="compilePdf" :disabled="!generatedLatex || isCompilingPDF">
+              {{ isCompilingPDF ? 'COMPILING...' : 'BUILD' }}
             </button>
-            <button class="tab secondary-btn" @click="compilePdf" :disabled="!generatedLatex || isCompilingPDF">
-              {{ isCompilingPDF ? '⚙️ Compiling...' : '📄 Compile to PDF' }}
-            </button>
-            <button 
-              v-if="pdfBytesBuffer" 
-              class="tab download-btn" 
-              @click="downloadPdf" 
-              :disabled="isDownloading"
-            >
-              {{ isDownloading ? '📥 Saving...' : '📥 Download PDF' }}
+            <button v-if="pdfBytesBuffer" class="tab-btn" @click="downloadPdf" :disabled="isDownloading">
+              {{ isDownloading ? 'SAVING...' : 'EXPORT' }}
             </button>
           </div>
         </div>
 
-        <div v-if="compilationError" class="compilation-error-log">
-          <header>
-            <strong>Compilation Log</strong>
-            <button @click="compilationError = null">✕</button>
-          </header>
-          <pre>{{ compilationError }}</pre>
-        </div>
-
-        <div v-if="generatedLatex" class="refinement-panel">
-          <input 
-            v-model="refinementInstruction" 
-            placeholder="Apply a refinement (e.g., 'Make it 1 page', 'More focus on Python')..."
-            @keyup.enter="refineWithAi"
-            class="refine-input"
-          />
-          <button 
-            class="refine-btn" 
-            @click="refineWithAi" 
-            :disabled="isRefining || !refinementInstruction.trim()"
+        <AnimatePresence>
+          <Motion
+            v-if="compilationError"
+            :initial="{ height: 0 }"
+            :animate="{ height: 'auto' }"
+            :exit="{ height: 0 }"
+            class="error-log"
           >
-            {{ isRefining ? '✨ Refining...' : 'Refine ✨' }}
-          </button>
+            <header>
+              <span>COMPILATION ERROR</span>
+              <button @click="compilationError = null">✕</button>
+            </header>
+            <pre>{{ compilationError }}</pre>
+          </Motion>
+        </AnimatePresence>
+
+        <div class="editor-container">
+          <textarea v-model="generatedLatex" class="native-editor" spellcheck="false"></textarea>
+          
+          <AnimatePresence>
+            <Motion 
+              v-if="generatedLatex"
+              class="refinement-bar"
+              :initial="{ opacity: 0, y: 10, x: '-50%' }"
+              :animate="{ opacity: 1, y: 0, x: '-50%' }"
+              :exit="{ opacity: 0, y: 10, x: '-50%' }"
+            >
+              <input 
+                v-model="refinementInstruction" 
+                placeholder="Refine tailored resume (e.g. 'Shorten summary')..."
+                @keyup.enter="refineWithAi"
+              />
+              <button @click="refineWithAi" :disabled="isRefining">
+                {{ isRefining ? '...' : '→' }}
+              </button>
+            </Motion>
+          </AnimatePresence>
         </div>
 
-        <textarea 
-          v-model="generatedLatex" 
-          class="code-editor" 
-          placeholder="Generated LaTeX code will appear here..."
-          spellcheck="false"
-        ></textarea>
-
-        <iframe v-if="pdfUrl" :src="pdfUrl" class="pdf-viewer"></iframe>
+        <div v-if="pdfUrl" class="preview-pane">
+          <iframe :src="pdfUrl"></iframe>
+        </div>
       </div>
-
     </div>
   </div>
 </template>
 
 <style scoped>
-.detail-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
-.detail-row .label { color: var(--muted); font-weight: 600; }
-.detail-row .value { color: var(--ink); font-weight: 700; }
+.workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg);
+}
 
-.link-btn {
+.workspace-header {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  background: var(--bg-accent);
+  border-bottom: 1px solid var(--line);
+}
+
+.header-left { display: flex; align-items: center; gap: 12px; }
+.back-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.2rem; padding: 0 4px; }
+.back-btn:hover { color: var(--ink); }
+
+.job-info { display: flex; align-items: center; gap: 8px; }
+.title { font-size: 0.8rem; font-weight: 600; color: var(--ink); margin: 0; }
+.company { font-size: 0.8rem; color: var(--muted); }
+.link-btn { background: none; border: none; cursor: pointer; padding: 2px; font-size: 0.8rem; opacity: 0.7; }
+.link-btn:hover { opacity: 1; }
+
+.header-actions { display: flex; gap: 8px; }
+.delete-btn { background: none; border: none; color: var(--warning); font-size: 0.7rem; font-weight: 600; cursor: pointer; text-transform: uppercase; }
+
+.error-banner {
+  background: var(--warning);
+  color: #fff;
+  padding: 4px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  z-index: 10;
+}
+.error-banner button { background: none; border: none; color: #fff; cursor: pointer; }
+
+.split-view {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.info-panel {
+  width: 260px;
+  background: var(--bg-accent);
+  border-right: 1px solid var(--line);
+  padding: 12px;
+  gap: 20px;
+  overflow-y: auto;
+}
+
+.section h3 {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  margin: 0 0 8px 0;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 6px;
+  font-size: 0.75rem;
+}
+.meta-grid .label { color: var(--muted); }
+.meta-grid .value { color: var(--ink); font-weight: 500; }
+
+.tight-list {
+  padding-left: 12px;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--ink);
+  opacity: 0.85;
+}
+.tight-list li { margin-bottom: 4px; }
+
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; font-size: 0.65rem; color: var(--muted); margin-bottom: 4px; }
+
+.compact-select, .compact-textarea {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-size: 0.75rem;
+  padding: 6px;
+  outline: none;
+}
+.compact-textarea { height: 60px; resize: none; }
+
+.btn-accent {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.btn-accent:disabled { opacity: 0.5; }
+
+.main-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-tabs {
+  height: 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-accent);
+  padding: 0 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+.left-tabs, .right-tabs { display: flex; align-items: center; }
+
+.tab {
+  height: 32px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--bg);
+  border: none;
+  border-top: 1px solid var(--accent);
+}
+
+.tab-btn {
+  padding: 0 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--muted);
   background: none;
   border: none;
-  color: var(--accent);
-  font-weight: 700;
-  font-size: 0.85rem;
   cursor: pointer;
-  padding: 0;
-  text-decoration: underline;
-  transition: 0.2s;
+  transition: 0.15s;
 }
+.tab-btn:hover { color: var(--ink); }
 
-.link-btn:hover {
-  color: #fff;
-}
+.accent-btn { color: var(--accent); }
+.ai-btn { color: #a371f7; }
 
-.raw-jd-preview {
-  font-size: 0.85rem;
-  color: var(--muted);
-  line-height: 1.5;
-  max-height: 150px;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  background: var(--surface-soft);
-  padding: 10px;
-  border-radius: 8px;
-}
-
-.workspace { display: flex; flex-direction: column; height: 100%; padding: 24px 20px 40px; }
-.workspace-header { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
-.header-left { display: flex; align-items: center; gap: 16px; }
-.back-btn { background: var(--surface); border: 1px solid var(--line); color: var(--muted); cursor: pointer; font-size: 0.95rem; padding: 8px 12px; border-radius: 10px; width: fit-content; }
-.back-btn:hover { color: var(--ink); border-color: var(--accent); }
-.delete-btn { background: rgba(255, 107, 107, 0.1); border: 1px solid var(--warning); color: var(--warning); padding: 8px 14px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: 0.2s; }
-.delete-btn:hover { background: var(--warning); color: white; }
-.workspace-header h1 { margin: 0; font-size: 1.6rem; color: var(--ink); }
-.company { margin: 0; color: var(--accent); font-weight: 700; }
-
-.split-view { display: flex; flex-direction: column; gap: 16px; flex-grow: 1; }
-.panel { display: flex; flex-direction: column; gap: 14px; }
-.controls-panel { width: 100%; }
-.preview-panel { width: 100%; background-color: var(--surface); border-radius: 16px; border: 1px solid var(--line); padding: 14px; display: flex; flex-direction: column; box-shadow: var(--shadow); }
-
-.card { background-color: var(--surface); padding: 16px; border-radius: 14px; border: 1px solid var(--line); box-shadow: var(--shadow); }
-.card h3 { margin-top: 0; color: var(--ink); font-size: 1.05rem; }
-
-.skills-list { padding-left: 18px; color: var(--muted); font-size: 0.95rem; }
-.dropdown { width: 100%; padding: 12px; background-color: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; margin-top: 6px; }
-
-.primary-btn { width: 100%; padding: 12px; background-color: var(--accent); color: #fff; font-weight: 700; border: none; border-radius: 10px; cursor: pointer; transition: 0.2s; }
-.primary-btn:hover:not(:disabled) { background-color: #0a6b5e; }
-.primary-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-
-.tabs { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.tab-group, .action-group { display: flex; gap: 8px; align-items: center; }
-.tab { background: none; color: var(--muted); border: none; font-weight: 700; cursor: pointer; padding: 6px 8px; }
-.tab.active { border-bottom: 2px solid var(--accent); color: var(--ink); }
-.secondary-btn { background-color: var(--accent); color: #fff; border-radius: 10px; padding: 6px 14px; font-size: 0.9rem; }
-.ai-fix-btn { background-color: #7048e8; color: white; border-radius: 10px; padding: 6px 14px; font-size: 0.9rem; transition: 0.2s; border: none; }
-.ai-fix-btn:hover:not(:disabled) { background-color: #5f3dc4; }
-.ai-fix-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-
-.save-btn-inline { font-size: 0.8rem; color: var(--accent); opacity: 0.8; transition: 0.2s; margin-left: 8px; }
-.save-btn-inline:hover { opacity: 1; transform: translateY(-1px); }
-
-.download-btn { background-color: var(--surface-soft); color: var(--accent); border: 1px solid var(--accent); border-radius: 10px; padding: 6px 14px; font-size: 0.9rem; transition: 0.2s; }
-
-.compilation-error-log { background: #2b1d1d; border: 1px solid #ff6b6b44; border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
-.compilation-error-log header { background: #3d2323; padding: 6px 12px; display: flex; justify-content: space-between; align-items: center; }
-.compilation-error-log header strong { font-size: 0.75rem; text-transform: uppercase; color: #ff6b6b; letter-spacing: 0.05em; }
-.compilation-error-log header button { background: none; border: none; color: #ff6b6b; cursor: pointer; padding: 0 4px; }
-.compilation-error-log pre { margin: 0; padding: 12px; font-family: 'Monaco', monospace; font-size: 0.8rem; color: #fcc; white-space: pre-wrap; max-height: 120px; overflow-y: auto; }
-.download-btn:hover { background-color: var(--accent); color: white; }
-
-.refinement-panel {
+.error-log {
+  background: #1e1e1e;
+  border-bottom: 1px solid var(--warning);
+  max-height: 200px;
+  overflow: hidden;
   display: flex;
-  gap: 10px;
-  margin-bottom: 12px;
-  padding: 8px;
-  background: var(--surface-soft);
-  border-radius: 12px;
-  border: 1px dashed var(--accent);
+  flex-direction: column;
+}
+.error-log header {
+  padding: 4px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.65rem;
+  color: var(--warning);
+  font-weight: 700;
+}
+.error-log header button { background: none; border: none; color: var(--muted); cursor: pointer; }
+.error-log pre {
+  margin: 0;
+  padding: 8px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: #f85149;
+  overflow: auto;
 }
 
-.refine-input {
-  flex-grow: 1;
-  background: transparent;
+.editor-container {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+}
+
+.native-editor {
+  flex: 1;
+  width: 100%;
+  background: var(--bg);
   border: none;
   color: var(--ink);
-  font-size: 0.9rem;
-  padding: 4px 8px;
+  padding: 16px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  resize: none;
   outline: none;
 }
 
-.refine-btn {
-  background: var(--accent);
-  color: var(--accent-ink);
+.refinement-bar {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  width: 400px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  display: flex;
+  padding: 4px 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  z-index: 20;
+}
+
+.refinement-bar input {
+  flex: 1;
+  background: none;
   border: none;
-  border-radius: 8px;
-  padding: 6px 16px;
-  font-weight: 700;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: 0.2s;
+  color: var(--ink);
+  font-size: 0.8rem;
+  padding: 6px 0;
+  outline: none;
 }
 
-.refine-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(32, 201, 151, 0.3); }
-.refine-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.code-editor { flex-grow: 1; background-color: var(--surface); color: var(--ink); font-family: 'Monaco', 'Menlo', monospace; padding: 14px; border: 1px solid var(--line); border-radius: 10px; resize: none; font-size: 0.9rem; min-height: 260px; }
-.code-editor:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(11, 123, 107, 0.2); }
-
-.pdf-viewer { flex-grow: 1; border: none; border-radius: 8px; background-color: white; margin-top: 10px; min-height: 260px; }
-.mt-4 { margin-top: 1rem; }
-
-.error-banner { background-color: rgba(180, 35, 24, 0.1); border: 1px solid rgba(180, 35, 24, 0.2); border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
-.error-banner span { color: var(--warning); font-size: 0.9rem; }
-.error-banner button { background: none; border: none; color: var(--warning); cursor: pointer; font-size: 1rem; }
-
-.instruction-input { width: 100%; margin-top: 8px; padding: 10px; background-color: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; font-family: 'Monaco', 'Menlo', monospace; font-size: 0.85rem; resize: vertical; max-height: 140px; }
-.instruction-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(11, 123, 107, 0.2); }
-
-label {
+.refinement-bar button {
+  background: none;
+  border: none;
   color: var(--accent);
-  font-weight: 700;
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 1rem;
+  cursor: pointer;
 }
 
-.inline-warning {
-  margin: 10px 0 0;
-  color: var(--warning);
-  font-size: 0.85rem;
+.preview-pane {
+  flex: 1;
+  border-top: 1px solid var(--line);
+  background: #525659;
+  min-height: 200px;
 }
+.preview-pane iframe { width: 100%; height: 100%; border: none; }
 
-@media (min-width: 960px) {
-  .workspace { padding: 40px 32px 60px; }
-  .workspace-header { flex-direction: row; align-items: center; justify-content: space-between; }
-  .split-view { flex-direction: row; gap: 20px; }
-  .controls-panel { width: 38%; min-width: 320px; }
-  .preview-panel { width: 62%; }
+.w-full { width: 100%; }
+
+@media (max-width: 960px) {
+  .info-panel { display: none; }
+  .workspace-header { height: 44px; }
 }
 </style>

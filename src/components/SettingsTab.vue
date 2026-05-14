@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue';
 import { useSettingsStore } from '../store/settings';
+import { CheckCircle } from '@lucide/vue';
 
 const store = useSettingsStore();
 
@@ -193,7 +194,7 @@ const handleSave = async () => {
         <span v-if="saveError" class="error-msg">{{ saveError }}</span>
         <transition name="fade">
           <span v-if="showSuccess" class="success-msg">
-            <span class="dot"></span> Configuration Saved
+            <CheckCircle :size="16" /> Configuration Saved
           </span>
         </transition>
       </div>
@@ -294,7 +295,6 @@ label {
 .btn-secondary:hover { border-color: var(--ink); color: var(--ink); }
 
 .success-msg { color: var(--accent); font-weight: 600; display: flex; align-items: center; gap: 8px; }
-.dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; }
 
 @media (max-width: 600px) {
   .input-row { flex-direction: column; }

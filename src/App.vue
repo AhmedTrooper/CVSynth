@@ -1,12 +1,30 @@
 <script setup lang="ts">
 import { Motion } from 'motion-v';
+import { open } from '@tauri-apps/plugin-shell';
+import { 
+  Home, 
+  Briefcase, 
+  FileText, 
+  Settings, 
+  Code, 
+  Video 
+} from '@lucide/vue';
 
 const tabs = [
-  { path: '/', label: 'Home', icon: '🏠' },
-  { path: '/jobs', label: 'Jobs', icon: '💼' },
-  { path: '/resumes', label: 'Templates', icon: '📄' },
-  { path: '/settings', label: 'Settings', icon: '⚙️' },
+  { path: '/', label: 'Home', icon: Home },
+  { path: '/jobs', label: 'Jobs', icon: Briefcase },
+  { path: '/resumes', label: 'Templates', icon: FileText },
+  { path: '/settings', label: 'Settings', icon: Settings },
 ];
+
+const externalLinks = [
+  { url: 'https://github.com/AhmedTrooper/CVSynth', label: 'Source', icon: Code },
+  { url: 'https://www.youtube.com/@AhmedTrooper', label: 'YouTube', icon: Video },
+];
+
+const handleExternalClick = (url: string) => {
+  open(url).catch(err => console.error('Failed to open URL:', err));
+};
 </script>
 
 <template>
@@ -25,10 +43,24 @@ const tabs = [
           active-class="active"
         >
           <div class="icon-wrapper">
-            <span class="icon">{{ tab.icon }}</span>
+            <component :is="tab.icon" :size="20" stroke-width="2" />
           </div>
           <span class="nav-label">{{ tab.label }}</span>
         </router-link>
+
+        <div class="nav-divider"></div>
+
+        <button 
+          v-for="link in externalLinks" 
+          :key="link.url"
+          @click="handleExternalClick(link.url)"
+          class="nav-item external"
+        >
+          <div class="icon-wrapper">
+            <component :is="link.icon" :size="20" stroke-width="2" />
+          </div>
+          <span class="nav-label">{{ link.label }}</span>
+        </button>
       </nav>
     </aside>
 
@@ -75,7 +107,7 @@ const tabs = [
 
 .nav-menu {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   width: 100%;
   padding: 4px;
 }
@@ -92,6 +124,23 @@ const tabs = [
   font-size: 0.65rem;
   font-weight: 500;
   transition: 0.15s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+}
+
+.nav-divider {
+  display: none;
+}
+
+.nav-item.external {
+  opacity: 0.8;
+}
+
+.nav-item.external:hover {
+  opacity: 1;
+  color: var(--accent);
 }
 
 .nav-item:hover {
@@ -155,6 +204,13 @@ const tabs = [
     flex-direction: column;
     gap: 8px;
     padding: 0;
+  }
+
+  .nav-divider {
+    display: block;
+    height: 1px;
+    background: var(--line);
+    margin: 8px 12px;
   }
 
   .nav-item {

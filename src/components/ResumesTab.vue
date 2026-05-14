@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useResumesStore } from '../store/resumes';
+import { Plus } from '@lucide/vue';
 
 const router = useRouter();
 const resumesStore = useResumesStore();
@@ -58,7 +59,9 @@ const handleCreateResume = async () => {
   <div class="resumes-container">
     <div class="header">
       <h2>Resume Templates</h2>
-      <button class="btn-add" @click="toggleNewForm">+ New Template</button>
+      <button class="btn-add" @click="toggleNewForm">
+        <Plus :size="18" /> New Template
+      </button>
     </div>
 
     <div v-if="resumesStore.error" class="error-banner">
@@ -158,6 +161,9 @@ const handleCreateResume = async () => {
   cursor: pointer;
   transition: 0.2s;
   width: fit-content;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .btn-add:hover { background-color: #0a6b5e; }

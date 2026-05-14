@@ -3,6 +3,17 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useJobsStore, Job } from '../store/jobs';
 
+import { 
+  Search, 
+  Settings2, 
+  Trash2, 
+  Plus, 
+  Check, 
+  X, 
+  FolderOpen, 
+  ChevronRight 
+} from '@lucide/vue';
+
 const router = useRouter();
 const jobsStore = useJobsStore();
 
@@ -157,26 +168,26 @@ const getStatusClass = (status: string) => {
         <!-- Default Actions -->
         <template v-if="!isSelectionMode">
           <button class="btn-secondary" @click="isSelectionMode = true" title="Enable selection mode">
-            🛠️ Selection Mode
+            <Settings2 :size="16" /> Selection Mode
           </button>
           <button class="btn-danger-outline" @click="deleteAllJobs" title="Delete all jobs">
-            🧨 Delete All
+            <Trash2 :size="16" /> Delete All
           </button>
           <button class="btn-primary" @click="$router.push('/parse')">
-            + New Application
+            <Plus :size="18" /> New Application
           </button>
         </template>
 
         <!-- Selection Mode Actions -->
         <template v-else>
           <button class="btn-secondary" @click="selectAllVisible">
-            ✅ Select All
+            <Check :size="16" /> Select All
           </button>
           <button v-if="selectedJobs.size > 0" class="btn-delete-batch" @click="deleteSelectedJobs">
-            🗑️ Delete Selected ({{ selectedJobs.size }})
+            <Trash2 :size="16" /> Delete Selected ({{ selectedJobs.size }})
           </button>
           <button class="btn-primary" @click="exitSelectionMode">
-            Done
+            <X :size="16" /> Done
           </button>
         </template>
       </div>
@@ -184,7 +195,7 @@ const getStatusClass = (status: string) => {
 
     <div class="filters-bar" v-if="!isSelectionMode">
       <div class="search-box">
-        <span class="icon">🔍</span>
+        <Search :size="18" class="search-icon" />
         <input v-model="searchQuery" placeholder="Search by title or company..." />
       </div>
 
@@ -213,7 +224,7 @@ const getStatusClass = (status: string) => {
         Scanning vault...
       </div>
       <div v-else-if="filteredAndSortedJobs.length === 0" class="empty-state">
-        <div class="empty-icon">📂</div>
+        <FolderOpen :size="48" class="empty-icon" />
         <h3>No applications found</h3>
         <p>Try adjusting your search or filters.</p>
       </div>
@@ -251,7 +262,7 @@ const getStatusClass = (status: string) => {
             </div>
             
             <div class="card-footer">
-              <span class="view-link">View Details &rarr;</span>
+              <span class="view-link">View Details <ChevronRight :size="14" /></span>
             </div>
           </div>
           <!-- Spacer for grid alignment if row is not full -->
@@ -309,6 +320,12 @@ const getStatusClass = (status: string) => {
 .selection-hint { color: var(--accent); font-weight: 700; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; }
 
 .header-actions { display: flex; gap: 12px; align-items: center; }
+
+.btn-primary, .btn-secondary, .btn-danger-outline, .btn-delete-batch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
 .btn-primary {
   background: var(--accent);
@@ -390,6 +407,8 @@ const getStatusClass = (status: string) => {
   border-color: #484f58;
   box-shadow: 0 0 0 3px rgba(139, 148, 158, 0.1);
 }
+
+.search-icon { color: var(--muted); }
 
 .search-box input {
   width: 100%;
@@ -513,6 +532,9 @@ const getStatusClass = (status: string) => {
   font-weight: 700;
   color: var(--muted);
   transition: 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .job-card:hover .view-link { color: var(--accent); }
@@ -524,7 +546,7 @@ const getStatusClass = (status: string) => {
   color: var(--muted);
 }
 
-.empty-icon { font-size: 3rem; margin-bottom: 16px; opacity: 0.5; }
+.empty-icon { margin-bottom: 16px; opacity: 0.3; color: var(--muted); }
 
 @media (max-width: 768px) {
   .jobs-container {

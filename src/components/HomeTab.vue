@@ -4,6 +4,8 @@ import { useRouter, useRoute } from 'vue-router';
 import { useSettingsStore } from '../store/settings';
 import { useJobsStore, Job } from '../store/jobs';
 
+import { Activity } from '@lucide/vue';
+
 const router = useRouter();
 const route = useRoute();
 const settingsStore = useSettingsStore();
@@ -42,7 +44,7 @@ watch(() => route.fullPath, async () => {
   <div class="home-container">
     <div class="hero">
       <div class="status-indicator">
-        <span class="dot"></span>
+        <Activity :size="12" class="status-icon" />
         <span class="text">Engine Ready</span>
       </div>
       
@@ -100,14 +102,14 @@ watch(() => route.fullPath, async () => {
 .status-indicator {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin-bottom: 16px;
   font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
   color: var(--muted);
 }
-.dot { width: 6px; height: 6px; background: #238636; border-radius: 50%; }
+.status-icon { color: #238636; }
 
 .main-title {
   font-size: 2rem;

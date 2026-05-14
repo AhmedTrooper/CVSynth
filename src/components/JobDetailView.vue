@@ -227,7 +227,7 @@ const saveLatexContent = async () => {
 };
 
 const fixWithAi = async () => {
-  if (!generatedLatex.value || !compilationError.value) return;
+  if (!generatedLatex.value || !compilationError.value || isFixing.value) return;
   isFixing.value = true;
   error.value = null;
 
@@ -312,6 +312,25 @@ const deleteJob = async () => {
 
 <template>
   <div class="workspace" v-if="!isLoading">
+    <!-- AI Loading Overlay -->
+    <AnimatePresence>
+      <Motion
+        v-if="isGenerating || isFixing || isRefining"
+        :initial="{ opacity: 0 }"
+        :animate="{ opacity: 1 }"
+        :exit="{ opacity: 0 }"
+        class="ai-overlay"
+      >
+        <div class="ai-loader-content">
+          <RotateCw :size="48" class="spinner ai-spinner" />
+          <h2 class="ai-loader-title">
+            {{ isGenerating ? 'TAILORING RESUME...' : isFixing ? 'DEBUGGING LATEX...' : 'REFINING CONTENT...' }}
+          </h2>
+          <p class="ai-loader-subtitle">The intelligence engine is processing your request.</p>
+        </div>
+      </Motion>
+    </AnimatePresence>
+
     <header class="workspace-header">
       <div class="header-left">
         <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'back'" @mouseleave="activeTooltip = null">
@@ -606,9 +625,9 @@ const deleteJob = async () => {
             <Motion 
               v-if="generatedLatex"
               class="refinement-bar"
-              :initial="{ opacity: 0, y: 10, x: '-50%' }"
+              :initial="{ opacity: 0, y: -10, x: '-50%' }"
               :animate="{ opacity: 1, y: 0, x: '-50%' }"
-              :exit="{ opacity: 0, y: 10, x: '-50%' }"
+              :exit="{ opacity: 0, y: -10, x: '-50%' }"
             >
               <input 
                 v-model="refinementInstruction" 
@@ -827,6 +846,18 @@ const deleteJob = async () => {
 .tab-tooltip { bottom: 140%; left: 50%; }
 .info-tooltip { bottom: 140%; left: 50%; }
 
+.right-tabs .tab-tooltip {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.right-tabs .tab-tooltip::after {
+  left: auto;
+  right: 14px;
+  transform: none;
+}
+
 .spinner {
   animation: spin 1s linear infinite;
 }
@@ -834,6 +865,46 @@ const deleteJob = async () => {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+.ai-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(13, 17, 23, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-loader-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  text-align: center;
+}
+
+.ai-spinner {
+  color: var(--accent);
+}
+
+.ai-loader-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: 0.1em;
+  margin: 0;
+}
+
+.ai-loader-subtitle {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0;
 }
 
 .main-panel {
@@ -933,15 +1004,15 @@ const deleteJob = async () => {
 
 .refinement-bar {
   position: absolute;
-  bottom: 24px;
+  top: 16px;
   left: 50%;
-  width: 400px;
+  width: 440px;
   background: var(--surface-soft);
-  border: 1px solid var(--line);
+  border: 1px solid var(--accent-soft);
   border-radius: 20px;
   display: flex;
-  padding: 4px 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  padding: 4px 14px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
   z-index: 20;
 }
 

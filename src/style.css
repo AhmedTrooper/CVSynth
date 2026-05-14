@@ -71,7 +71,6 @@ button, input, textarea, select {
 input:focus, textarea:focus, select:focus {
   outline: none;
   border-color: #484f58; /* Subtle gray-blue focus instead of bright green */
-  box-shadow: 0 0 0 3px rgba(139, 148, 158, 0.1);
 }
 
 select {

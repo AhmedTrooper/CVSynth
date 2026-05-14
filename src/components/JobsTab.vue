@@ -524,7 +524,6 @@ const getStatusClass = (status: string) => {
 
 .search-box:focus-within {
   border-color: #484f58;
-  box-shadow: 0 0 0 3px rgba(139, 148, 158, 0.1);
 }
 
 .search-icon { color: var(--muted); }

@@ -470,7 +470,6 @@ const hasLatexContent = () => {
 
 .edit-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(11, 123, 107, 0.2);
 }
 
 .actions-top {
@@ -602,7 +601,6 @@ const hasLatexContent = () => {
 
 .latex-editor:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(11, 123, 107, 0.12);
 }
 
 .latex-preview {

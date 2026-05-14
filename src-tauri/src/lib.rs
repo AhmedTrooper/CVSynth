@@ -65,6 +65,8 @@ pub fn run() {
             commands::resumes::create_new_resume,
             commands::resumes::update_resume,
             commands::resumes::delete_resume,
+            commands::compiler::save_compiler_state,
+            commands::compiler::get_compiler_state,
             commands::pdf::compile_resume_to_pdf,
             commands::pdf::fix_latex_with_ai,
             commands::pdf::refine_latex_with_ai

@@ -138,7 +138,7 @@ const handleExternalClick = (url: string) => {
 
 .nav-menu {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   width: 100%;
   padding: 4px;
 }

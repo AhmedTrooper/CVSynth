@@ -73,6 +73,13 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
         CREATE TRIGGER IF NOT EXISTS update_tailored_resumes_modtime 
             AFTER UPDATE ON tailored_resumes 
             BEGIN UPDATE tailored_resumes SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; END;
+
+        -- 5. Standalone Compiler State Table
+        CREATE TABLE IF NOT EXISTS compiler_state (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            latex_content TEXT NOT NULL,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
         "
     )?;
 

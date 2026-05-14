@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { save, message } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
@@ -31,6 +31,46 @@ const isRefining = ref(false);
 const refinementInstruction = ref('');
 const isDownloading = ref(false);
 const compilationError = ref<string | null>(null);
+const isAutoCompileEnabled = ref(true);
+const isDirty = ref(false);
+
+// Persistence
+onMounted(async () => {
+  try {
+    const savedCode = await invoke<string | null>('get_compiler_state');
+    if (savedCode) {
+      latexCode.value = savedCode;
+      // Ensure initial load doesn't mark it as dirty
+      setTimeout(() => { isDirty.value = false; }, 0);
+    }
+  } catch (err) {
+    console.error('Failed to load compiler state:', err);
+  }
+});
+
+// Auto-save logic
+const saveState = async () => {
+  try {
+    await invoke('save_compiler_state', { latexContent: latexCode.value });
+  } catch (err) {
+    console.error('Failed to save compiler state:', err);
+  }
+};
+
+watch(latexCode, () => {
+  isDirty.value = true;
+});
+
+// Auto Compile on Blur
+const handleBlur = () => {
+  if (isDirty.value) {
+    saveState();
+    if (isAutoCompileEnabled.value) {
+      compilePdf();
+    }
+    isDirty.value = false;
+  }
+};
 
 // AI Refinement
 const refineWithAi = async () => {
@@ -54,6 +94,7 @@ const refineWithAi = async () => {
 
     latexCode.value = refinedCode;
     refinementInstruction.value = ''; // Clear after success
+    await saveState(); // Save after AI refinement
     await compilePdf();
   } catch (err: any) {
     console.error("AI Refinement Error:", err);
@@ -83,6 +124,7 @@ const compilePdf = async () => {
     }
     
     pdfUrl.value = URL.createObjectURL(blob);
+    await saveState(); // Save after successful compilation
   } catch (err: any) {
     console.error("Compilation Error:", err);
     compilationError.value = err.toString();
@@ -113,6 +155,7 @@ const fixWithAi = async () => {
 
     latexCode.value = fixedCode;
     compilationError.value = null;
+    await saveState(); // Save after AI fix
     await compilePdf();
   } catch (err: any) {
     console.error("AI Fix Error:", err);
@@ -171,6 +214,11 @@ const downloadPdf = async () => {
       </div>
       
       <div class="header-actions">
+        <label class="auto-compile-toggle">
+          <input type="checkbox" v-model="isAutoCompileEnabled">
+          <span>Auto Compile</span>
+        </label>
+        
         <button 
           v-if="compilationError" 
           class="action-btn ai-btn" 
@@ -216,6 +264,7 @@ const downloadPdf = async () => {
               class="latex-editor" 
               spellcheck="false"
               placeholder="Enter your LaTeX code here..."
+              @blur="handleBlur"
             ></textarea>
 
             <AnimatePresence>
@@ -321,7 +370,26 @@ const downloadPdf = async () => {
 
 .header-actions {
   display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auto-compile-toggle {
+  display: flex;
+  align-items: center;
   gap: 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.auto-compile-toggle input {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: var(--accent);
 }
 
 .action-btn {

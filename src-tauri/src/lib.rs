@@ -47,7 +47,11 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::settings::save_model_pref,
             commands::settings::get_model_pref,
-            commands::jobs::parse_and_save_job,
+            commands::jobs::parse_job,
+            commands::jobs::save_job,
+            commands::jobs::get_job_by_id,
+            commands::jobs::get_all_jobs,
+            commands::jobs::get_tailored_resume,
             commands::jobs::tailor_resume,
             commands::resumes::get_all_resumes,
             commands::resumes::get_resume_by_id,

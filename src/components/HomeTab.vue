@@ -2,50 +2,45 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useSettingsStore } from '../store/settings';
+import { useJobsStore, Job } from '../store/jobs';
 
 const router = useRouter();
 const route = useRoute();
 const settingsStore = useSettingsStore();
+const jobsStore = useJobsStore();
 const settingsError = ref('');
 const isLoadingSettings = ref(false);
 
-// Mock data (we will replace this with Pinia store data later)
-const savedJobs = ref([
-  { id: 'nano_1', title: 'Senior Rust Developer', company: 'TechCorp', date: '2026-05-13' },
-  { id: 'nano_2', title: 'Frontend Engineer', company: 'VueMastery', date: '2026-05-12' },
-]);
+const savedJobs = ref<Job[]>([]);
 
 const navigateToJob = (id: string) => {
   router.push(`/job/${id}`);
 };
 
-const refreshSettings = async () => {
+const refreshData = async () => {
   isLoadingSettings.value = true;
   settingsError.value = '';
   try {
     await settingsStore.loadSettings();
-    // Re-check key status for the now-active provider.
-    // loadSettings() updates selectedAiProvider from SQLite, but
-    // hasSecureKey may still reflect the old provider — re-sync it.
     await settingsStore.loadProviderKeyStatus(settingsStore.selectedAiProvider);
+    savedJobs.value = await jobsStore.loadAllJobs();
   } catch (err: any) {
-    settingsError.value = err?.message || 'Failed to load settings.';
+    settingsError.value = err?.message || 'Failed to load data.';
   } finally {
     isLoadingSettings.value = false;
   }
 };
 
 onMounted(async () => {
-  await refreshSettings();
+  await refreshData();
 });
 
-// Refresh every time the user navigates back to the home route.
-// No path guard needed — this watch only triggers on path changes
-// and onMounted already handles the initial load.
 watch(
   () => route.fullPath,
   async () => {
-    await refreshSettings();
+    if (route.name === 'Home') {
+      await refreshData();
+    }
   }
 );
 
@@ -102,10 +97,10 @@ const modelLabel = computed(() => activeModel.value || 'Not set');
           >
             <span class="job-dot"></span>
             <div class="job-info">
-              <span class="j-title">{{ job.title }}</span>
-              <span class="j-company">{{ job.company }}</span>
+              <span class="j-title">{{ job.job_title }}</span>
+              <span class="j-company">{{ job.company_name }}</span>
             </div>
-            <span class="j-date">{{ job.date }}</span>
+            <span class="j-date">{{ job.created_at?.split(' ')[0] }}</span>
           </button>
         </div>
       </div>

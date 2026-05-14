@@ -1,86 +1,177 @@
 use tauri::State;
 use nanoid::nanoid;
 use crate::AppState;
-use crate::ai;
+use crate::ai::{self, JobDetails};
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct JobPayload {
+    pub id: String,
+    pub company_name: String,
+    pub job_title: String,
+    pub work_model: String,
+    pub employment_type: String,
+    pub status: String,
+    pub raw_jd: String,
+    pub custom_instruction: Option<String>,
+    pub reference_name: Option<String>,
+    pub reference_email: Option<String>,
+    pub social_link: Option<String>,
+}
 
 #[tauri::command]
-pub async fn parse_and_save_job(
-    state: State<'_, AppState>, 
-    api_key: String, 
-    raw_jd: String
-) -> Result<String, String> {
-    // 1. Call the AI to parse the raw text
-    let parsed_data = ai::parse_job_description(&api_key, &raw_jd).await?;
-    
-    // 2. Augment parsed JSON with raw_job_content field
-    let mut json_value = serde_json::to_value(&parsed_data)
-        .map_err(|e| format!("JSON conversion error: {}", e))?;
-    
-    // Add raw_job_content to the JSON object for later reference during tailoring
-    if let Some(obj) = json_value.as_object_mut() {
-        obj.insert("raw_job_content".to_string(), serde_json::Value::String(raw_jd.clone()));
-    }
-    
-    let parsed_json_string = serde_json::to_string(&json_value)
-        .map_err(|e| format!("JSON Serialization error: {}", e))?;
+pub async fn parse_job(
+    provider: String,
+    model: String,
+    api_key: String,
+    raw_jd: String,
+) -> Result<JobDetails, String> {
+    ai::parse_job_description(&provider, &model, &api_key, &raw_jd).await
+}
 
-    // 3. Generate a unique 10-character slug
-    let job_slug = nanoid!(10);
-    
-    // 4. Save to SQLite
+#[tauri::command]
+pub async fn save_job(
+    state: State<'_, AppState>,
+    payload: JobPayload,
+) -> Result<String, String> {
     let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
-    
-    if let Some(conn) = db_guard.as_mut() {
-        conn.execute(
-            "INSERT INTO jobs (id, company_name, job_title, raw_jd, parsed_json, status) 
-             VALUES (?1, ?2, ?3, ?4, ?5, 'Drafting')",
-            [
-                &job_slug, 
-                &parsed_data.company, 
-                &parsed_data.title, 
-                &raw_jd, 
-                &parsed_json_string
-            ],
-        ).map_err(|e| format!("Database error: {}", e))?;
-        
-        Ok(job_slug)
-    } else {
-        Err("Database connection lost".to_string())
+    let conn = db_guard.as_mut().ok_or("Database connection lost")?;
+
+    conn.execute(
+        "INSERT INTO jobs (
+            id, company_name, job_title, work_model, employment_type, 
+            status, raw_jd, custom_instruction, reference_name, 
+            reference_email, social_link
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        [
+            &payload.id,
+            &payload.company_name,
+            &payload.job_title,
+            &payload.work_model,
+            &payload.employment_type,
+            &payload.status,
+            &payload.raw_jd,
+            &payload.custom_instruction.unwrap_or_default(),
+            &payload.reference_name.unwrap_or_default(),
+            &payload.reference_email.unwrap_or_default(),
+            &payload.social_link.unwrap_or_default(),
+        ],
+    ).map_err(|e| format!("Database error: {}", e))?;
+
+    Ok(payload.id)
+}
+
+#[tauri::command]
+pub async fn get_job_by_id(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<JobPayload, String> {
+    let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
+    let conn = db_guard.as_mut().ok_or("Database connection lost")?;
+
+    let mut stmt = conn.prepare(
+        "SELECT id, company_name, job_title, work_model, employment_type, 
+                status, raw_jd, custom_instruction, reference_name, 
+                reference_email, social_link 
+         FROM jobs WHERE id = ?1"
+    ).map_err(|e| e.to_string())?;
+
+    let job = stmt.query_row([&id], |row| {
+        Ok(JobPayload {
+            id: row.get(0)?,
+            company_name: row.get(1)?,
+            job_title: row.get(2)?,
+            work_model: row.get(3)?,
+            employment_type: row.get(4)?,
+            status: row.get(5)?,
+            raw_jd: row.get(6)?,
+            custom_instruction: row.get(7)?,
+            reference_name: row.get(8)?,
+            reference_email: row.get(9)?,
+            social_link: row.get(10)?,
+        })
+    }).map_err(|e| format!("Job not found: {}", e))?;
+
+    Ok(job)
+}
+
+#[tauri::command]
+pub async fn get_all_jobs(
+    state: State<'_, AppState>,
+) -> Result<Vec<JobPayload>, String> {
+    let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
+    let conn = db_guard.as_mut().ok_or("Database connection lost")?;
+
+    let mut stmt = conn.prepare(
+        "SELECT id, company_name, job_title, work_model, employment_type, 
+                status, raw_jd, custom_instruction, reference_name, 
+                reference_email, social_link 
+         FROM jobs ORDER BY created_at DESC"
+    ).map_err(|e| e.to_string())?;
+
+    let job_iter = stmt.query_map([], |row| {
+        Ok(JobPayload {
+            id: row.get(0)?,
+            company_name: row.get(1)?,
+            job_title: row.get(2)?,
+            work_model: row.get(3)?,
+            employment_type: row.get(4)?,
+            status: row.get(5)?,
+            raw_jd: row.get(6)?,
+            custom_instruction: row.get(7)?,
+            reference_name: row.get(8)?,
+            reference_email: row.get(9)?,
+            social_link: row.get(10)?,
+        })
+    }).map_err(|e| e.to_string())?;
+
+    let mut jobs = Vec::new();
+    for job in job_iter {
+        jobs.push(job.map_err(|e| e.to_string())?);
     }
+    Ok(jobs)
+}
+
+#[tauri::command]
+pub async fn get_tailored_resume(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<String, String> {
+    let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
+    let conn = db_guard.as_mut().ok_or("Database connection lost")?;
+
+    let mut stmt = conn.prepare("SELECT final_latex_content FROM tailored_resumes WHERE id = ?1")
+        .map_err(|e| e.to_string())?;
+    
+    let content: String = stmt.query_row([&id], |row| row.get(0))
+        .map_err(|_| "Tailored resume not found".to_string())?;
+    
+    Ok(content)
 }
 
 #[tauri::command]
 pub async fn tailor_resume(
     state: State<'_, AppState>,
+    provider: String,
+    model: String,
     api_key: String,
     job_id: String,
     base_resume_id: String,
     custom_instruction: Option<String>,
 ) -> Result<String, String> {
-    // 1. Fetch job and resume data (hold lock only briefly)
+    // 1. Fetch job and resume data
     let (raw_job_content, base_latex) = {
         let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
         
         if let Some(conn) = db_guard.as_mut() {
-            // Fetch job data to get raw_job_content from parsed_json
             let mut stmt = conn
-                .prepare("SELECT parsed_json FROM jobs WHERE id = ?1")
+                .prepare("SELECT raw_jd FROM jobs WHERE id = ?1")
                 .map_err(|e| format!("Query prepare error: {}", e))?;
             
-            let job_json_str: String = stmt
+            let raw_job: String = stmt
                 .query_row([&job_id], |row| row.get(0))
                 .map_err(|_| format!("Job not found: {}", job_id))?;
             
-            let job_json: serde_json::Value = serde_json::from_str(&job_json_str)
-                .map_err(|e| format!("JSON parse error: {}", e))?;
-            
-            let raw_job = job_json
-                .get("raw_job_content")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| "raw_job_content not found in job data".to_string())?
-                .to_string();
-            
-            // Fetch base resume LaTeX content
             let mut stmt = conn
                 .prepare("SELECT latex_content FROM base_resumes WHERE id = ?1")
                 .map_err(|e| format!("Query prepare error: {}", e))?;
@@ -93,10 +184,12 @@ pub async fn tailor_resume(
         } else {
             return Err("Database connection lost".to_string());
         }
-    }; // db_guard is dropped here
+    };
     
-    // 2. Call AI to tailor the resume (now safe, no non-Send types held)
+    // 2. Call AI to tailor the resume
     let tailored_latex = ai::tailor_latex_for_job(
+        &provider,
+        &model,
         &api_key,
         &base_latex,
         &raw_job_content,

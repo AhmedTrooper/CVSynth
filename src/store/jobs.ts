@@ -3,28 +3,71 @@ import { ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore } from './settings';
 
+export interface Job {
+  id: string;
+  company_name: string;
+  job_title: string;
+  work_model: string;
+  employment_type: string;
+  status: string;
+  raw_jd: string;
+  custom_instruction?: string;
+  reference_name?: string;
+  reference_email?: string;
+  social_link?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export const useJobsStore = defineStore('jobs', () => {
   const isLoading = ref(false);
   const error = ref<string | null>(null);
   const settingsStore = useSettingsStore();
 
+  const generateId = () => {
+    return Math.random().toString(36).substring(2, 12);
+  };
+
   const parseNewJob = async (rawJd: string): Promise<string> => {
     isLoading.value = true;
     error.value = null;
-    
+
     try {
       await settingsStore.loadSettings();
-      // Get the decrypted API key from Stronghold
-      const apiKey = await settingsStore.getDecryptedKey(settingsStore.selectedAiProvider);
+      const apiKey = await settingsStore.getDecryptedKey();
       if (!apiKey) throw new Error("API Key not found. Please set it in Settings.");
 
-      // Send to Rust backend for AI parsing and DB storage
-      const newSlug: string = await invoke('parse_and_save_job', { 
+      const provider = settingsStore.selectedAiProvider;
+      const model = settingsStore.selectedAiModel;
+
+      // 1. Parse Job via AI
+      const details: any = await invoke('parse_job', { 
+        provider,
+        model,
         apiKey, 
         rawJd 
       });
-      
-      return newSlug; 
+      // 2. Augment Data on Frontend
+      const jobPayload: Job = {
+        id: generateId(),
+        company_name: details.company_name,
+        job_title: details.job_title,
+        work_model: details.work_model,
+        employment_type: details.employment_type,
+        status: 'Drafting',
+        raw_jd: rawJd.trim(),
+        custom_instruction: '',
+        reference_name: '',
+        reference_email: '',
+        social_link: ''
+      };
+
+      // 3. Save to Rust backend
+      const savedId: string = await invoke('save_job', { 
+        payload: jobPayload 
+      });
+
+      return savedId; 
     } catch (err: any) {
       error.value = err.toString();
       throw err;
@@ -33,5 +76,33 @@ export const useJobsStore = defineStore('jobs', () => {
     }
   };
 
-  return { isLoading, error, parseNewJob };
-});
+  const loadAllJobs = async (): Promise<Job[]> => {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      const jobs: Job[] = await invoke('get_all_jobs');
+      return jobs;
+    } catch (err: any) {
+      error.value = err.toString();
+      return [];
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  const getJobById = async (id: string): Promise<Job> => {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      const job: Job = await invoke('get_job_by_id', { id });
+      return job;
+    } catch (err: any) {
+      error.value = err.toString();
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  return { isLoading, error, parseNewJob, loadAllJobs, getJobById };
+  });

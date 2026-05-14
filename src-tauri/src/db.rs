@@ -12,6 +12,9 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
 
     let conn = Connection::open(db_path)?; 
 
+    // Enable foreign keys
+    conn.execute("PRAGMA foreign_keys = ON", [])?;
+
     conn.execute_batch(
         "
         -- 1. App Settings Table
@@ -33,17 +36,19 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
             AFTER UPDATE ON base_resumes 
             BEGIN UPDATE base_resumes SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; END;
 
-        -- 3. Jobs Table (With Enums as CHECK constraints)
+        -- 3. Jobs Table
         CREATE TABLE IF NOT EXISTS jobs (
             id TEXT PRIMARY KEY,
             company_name TEXT NOT NULL,
             job_title TEXT NOT NULL,
-            work_model TEXT CHECK(work_model IN ('Remote', 'Hybrid', 'On-site')) DEFAULT 'Remote',
-            employment_type TEXT CHECK(employment_type IN ('Full-time', 'Part-time', 'Contract', 'Freelance')) DEFAULT 'Full-time',
+            work_model TEXT DEFAULT 'Remote',
+            employment_type TEXT DEFAULT 'Full-time',
             status TEXT CHECK(status IN ('Drafting', 'Applied', 'Interviewing', 'Offer', 'Rejected')) DEFAULT 'Drafting',
             raw_jd TEXT NOT NULL,
-            parsed_json TEXT,
             custom_instruction TEXT,
+            reference_name TEXT,
+            reference_email TEXT,
+            social_link TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
@@ -68,6 +73,82 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
             BEGIN UPDATE tailored_resumes SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; END;
         "
     )?;
+
+    // --- MIGRATIONS ---
+
+    // 1. Check if we need to remove CHECK constraints from 'jobs' (for flexibility with Temporary/Internship/etc.)
+    let table_sql: String = conn.query_row(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='jobs'",
+        [],
+        |row| row.get(0),
+    ).unwrap_or_default();
+
+    if table_sql.contains("CHECK(employment_type IN") || table_sql.contains("CHECK(work_model IN") {
+        // Perform migration to flexible schema
+        println!("Migrating 'jobs' table to flexible schema...");
+        conn.execute_batch(
+            "
+            PRAGMA foreign_keys=OFF;
+            BEGIN TRANSACTION;
+            
+            ALTER TABLE jobs RENAME TO jobs_old;
+            
+            CREATE TABLE jobs (
+                id TEXT PRIMARY KEY,
+                company_name TEXT NOT NULL,
+                job_title TEXT NOT NULL,
+                work_model TEXT DEFAULT 'Remote',
+                employment_type TEXT DEFAULT 'Full-time',
+                status TEXT CHECK(status IN ('Drafting', 'Applied', 'Interviewing', 'Offer', 'Rejected')) DEFAULT 'Drafting',
+                raw_jd TEXT NOT NULL,
+                custom_instruction TEXT,
+                reference_name TEXT,
+                reference_email TEXT,
+                social_link TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            
+            INSERT INTO jobs (
+                id, company_name, job_title, work_model, employment_type, 
+                status, raw_jd, custom_instruction, reference_name, 
+                reference_email, social_link, created_at, updated_at
+            ) 
+            SELECT 
+                id, company_name, job_title, work_model, employment_type, 
+                status, raw_jd, custom_instruction, reference_name, 
+                reference_email, social_link, created_at, updated_at 
+            FROM jobs_old;
+            
+            DROP TABLE jobs_old;
+            
+            -- Re-create the trigger for the new table
+            DROP TRIGGER IF EXISTS update_jobs_modtime;
+            CREATE TRIGGER update_jobs_modtime 
+                AFTER UPDATE ON jobs 
+                BEGIN UPDATE jobs SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; END;
+                
+            COMMIT;
+            PRAGMA foreign_keys=ON;
+            "
+        ).expect("Failed to migrate jobs table");
+    }
+
+    // 2. Add missing columns to 'jobs' table (redundant but safe after the recreation above)
+    let columns: Vec<String> = conn
+        .prepare("PRAGMA table_info(jobs)")?
+        .query_map([], |row| row.get(1))?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    if !columns.contains(&"reference_name".to_string()) {
+        conn.execute("ALTER TABLE jobs ADD COLUMN reference_name TEXT", [])?;
+    }
+    if !columns.contains(&"reference_email".to_string()) {
+        conn.execute("ALTER TABLE jobs ADD COLUMN reference_email TEXT", [])?;
+    }
+    if !columns.contains(&"social_link".to_string()) {
+        conn.execute("ALTER TABLE jobs ADD COLUMN social_link TEXT", [])?;
+    }
 
     Ok(conn)
 }

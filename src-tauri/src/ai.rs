@@ -1,44 +1,60 @@
-use rig::providers::gemini::Client;
-use rig::client::CompletionClient;
+use rig::providers::{gemini, openai, groq, anthropic};
 use rig::completion::Prompt;
+use rig::client::CompletionClient;
 use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
 
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]
 pub struct JobDetails {
-    pub title: String,
-    pub company: String,
+    pub job_title: String,
+    pub company_name: String,
+    pub work_model: String,      // Remote, Hybrid, On-site, Other
+    pub employment_type: String, // Full-time, Part-time, Contract, Freelance, Temporary, Internship
     pub requirements: Vec<String>,
     pub core_responsibilities: Vec<String>,
 }
 
-pub async fn parse_job_description(api_key: &str, raw_jd: &str) -> Result<JobDetails, String> {
-    // FIX: Unpack the Result. If Client::new fails, it safely returns the error as a String.
-    let client = Client::new(api_key)
-        .map_err(|e| format!("Failed to initialize AI client: {}", e))?;
-        // println!("Password is : {}", api_key);
-
-        
-    
-    // Now 'client' is safely unwrapped, and we can build the extractor
-    let extractor = client.extractor::<JobDetails>("gemini-3-flash-preview").build();
-        
-    let result = extractor.extract(raw_jd).await.map_err(|e| format!("AI Parsing Error: {}", e))?;
-    println!("Extracted Job Details: {:?}", &result);
-    
-    Ok(result)
+pub async fn parse_job_description(
+    provider: &str,
+    model: &str,
+    api_key: &str, 
+    raw_jd: &str
+) -> Result<JobDetails, String> {
+    let model = model.trim();
+    match provider {
+        "gemini" => {
+            let client = gemini::Client::new(api_key).map_err(|e| e.to_string())?;
+            let extractor = client.extractor::<JobDetails>(model).build();
+            extractor.extract(raw_jd).await.map_err(|e| format!("Gemini AI Parsing Error: {}", e))
+        },
+        "openai" => {
+            let client = openai::Client::new(api_key).map_err(|e| e.to_string())?;
+            let extractor = client.extractor::<JobDetails>(model).build();
+            extractor.extract(raw_jd).await.map_err(|e| format!("OpenAI Parsing Error: {}", e))
+        },
+        "groq" => {
+            let client = groq::Client::new(api_key).map_err(|e| e.to_string())?;
+            let extractor = client.extractor::<JobDetails>(model).build();
+            extractor.extract(raw_jd).await.map_err(|e| format!("Groq Parsing Error: {}", e))
+        },
+        "anthropic" => {
+            let client = anthropic::Client::new(api_key).map_err(|e| e.to_string())?;
+            let extractor = client.extractor::<JobDetails>(model).build();
+            extractor.extract(raw_jd).await.map_err(|e| format!("Anthropic Parsing Error: {}", e))
+        },
+        _ => Err(format!("Unsupported provider: {}", provider))
+    }
 }
 
 pub async fn tailor_latex_for_job(
+    provider: &str,
+    model: &str,
     api_key: &str,
     base_latex: &str,
     raw_job_content: &str,
     custom_instruction: Option<&str>,
 ) -> Result<String, String> {
-    let client = Client::new(api_key)
-        .map_err(|e| format!("Failed to initialize AI client: {}", e))?;
-        // println!("Tailor function is called!");
-
+    let model = model.trim();
     let system_prompt = r#"You are an expert resume tailoring AI. Your task is to take a base LaTeX resume template and tailor it to match a specific job description. 
     
 Rules:
@@ -47,7 +63,6 @@ Rules:
 3. Keep all original sections and formatting
 4. Output ONLY valid LaTeX code with no markdown, no explanations, no code fences
 5. Ensure the output is a valid, compilable LaTeX document
-
 
 If custom instructions are provided, prioritize them."#;
 
@@ -68,17 +83,27 @@ Please tailor the resume to match the job description. Return only the modified 
             .unwrap_or_default()
     );
 
-    let agent = client
-        .agent("gemini-3-flash-preview")
-        .preamble(system_prompt)
-        .build();
-
-    let response = agent
-        .prompt(&user_prompt)
-        .await
-        .map_err(|e| format!("AI Tailoring Error: {}", e))?;
-
-        println!("\n\n\nTailored LaTeX Resume:\n{}\n\n\n----->", &response);
-
-    Ok(response)
+    match provider {
+        "gemini" => {
+            let client = gemini::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(system_prompt).build();
+            agent.prompt(&user_prompt).await.map_err(|e| format!("Gemini AI Tailoring Error: {}", e))
+        },
+        "openai" => {
+            let client = openai::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(system_prompt).build();
+            agent.prompt(&user_prompt).await.map_err(|e| format!("OpenAI Tailoring Error: {}", e))
+        },
+        "groq" => {
+            let client = groq::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(system_prompt).build();
+            agent.prompt(&user_prompt).await.map_err(|e| format!("Groq Tailoring Error: {}", e))
+        },
+        "anthropic" => {
+            let client = anthropic::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(system_prompt).build();
+            agent.prompt(&user_prompt).await.map_err(|e| format!("Anthropic Tailoring Error: {}", e))
+        },
+        _ => Err(format!("Unsupported provider: {}", provider))
+    }
 }

@@ -3,15 +3,8 @@ import { ref, onMounted } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { useSettingsStore } from '../store/settings';
 import { useResumesStore } from '../store/resumes';
+import { useJobsStore, Job } from '../store/jobs';
 import { useRouter } from 'vue-router';
-
-interface JobData {
-  title: string;
-  company: string;
-  requirements: string[];
-  core_responsibilities: string[];
-  raw_job_content: string;
-}
 
 interface BaseResume {
   id: string;
@@ -21,9 +14,9 @@ interface BaseResume {
 const router = useRouter();
 const settingsStore = useSettingsStore();
 const resumesStore = useResumesStore();
+const jobsStore = useJobsStore();
 
 const props = defineProps<{ id: string }>();
-const emit = defineEmits(['go-back']);
 
 // State
 const isLoading = ref(true);
@@ -36,7 +29,7 @@ const generatedLatex = ref('');
 const pdfUrl = ref<string | null>(null);
 
 // Data
-const jobDetails = ref<JobData | null>(null);
+const jobDetails = ref<Job | null>(null);
 const standardResumes = ref<BaseResume[]>([]);
 const resumesLoadError = ref<string | null>(null);
 const isLoadingResumes = ref(false);
@@ -44,11 +37,11 @@ const isLoadingResumes = ref(false);
 // Load job details and base resumes on mount
 onMounted(async () => {
   try {
-    // TODO: Fetch job details from backend
-    // const job = await invoke('get_job_details', { jobId: props.id });
-    // jobDetails.value = job;
+    // 1. Fetch job details from backend
+    jobDetails.value = await jobsStore.getJobById(props.id);
+    customInstruction.value = jobDetails.value.custom_instruction || '';
     
-    // Load base resumes from store and keep only those with LaTeX content
+    // 2. Load base resumes from store
     isLoadingResumes.value = true;
     await resumesStore.loadAllResumes();
     const withContent: BaseResume[] = [];
@@ -66,19 +59,6 @@ onMounted(async () => {
       resumesLoadError.value = 'No resume templates with LaTeX content found. Add LaTeX in Resume Templates.';
     }
     isLoadingResumes.value = false;
-    
-    // For now, mock data
-    jobDetails.value = {
-      title: 'Senior Rust Developer',
-      company: 'TechCorp',
-      requirements: ['Rust', 'Tauri', 'SQLite', 'System Architecture'],
-      core_responsibilities: ['Design systems', 'Lead team', 'Code review'],
-      raw_job_content: 'We are looking for a Senior Rust Developer...'
-    };
-    
-    if (isLoadingResumes.value) {
-      resumesLoadError.value = null;
-    }
   } catch (err: any) {
     error.value = err.toString();
     isLoadingResumes.value = false;
@@ -97,20 +77,23 @@ const generateResume = async () => {
   try {
     const apiKey = await settingsStore.getDecryptedKey();
     if (!apiKey) throw new Error("API Key not found. Please set it in Settings.");
-    // console.log(apiKey)
     
+    const provider = settingsStore.selectedAiProvider;
+    const model = settingsStore.selectedAiModel;
+
     const tailoredId = await invoke<string>('tailor_resume', {
+      provider,
+      model,
       apiKey: apiKey,
       jobId: props.id,
       baseResumeId: selectedStandardResume.value,
       customInstruction: customInstruction.value || null,
     });
     
-    // TODO: Fetch the generated LaTeX content by tailored_id
-    // For now, display a placeholder
-    generatedLatex.value = `% Tailored Resume (ID: ${tailoredId})\n\\documentclass{article}\n\\begin{document}\n% Content will be populated after fetching from DB\n\\end{document}`;
+    // Fetch the generated LaTeX content by tailored_id
+    generatedLatex.value = await invoke<string>('get_tailored_resume', { id: tailoredId });
   } catch (err: any) {
-    console.log("Error found")
+    console.error("Tailoring Error:", err);
     error.value = err.toString();
   } finally {
     isGenerating.value = false;
@@ -143,8 +126,8 @@ const goBack = () => {
     <header class="workspace-header">
       <button class="back-btn" @click="goBack">← Back to Jobs</button>
       <div>
-        <h1>{{ jobDetails?.title }}</h1>
-        <p class="company">@ {{ jobDetails?.company }}</p>
+        <h1>{{ jobDetails?.job_title }}</h1>
+        <p class="company">@ {{ jobDetails?.company_name }}</p>
       </div>
     </header>
 
@@ -157,17 +140,26 @@ const goBack = () => {
       
       <div class="panel controls-panel">
         <div class="card">
-          <h3>Job Context</h3>
-          <ul class="skills-list">
-            <li v-for="skill in jobDetails?.requirements" :key="skill">{{ skill }}</li>
-          </ul>
+          <h3>Job Details</h3>
+          <div class="detail-row">
+            <span class="label">Model:</span>
+            <span class="value">{{ jobDetails?.work_model }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Type:</span>
+            <span class="value">{{ jobDetails?.employment_type }}</span>
+          </div>
+          <div class="detail-row" v-if="jobDetails?.reference_name">
+            <span class="label">Referral:</span>
+            <span class="value">{{ jobDetails?.reference_name }}</span>
+          </div>
         </div>
 
         <div class="card">
-          <h3>Core Responsibilities</h3>
-          <ul class="skills-list">
-            <li v-for="resp in jobDetails?.core_responsibilities" :key="resp">{{ resp }}</li>
-          </ul>
+          <h3>Raw Description</h3>
+          <div class="raw-jd-preview">
+            {{ jobDetails?.raw_jd }}
+          </div>
         </div>
 
         <div class="card">
@@ -219,6 +211,22 @@ const goBack = () => {
 </template>
 
 <style scoped>
+.detail-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
+.detail-row .label { color: var(--muted); font-weight: 600; }
+.detail-row .value { color: var(--ink); font-weight: 700; }
+
+.raw-jd-preview {
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.5;
+  max-height: 150px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  background: var(--surface-soft);
+  padding: 10px;
+  border-radius: 8px;
+}
+
 .workspace { display: flex; flex-direction: column; height: 100%; padding: 24px 20px 40px; }
 .workspace-header { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
 .back-btn { background: var(--surface); border: 1px solid var(--line); color: var(--muted); cursor: pointer; font-size: 0.95rem; padding: 8px 12px; border-radius: 10px; width: fit-content; }

@@ -18,23 +18,48 @@ const saveError = ref('');
 const providers = [
   { id: 'openai', name: 'OpenAI' },
   { id: 'gemini', name: 'Google Gemini' },
+  { id: 'anthropic', name: 'Anthropic Claude' },
   { id: 'groq', name: 'Groq (Ultra-Fast)' }
 ];
 
 const modelsByProvider: Record<string, {id: string, name: string}[]> = {
   openai: [
-    { id: 'gpt-4o', name: 'GPT-4o' },
-    { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
-    { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' }
+    { id: 'gpt-5.5-pro', name: 'GPT-5.5 Pro (Thinking)' },
+    { id: 'gpt-5.5-thinking', name: 'GPT-5.5 Thinking' },
+    { id: 'gpt-5.3-instant', name: 'GPT-5.3 Instant' },
+    { id: 'gpt-5-main', name: 'GPT-5 Foundation' },
+    { id: 'gpt-4.5', name: 'GPT-4.5 (Legacy)' },
+    { id: 'o3', name: 'o3 (Reasoning)' }
   ],
   gemini: [
-    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
-    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
-    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' }
+    { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro (Preview)' },
+    { id: 'gemini-3.1-flash-preview', name: 'Gemini 3.1 Flash (Preview)' },
+    { id: 'gemini-3.1-flash-lite-preview', name: 'Gemini 3.1 Flash-Lite (Preview)' },
+    { id: 'gemini-3-pro-preview', name: 'Gemini 3.0 Pro (Preview)' },
+    { id: 'gemini-3-flash-preview', name: 'Gemini 3.0 Flash (Preview)' },
+    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro (Stable)' },
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Stable)' },
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro (Legacy)' },
+    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash (Legacy)' }
+  ],
+  anthropic: [
+    { id: 'claude-opus-4-7', name: 'Claude Opus 4.7 (Power)' },
+    { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6 (Balanced)' },
+    { id: 'claude-opus-4-6', name: 'Claude Opus 4.6' },
+    { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5 (Speed)' },
+    { id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5' },
+    { id: 'claude-opus-4-5', name: 'Claude Opus 4.5' },
+    { id: 'claude-3-7-sonnet-latest', name: 'Claude 3.7 Sonnet' },
+    { id: 'claude-3-5-sonnet-latest', name: 'Claude 3.5 Sonnet (Legacy)' }
   ],
   groq: [
+    { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B (Groq Flagship)' },
+    { id: 'meta-llama/llama-4-scout-17b-16e-instruct', name: 'Llama 4 Scout' },
+    { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B' },
+    { id: 'llama-3.3-70b-specdec', name: 'Llama 3.3 SpecDec' },
     { id: 'llama-3.1-70b-versatile', name: 'Llama 3.1 70B' },
-    { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B' }
+    { id: 'mistral-medium-3.5', name: 'Mistral Medium 3.5' },
+    { id: 'mistral-small-4', name: 'Mistral Small 4' }
   ]
 };
 

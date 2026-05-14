@@ -43,20 +43,8 @@ watch(
     }
   }
 );
-
-const activeProvider = computed(() => settingsStore.selectedAiProvider);
-const activeModel = computed(() => settingsStore.selectedAiModel);
-const providerLabel = computed(() => {
-  const map: Record<string, string> = {
-    openai: 'OpenAI',
-    gemini: 'Google Gemini',
-    groq: 'Groq',
-  };
-  return map[activeProvider.value] || activeProvider.value || 'Not set';
-});
-
-const modelLabel = computed(() => activeModel.value || 'Not set');
 </script>
+
 <template>
   <div class="home-container">
     <div class="hero-section">
@@ -81,45 +69,31 @@ const modelLabel = computed(() => activeModel.value || 'Not set');
       </div>
     </div>
 
-    <div class="bento-grid">
-      <div class="bento-item large">
+    <div class="recent-jobs-section">
+      <div class="section-header">
         <h3>Recent Applications</h3>
-        <div v-if="savedJobs.length === 0" class="empty-block">
-          No jobs yet. Paste a job description to start.
-        </div>
-        <div v-else class="job-list-minimal">
-          <button
-            v-for="job in savedJobs"
-            :key="job.id"
-            class="job-item"
-            @click="navigateToJob(job.id)"
-            type="button"
-          >
-            <span class="job-dot"></span>
-            <div class="job-info">
-              <span class="j-title">{{ job.job_title }}</span>
-              <span class="j-company">{{ job.company_name }}</span>
-            </div>
-            <span class="j-date">{{ job.created_at?.split(' ')[0] }}</span>
-          </button>
-        </div>
+        <button class="link-btn" @click="$router.push('/jobs')">View All &rarr;</button>
       </div>
-      <div class="bento-item small">
-        <h3>Model Config</h3>
-        <p v-if="settingsError" class="error-inline">{{ settingsError }}</p>
-        <p v-else class="model-line">Provider: {{ providerLabel }}</p>
-        <p v-if="!settingsError" class="model-line">Model: {{ modelLabel }}</p>
-        <div class="model-actions">
-          <button class="link-btn" @click="$router.push('/settings')" type="button">Edit Settings</button>
-          <button class="link-btn" @click="refreshSettings" type="button" :disabled="isLoadingSettings">
-            {{ isLoadingSettings ? 'Refreshing...' : 'Refresh' }}
-          </button>
-        </div>
+
+      <div v-if="savedJobs.length === 0" class="empty-block">
+        No jobs yet. Paste a job description to start.
       </div>
-      <div class="bento-item small">
-        <h3>Resume Templates</h3>
-        <p class="model-line">Manage your base templates for tailoring.</p>
-        <button class="link-btn" @click="$router.push('/resumes')" type="button">Open Templates</button>
+      
+      <div v-else class="job-list-minimal">
+        <button
+          v-for="job in savedJobs.slice(0, 5)"
+          :key="job.id"
+          class="job-item"
+          @click="navigateToJob(job.id)"
+          type="button"
+        >
+          <span class="job-dot"></span>
+          <div class="job-info">
+            <span class="j-title">{{ job.job_title }}</span>
+            <span class="j-company">{{ job.company_name }}</span>
+          </div>
+          <span class="j-date">{{ job.created_at?.split(' ')[0] }}</span>
+        </button>
       </div>
     </div>
   </div>
@@ -216,34 +190,39 @@ const modelLabel = computed(() => activeModel.value || 'Not set');
 
 .btn-outline:hover { background: var(--surface-soft); }
 
-/* Bento Grid */
-.bento-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-}
-
-.bento-item {
+.recent-jobs-section {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 20px;
+  border-radius: 20px;
+  padding: 24px;
   box-shadow: var(--shadow);
 }
 
-.bento-item h3 {
-  font-size: 0.85rem;
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.section-header h3 {
+  font-size: 0.9rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   color: var(--muted);
-  margin: 0 0 16px 0;
+  margin: 0;
+}
+
+.job-list-minimal {
+  display: flex;
+  flex-direction: column;
 }
 
 .job-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 0;
+  gap: 16px;
+  padding: 14px 0;
   border-bottom: 1px solid var(--line);
   background: transparent;
   border-top: none;
@@ -252,63 +231,47 @@ const modelLabel = computed(() => activeModel.value || 'Not set');
   width: 100%;
   text-align: left;
   cursor: pointer;
+  transition: 0.2s;
 }
 
-.j-title { font-weight: 700; display: block; color: var(--ink); }
-.j-company { font-size: 0.85rem; color: var(--muted); }
-.j-date { margin-left: auto; font-size: 0.8rem; color: #8c857a; }
+.job-item:last-child {
+  border-bottom: none;
+}
+
+.job-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.j-title { font-weight: 700; display: block; color: var(--ink); font-size: 1.05rem; }
+.j-company { font-size: 0.9rem; color: var(--muted); }
+.j-date { margin-left: auto; font-size: 0.85rem; color: #8c857a; font-family: monospace; }
 
 .job-item:hover {
-  background: var(--surface-soft);
-  border-radius: 8px;
-  padding: 10px 8px;
+  transform: translateX(4px);
 }
 
 .empty-block {
   color: var(--muted);
   font-size: 0.95rem;
-  padding: 8px 0 4px;
-}
-
-.model-line {
-  color: var(--ink);
-  font-weight: 600;
-  margin: 8px 0;
-}
-
-.model-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.error-inline {
-  color: var(--warning);
-  font-weight: 600;
-  margin: 8px 0;
+  padding: 20px 0;
+  text-align: center;
 }
 
 .link-btn {
-  margin-top: 8px;
-  background: var(--surface-soft);
-  color: var(--ink);
-  border: 1px solid var(--line);
-  padding: 8px 12px;
-  border-radius: 10px;
+  background: none;
+  border: none;
+  color: var(--accent);
   font-weight: 700;
+  font-size: 0.85rem;
   cursor: pointer;
-}
-
-.link-btn:hover {
-  background: var(--surface);
 }
 
 @media (min-width: 960px) {
   .home-container { padding: 80px 32px 100px; }
   .hero-section { text-align: center; }
-  .description { margin: 0 auto 40px; }
-  .actions { justify-content: center; }
-  .main-title { font-size: 3.1rem; }
-  .bento-grid { grid-template-columns: 2fr 1fr; }
+  .main-title { font-size: 3.4rem; }
 }
 </style>

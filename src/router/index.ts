@@ -22,6 +22,11 @@ const routes = [
     component: ResumesTab
   },
   {
+    path: '/jobs',
+    name: 'Jobs',
+    component: () => import('../components/JobsTab.vue')
+  },
+  {
     path: '/resume/:id',
     name: 'ResumeDetail',
     component: ResumeDetailView,

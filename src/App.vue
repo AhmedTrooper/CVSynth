@@ -1,7 +1,8 @@
 <script setup lang="ts">
 const tabs = [
-  { path: '/', label: 'Saved Jobs', icon: '🏠' },
-  { path: '/resumes', label: 'Resume Templates', icon: '📄' },
+  { path: '/', label: 'Home', icon: '🏠' },
+  { path: '/jobs', label: 'All Jobs', icon: '💼' },
+  { path: '/resumes', label: 'Templates', icon: '📄' },
   { path: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 </script>
@@ -38,10 +39,11 @@ const tabs = [
 .app-container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  width: 100vw;
+  height: 100vh;
+  width: 100%;
   background: var(--bg);
   color: var(--ink);
+  overflow: hidden;
 }
 
 .sidebar {
@@ -51,6 +53,7 @@ const tabs = [
   position: sticky;
   bottom: 0;
   z-index: 10;
+  flex-shrink: 0;
 }
 
 .logo-container {
@@ -66,7 +69,7 @@ const tabs = [
 
 .nav-menu {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
   padding: 10px 12px 14px;
 }
@@ -116,6 +119,7 @@ const tabs = [
 .content-area {
   flex: 1;
   overflow-y: auto;
+  min-height: 0; /* Important for flex children to scroll correctly */
 }
 
 @media (min-width: 960px) {
@@ -127,7 +131,7 @@ const tabs = [
     order: 0;
     position: static;
     width: 88px;
-    min-height: 100vh;
+    height: 100vh;
     border-top: none;
     border-right: 1px solid var(--line);
   }

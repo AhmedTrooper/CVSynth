@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useJobsStore, Job } from '../store/jobs';
+import { Motion, AnimatePresence } from 'motion-v';
 
 import { 
   Search, 
@@ -11,7 +12,9 @@ import {
   Check, 
   X, 
   FolderOpen, 
-  ChevronRight 
+  ChevronRight,
+  Filter,
+  ArrowUpDown
 } from '@lucide/vue';
 
 const router = useRouter();
@@ -21,6 +24,9 @@ const allJobs = ref<Job[]>([]);
 const searchQuery = ref('');
 const statusFilter = ref('All');
 const sortBy = ref('date-desc');
+
+// Tooltip State
+const activeTooltip = ref<string | null>(null);
 
 // Selection Mode State
 const isSelectionMode = ref(false);
@@ -200,15 +206,51 @@ const getStatusClass = (status: string) => {
       </div>
 
       <div class="controls">
-        <div class="filter-group">
-          <label>Status</label>
+        <div 
+          class="filter-group icon-select"
+          @mouseenter="activeTooltip = 'status'"
+          @mouseleave="activeTooltip = null"
+        >
+          <div class="icon-indicator">
+            <Filter :size="16" />
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'status'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                :transition="{ duration: 0.15 }"
+                class="flying-message"
+              >
+                Filter Status
+              </Motion>
+            </AnimatePresence>
+          </div>
           <select v-model="statusFilter">
             <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
           </select>
         </div>
 
-        <div class="filter-group">
-          <label>Sort By</label>
+        <div 
+          class="filter-group icon-select"
+          @mouseenter="activeTooltip = 'sort'"
+          @mouseleave="activeTooltip = null"
+        >
+          <div class="icon-indicator">
+            <ArrowUpDown :size="16" />
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'sort'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                :transition="{ duration: 0.15 }"
+                class="flying-message"
+              >
+                Sort Order
+              </Motion>
+            </AnimatePresence>
+          </div>
           <select v-model="sortBy">
             <option value="date-desc">Newest First</option>
             <option value="date-asc">Oldest First</option>
@@ -421,21 +463,70 @@ const getStatusClass = (status: string) => {
   font-size: 0.95rem;
 }
 
-.controls { display: flex; gap: 20px; }
+.controls { display: flex; gap: 12px; }
 
-.filter-group { display: flex; flex-direction: column; gap: 6px; }
-.filter-group label {
-  font-size: 0.7rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  color: var(--accent);
-  letter-spacing: 0.05em;
+.filter-group { display: flex; flex-direction: column; gap: 6px; position: relative; }
+
+.icon-select {
+  flex-direction: row;
+  align-items: center;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0 8px 0 12px;
+  transition: border-color 0.2s;
+}
+
+.icon-select:focus-within {
+  border-color: var(--accent);
+}
+
+.icon-indicator {
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.flying-message {
+  position: absolute;
+  bottom: 140%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.flying-message::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: var(--accent);
 }
 
 .filter-group select {
-  padding: 8px 12px;
-  font-weight: 600;
+  padding: 10px 32px 10px 4px;
+  font-weight: 700;
   cursor: pointer;
+  background: transparent;
+  border: none;
+  font-size: 0.8rem;
+  color: var(--ink);
+}
+
+.filter-group select:focus {
+  box-shadow: none;
 }
 
 .job-card {

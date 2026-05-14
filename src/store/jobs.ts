@@ -149,5 +149,18 @@ export const useJobsStore = defineStore('jobs', () => {
     }
   };
 
-  return { isLoading, error, parseNewJob, loadAllJobs, getJobById, deleteJob, deleteJobsBatch, deleteAllJobs };
+  const updateJobStatus = async (id: string, status: string): Promise<void> => {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      await invoke('update_job_status', { id, status });
+    } catch (err: any) {
+      error.value = err.toString();
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  return { isLoading, error, parseNewJob, loadAllJobs, getJobById, deleteJob, deleteJobsBatch, deleteAllJobs, updateJobStatus };
   });

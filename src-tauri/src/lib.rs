@@ -56,6 +56,7 @@ pub fn run() {
             commands::jobs::delete_jobs_batch,
             commands::jobs::delete_all_jobs,
             commands::jobs::update_tailored_resume,
+            commands::jobs::update_job_status,
             commands::jobs::get_tailored_resume,
             commands::jobs::get_latest_tailored_resume,
             commands::jobs::tailor_resume,

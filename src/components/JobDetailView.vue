@@ -298,6 +298,17 @@ const goBack = () => {
   router.push('/');
 };
 
+const updateStatus = async (newStatus: string) => {
+  try {
+    await jobsStore.updateJobStatus(props.id, newStatus);
+    if (jobDetails.value) {
+      jobDetails.value.status = newStatus;
+    }
+  } catch (err: any) {
+    error.value = `Failed to update status: ${err.toString()}`;
+  }
+};
+
 const deleteJob = async () => {
   if (!confirm('Are you sure you want to delete this job application? This action cannot be undone.')) return;
   
@@ -440,7 +451,15 @@ const deleteJob = async () => {
                 <Motion v-if="activeTooltip === 'status-meta'" class="flying-message sidebar-tooltip" :initial="{ opacity: 0, x: 5 }" :animate="{ opacity: 1, x: 12 }">Application Status</Motion>
               </AnimatePresence>
             </div>
-            <span class="value">{{ jobDetails?.status }}</span>
+            <select 
+              :value="jobDetails?.status" 
+              @change="(e) => updateStatus((e.target as HTMLSelectElement).value)"
+              class="compact-select status-select"
+            >
+              <option v-for="s in ['Drafting', 'Applied', 'Interviewing', 'Offer', 'Rejected']" :key="s" :value="s">
+                {{ s }}
+              </option>
+            </select>
           </div>
         </div>
 
@@ -787,6 +806,18 @@ const deleteJob = async () => {
   padding: 6px;
   outline: none;
 }
+
+.status-select {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.status-select option {
+  background: var(--bg-accent);
+  color: var(--ink);
+  font-weight: normal;
+}
+
 .compact-textarea { height: 60px; resize: none; }
 
 .btn-accent {

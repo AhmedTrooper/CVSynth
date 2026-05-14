@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue';
 import { useSettingsStore } from '../store/settings';
-import { CheckCircle, Info, Save, RotateCcw, Download, Database, Upload, RefreshCw, AlertTriangle } from '@lucide/vue';
+import { CheckCircle, Info, Save, RotateCcw, Download, Database, Upload, RefreshCw } from '@lucide/vue';
 import { Motion, AnimatePresence } from 'motion-v';
 import { invoke } from '@tauri-apps/api/core';
 import { save as saveDialog, open as openDialog, ask, message } from '@tauri-apps/plugin-dialog';

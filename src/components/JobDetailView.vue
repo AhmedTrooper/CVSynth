@@ -18,8 +18,6 @@ import {
   Hammer, 
   Download, 
   Wand2, 
-  Check, 
-  X,
   Play,
   RotateCw,
   Info,

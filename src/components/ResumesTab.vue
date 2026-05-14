@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useResumesStore } from '../store/resumes';
-import { Plus, Tag, Calendar, Hash, FileText, X, Info, Save, RotateCw } from '@lucide/vue';
+import { Plus, Tag, Calendar, Hash, FileText, X, Save, RotateCw } from '@lucide/vue';
 import { Motion, AnimatePresence } from 'motion-v';
 
 const router = useRouter();

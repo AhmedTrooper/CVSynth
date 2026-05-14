@@ -165,10 +165,6 @@ const chunkedJobs = computed(() => {
   return chunks;
 });
 
-const navigateToJob = (id: string) => {
-  router.push(`/job/${id}`);
-};
-
 const getStatusClass = (status: string) => {
   return `status-badge ${status.toLowerCase()}`;
 };

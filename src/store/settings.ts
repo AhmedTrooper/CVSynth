@@ -94,8 +94,8 @@ export const useSettingsStore = defineStore('settings', () => {
       const { store } = await getVault();
       const storageKey = `ai_api_key_${targetProvider}`;
       const keyBytes = await store.get(storageKey);
-      if (keyBytes && (keyBytes as number[]).length > 0) {
-        return new TextDecoder().decode(new Uint8Array(keyBytes as Iterable<number>));
+      if (keyBytes && keyBytes.length > 0) {
+        return new TextDecoder().decode(keyBytes);
       }
       return null;
     } catch (error) {
@@ -109,7 +109,7 @@ export const useSettingsStore = defineStore('settings', () => {
       const { store } = await getVault();
       const storageKey = `ai_api_key_${provider}`;
       const keyBytes = await store.get(storageKey);
-      hasSecureKey.value = keyBytes !== null && (keyBytes as number[]).length > 0;
+      hasSecureKey.value = keyBytes !== null && keyBytes.length > 0;
     } catch (error) {
       console.error("Error loading key status:", error);
       hasSecureKey.value = false;

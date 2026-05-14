@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { getName, getVersion, getTauriVersion } from '@tauri-apps/api/app';
 import { type } from '@tauri-apps/plugin-os';
-import { Info, Code, Video, Heart, Copy, Check, ShieldCheck } from '@lucide/vue';
+import { Code, Video, Heart, Copy, Check, ShieldCheck } from '@lucide/vue';
 import { open } from '@tauri-apps/plugin-shell';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { Motion } from 'motion-v';

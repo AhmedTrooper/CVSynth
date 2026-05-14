@@ -233,7 +233,7 @@ const getStatusClass = (status: string) => {
         v-else
         class="scroller"
         :items="chunkedJobs"
-        :item-size="280"
+        :item-size="300"
         key-field="id"
         v-slot="{ item }"
       >
@@ -290,12 +290,13 @@ const getStatusClass = (status: string) => {
 
 .scroller {
   height: 100%;
+  padding: 0 12px;
 }
 
 .job-row {
   display: flex;
   gap: 24px;
-  padding-bottom: 24px;
+  padding: 8px 12px 32px;
 }
 
 .job-card, .job-card-spacer {
@@ -443,20 +444,46 @@ const getStatusClass = (status: string) => {
   border-radius: 16px;
   padding: 24px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow);
+  overflow: hidden; /* Prevent content overflow */
+  position: relative;
+  min-width: 0; /* Allow card to shrink if needed */
+  z-index: 1;
+}
+
+.job-title { 
+  font-size: 1.25rem; 
+  margin: 0; 
+  color: var(--ink); 
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.company-name { 
+  color: var(--accent); 
+  font-weight: 700; 
+  margin: 4px 0 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
 }
 
 .job-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-4px) scale(1.01);
   border-color: var(--accent);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+  z-index: 10;
 }
 
 .job-card.selection-mode:hover {
-  transform: scale(1.02);
+  transform: scale(1.01);
 }
 
 .job-card.selected {
@@ -507,10 +534,6 @@ const getStatusClass = (status: string) => {
 .status-badge.rejected { background: rgba(248, 51, 73, 0.15); color: #f85149; }
 
 .date { font-size: 0.8rem; color: var(--muted); font-family: monospace; }
-
-.job-title { font-size: 1.25rem; margin: 0; color: var(--ink); font-weight: 800; }
-.company-name { color: var(--accent); font-weight: 700; margin: 4px 0 16px; }
-
 .tags { display: flex; gap: 8px; margin-bottom: auto; }
 .tag {
   background: var(--surface-soft);

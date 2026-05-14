@@ -11,6 +11,8 @@ export interface Job {
   employment_type: string;
   status: string;
   raw_jd: string;
+  requirements?: string;
+  core_responsibilities?: string;
   custom_instruction?: string;
   reference_name?: string;
   reference_email?: string;
@@ -56,6 +58,8 @@ export const useJobsStore = defineStore('jobs', () => {
         employment_type: details.employment_type,
         status: 'Drafting',
         raw_jd: rawJd.trim(),
+        requirements: JSON.stringify(details.requirements || []),
+        core_responsibilities: JSON.stringify(details.core_responsibilities || []),
         custom_instruction: '',
         reference_name: '',
         reference_email: '',
@@ -104,5 +108,44 @@ export const useJobsStore = defineStore('jobs', () => {
     }
   };
 
-  return { isLoading, error, parseNewJob, loadAllJobs, getJobById };
+  const deleteJob = async (id: string): Promise<void> => {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      await invoke('delete_job', { id });
+    } catch (err: any) {
+      error.value = err.toString();
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  const deleteJobsBatch = async (ids: string[]): Promise<void> => {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      await invoke('delete_jobs_batch', { ids });
+    } catch (err: any) {
+      error.value = err.toString();
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  const deleteAllJobs = async (): Promise<void> => {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      await invoke('delete_all_jobs');
+    } catch (err: any) {
+      error.value = err.toString();
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  return { isLoading, error, parseNewJob, loadAllJobs, getJobById, deleteJob, deleteJobsBatch, deleteAllJobs };
   });

@@ -11,13 +11,65 @@ const searchQuery = ref('');
 const statusFilter = ref('All');
 const sortBy = ref('date-desc');
 
+// Selection Mode State
+const isSelectionMode = ref(false);
+const selectedJobs = ref<Set<string>>(new Set());
+
 const statuses = ['All', 'Drafting', 'Applied', 'Interviewing', 'Offer', 'Rejected'];
 
 const loadJobs = async () => {
   allJobs.value = await jobsStore.loadAllJobs();
+  selectedJobs.value.clear();
 };
 
 onMounted(loadJobs);
+
+const handleCardClick = (id: string) => {
+  if (isSelectionMode.value) {
+    if (selectedJobs.value.has(id)) {
+      selectedJobs.value.delete(id);
+    } else {
+      selectedJobs.value.add(id);
+    }
+  } else {
+    router.push(`/job/${id}`);
+  }
+};
+
+const deleteSelectedJobs = async () => {
+  if (selectedJobs.value.size === 0) return;
+  if (!confirm(`Are you sure you want to delete ${selectedJobs.value.size} selected applications?`)) return;
+
+  try {
+    await jobsStore.deleteJobsBatch(Array.from(selectedJobs.value));
+    await loadJobs();
+    isSelectionMode.value = false;
+  } catch (err: any) {
+    console.error('Batch delete error:', err);
+  }
+};
+
+const deleteAllJobs = async () => {
+  if (!confirm('CRITICAL: This will delete ALL job applications and their tailored resumes. This action is permanent. Continue?')) return;
+
+  try {
+    await jobsStore.deleteAllJobs();
+    await loadJobs();
+  } catch (err: any) {
+    console.error('Delete all error:', err);
+  }
+};
+
+const selectAllVisible = () => {
+  filteredAndSortedJobs.value.forEach(job => {
+    selectedJobs.value.add(job.id);
+  });
+};
+
+const exitSelectionMode = () => {
+  isSelectionMode.value = false;
+  selectedJobs.value.clear();
+};
 
 const filteredAndSortedJobs = computed(() => {
   let result = [...allJobs.value];
@@ -69,14 +121,39 @@ const getStatusClass = (status: string) => {
     <header class="page-header">
       <div class="title-group">
         <h1>Application Vault</h1>
-        <p class="subtitle">Track and manage your professional opportunities.</p>
+        <p class="subtitle" v-if="!isSelectionMode">Track and manage your professional opportunities.</p>
+        <p class="subtitle selection-hint" v-else>Click items to select/deselect them.</p>
       </div>
-      <button class="btn-primary" @click="$router.push('/parse')">
-        + New Application
-      </button>
+      <div class="header-actions">
+        <!-- Default Actions -->
+        <template v-if="!isSelectionMode">
+          <button class="btn-secondary" @click="isSelectionMode = true" title="Enable selection mode">
+            🛠️ Selection Mode
+          </button>
+          <button class="btn-danger-outline" @click="deleteAllJobs" title="Delete all jobs">
+            🧨 Delete All
+          </button>
+          <button class="btn-primary" @click="$router.push('/parse')">
+            + New Application
+          </button>
+        </template>
+
+        <!-- Selection Mode Actions -->
+        <template v-else>
+          <button class="btn-secondary" @click="selectAllVisible">
+            ✅ Select All
+          </button>
+          <button v-if="selectedJobs.size > 0" class="btn-delete-batch" @click="deleteSelectedJobs">
+            🗑️ Delete Selected ({{ selectedJobs.size }})
+          </button>
+          <button class="btn-primary" @click="exitSelectionMode">
+            Done
+          </button>
+        </template>
+      </div>
     </header>
 
-    <div class="filters-bar">
+    <div class="filters-bar" v-if="!isSelectionMode">
       <div class="search-box">
         <span class="icon">🔍</span>
         <input v-model="searchQuery" placeholder="Search by title or company..." />
@@ -116,9 +193,13 @@ const getStatusClass = (status: string) => {
         v-for="job in filteredAndSortedJobs" 
         :key="job.id"
         class="job-card"
-        @click="navigateToJob(job.id)"
+        :class="{ 'selected': selectedJobs.has(job.id), 'selection-mode': isSelectionMode }"
+        @click="handleCardClick(job.id)"
       >
         <div class="card-top">
+          <div v-if="isSelectionMode" class="checkbox-indicator" :class="{ 'checked': selectedJobs.has(job.id) }">
+            <span v-if="selectedJobs.has(job.id)">✓</span>
+          </div>
           <span :class="getStatusClass(job.status)">{{ job.status }}</span>
           <span class="date">{{ job.created_at?.split(' ')[0] }}</span>
         </div>
@@ -155,6 +236,9 @@ const getStatusClass = (status: string) => {
 
 .page-header h1 { font-size: 2.2rem; margin: 0; color: var(--ink); }
 .subtitle { color: var(--muted); margin: 8px 0 0; }
+.selection-hint { color: var(--accent); font-weight: 700; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; }
+
+.header-actions { display: flex; gap: 12px; align-items: center; }
 
 .btn-primary {
   background: var(--accent);
@@ -166,6 +250,45 @@ const getStatusClass = (status: string) => {
   cursor: pointer;
   transition: 0.2s;
 }
+
+.btn-secondary {
+  background: var(--surface-soft);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-secondary:hover { background: var(--surface); border-color: var(--accent); }
+
+.btn-danger-outline {
+  background: transparent;
+  color: var(--warning);
+  border: 1px solid var(--warning);
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-danger-outline:hover { background: var(--warning); color: white; }
+
+.btn-delete-batch {
+  background: var(--warning);
+  color: white;
+  border: none;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-delete-batch:hover { background: #e63946; }
 
 .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(11, 123, 107, 0.2); }
 
@@ -247,11 +370,41 @@ const getStatusClass = (status: string) => {
   box-shadow: 0 8px 24px rgba(0,0,0,0.06);
 }
 
+.job-card.selection-mode:hover {
+  transform: scale(1.02);
+}
+
+.job-card.selected {
+  border-color: var(--accent);
+  background: rgba(32, 201, 151, 0.08);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
 .card-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
+  position: relative;
+}
+
+.checkbox-indicator {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--line);
+  border-radius: 6px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: var(--surface);
+  color: white;
+  font-weight: 900;
+  transition: 0.2s;
+}
+
+.checkbox-indicator.checked {
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .status-badge {

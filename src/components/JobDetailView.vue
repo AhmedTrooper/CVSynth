@@ -119,16 +119,30 @@ const compilePdf = async () => {
 const goBack = () => {
   router.push('/');
 };
+
+const deleteJob = async () => {
+  if (!confirm('Are you sure you want to delete this job application? This action cannot be undone.')) return;
+  
+  try {
+    await jobsStore.deleteJob(props.id);
+    router.push('/jobs');
+  } catch (err: any) {
+    error.value = err.toString();
+  }
+};
 </script>
 
 <template>
   <div class="workspace" v-if="!isLoading">
     <header class="workspace-header">
-      <button class="back-btn" @click="goBack">← Back to Jobs</button>
-      <div>
-        <h1>{{ jobDetails?.job_title }}</h1>
-        <p class="company">@ {{ jobDetails?.company_name }}</p>
+      <div class="header-left">
+        <button class="back-btn" @click="goBack">← Back</button>
+        <div>
+          <h1>{{ jobDetails?.job_title }}</h1>
+          <p class="company">@ {{ jobDetails?.company_name }}</p>
+        </div>
       </div>
+      <button class="delete-btn" @click="deleteJob">🗑️ Delete Job</button>
     </header>
 
     <div class="error-banner" v-if="error">
@@ -153,6 +167,20 @@ const goBack = () => {
             <span class="label">Referral:</span>
             <span class="value">{{ jobDetails?.reference_name }}</span>
           </div>
+        </div>
+
+        <div class="card" v-if="jobDetails?.requirements">
+          <h3>Requirements</h3>
+          <ul class="skills-list">
+            <li v-for="req in JSON.parse(jobDetails.requirements)" :key="req">{{ req }}</li>
+          </ul>
+        </div>
+
+        <div class="card" v-if="jobDetails?.core_responsibilities">
+          <h3>Responsibilities</h3>
+          <ul class="skills-list">
+            <li v-for="res in JSON.parse(jobDetails.core_responsibilities)" :key="res">{{ res }}</li>
+          </ul>
         </div>
 
         <div class="card">
@@ -228,9 +256,12 @@ const goBack = () => {
 }
 
 .workspace { display: flex; flex-direction: column; height: 100%; padding: 24px 20px 40px; }
-.workspace-header { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+.workspace-header { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+.header-left { display: flex; align-items: center; gap: 16px; }
 .back-btn { background: var(--surface); border: 1px solid var(--line); color: var(--muted); cursor: pointer; font-size: 0.95rem; padding: 8px 12px; border-radius: 10px; width: fit-content; }
 .back-btn:hover { color: var(--ink); border-color: var(--accent); }
+.delete-btn { background: rgba(255, 107, 107, 0.1); border: 1px solid var(--warning); color: var(--warning); padding: 8px 14px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: 0.2s; }
+.delete-btn:hover { background: var(--warning); color: white; }
 .workspace-header h1 { margin: 0; font-size: 1.6rem; color: var(--ink); }
 .company { margin: 0; color: var(--accent); font-weight: 700; }
 

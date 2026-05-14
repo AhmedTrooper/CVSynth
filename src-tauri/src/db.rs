@@ -45,6 +45,8 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
             employment_type TEXT DEFAULT 'Full-time',
             status TEXT CHECK(status IN ('Drafting', 'Applied', 'Interviewing', 'Offer', 'Rejected')) DEFAULT 'Drafting',
             raw_jd TEXT NOT NULL,
+            requirements TEXT,
+            core_responsibilities TEXT,
             custom_instruction TEXT,
             reference_name TEXT,
             reference_email TEXT,
@@ -111,6 +113,8 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
                     employment_type TEXT DEFAULT 'Full-time',
                     status TEXT CHECK(status IN ('Drafting', 'Applied', 'Interviewing', 'Offer', 'Rejected')) DEFAULT 'Drafting',
                     raw_jd TEXT NOT NULL,
+                    requirements TEXT,
+                    core_responsibilities TEXT,
                     custom_instruction TEXT,
                     reference_name TEXT,
                     reference_email TEXT,
@@ -129,8 +133,9 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
                 
             let target_columns = [
                 "id", "company_name", "job_title", "work_model", "employment_type",
-                "status", "raw_jd", "custom_instruction", "reference_name",
-                "reference_email", "social_link", "created_at", "updated_at"
+                "status", "raw_jd", "requirements", "core_responsibilities",
+                "custom_instruction", "reference_name", "reference_email", "social_link",
+                "created_at", "updated_at"
             ];
             
             let common_columns: Vec<&str> = target_columns
@@ -194,6 +199,12 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
     }
     if !columns.contains(&"custom_instruction".to_string()) {
         conn.execute("ALTER TABLE jobs ADD COLUMN custom_instruction TEXT", [])?;
+    }
+    if !columns.contains(&"requirements".to_string()) {
+        conn.execute("ALTER TABLE jobs ADD COLUMN requirements TEXT", [])?;
+    }
+    if !columns.contains(&"core_responsibilities".to_string()) {
+        conn.execute("ALTER TABLE jobs ADD COLUMN core_responsibilities TEXT", [])?;
     }
 
     // 3. Fix potential broken foreign keys in tailored_resumes (pointing to jobs_old)

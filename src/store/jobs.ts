@@ -17,6 +17,7 @@ export interface Job {
   reference_name?: string;
   reference_email?: string;
   social_link?: string;
+  job_url?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -30,7 +31,7 @@ export const useJobsStore = defineStore('jobs', () => {
     return Math.random().toString(36).substring(2, 12);
   };
 
-  const parseNewJob = async (rawJd: string): Promise<string> => {
+  const parseNewJob = async (rawJd: string, jobUrl: string = ''): Promise<string> => {
     isLoading.value = true;
     error.value = null;
 
@@ -63,7 +64,8 @@ export const useJobsStore = defineStore('jobs', () => {
         custom_instruction: '',
         reference_name: '',
         reference_email: '',
-        social_link: ''
+        social_link: '',
+        job_url: jobUrl.trim()
       };
 
       // 3. Save to Rust backend

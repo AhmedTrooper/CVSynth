@@ -10,7 +10,7 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
     fs::create_dir_all(&app_dir).expect("Failed to create app data dir");
     let db_path = app_dir.join("cvsynth.db");
 
-    let conn = Connection::open(db_path)?; 
+    let conn = Connection::open(db_path)?;
 
     // Enable foreign keys
     conn.execute("PRAGMA foreign_keys = ON", [])?;
@@ -79,30 +79,32 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
     // --- MIGRATIONS ---
 
     // 1. Check if we need to remove CHECK constraints from 'jobs' (for flexibility with Temporary/Internship/etc.)
-    let table_sql: String = conn.query_row(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND name='jobs'",
-        [],
-        |row| row.get(0),
-    ).unwrap_or_default();
+    let table_sql: String = conn
+        .query_row(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='jobs'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or_default();
 
     if table_sql.contains("CHECK(employment_type IN") || table_sql.contains("CHECK(work_model IN") {
         println!("Migrating 'jobs' table to flexible schema...");
-        
+
         // Disable foreign keys for the duration of the migration
         conn.execute("PRAGMA foreign_keys=OFF", [])?;
 
         let migration_result = (|| -> Result<()> {
             conn.execute("BEGIN TRANSACTION", [])?;
-            
+
             // Drop triggers first to avoid issues with RENAME
             conn.execute("DROP TRIGGER IF EXISTS update_jobs_modtime", [])?;
-            
+
             // Drop jobs_old if it exists from a previous failed attempt
             conn.execute("DROP TABLE IF EXISTS jobs_old", [])?;
-            
+
             // Rename
             conn.execute("ALTER TABLE jobs RENAME TO jobs_old", [])?;
-            
+
             // Create new table with flexible schema
             conn.execute(
                 "CREATE TABLE jobs (
@@ -124,37 +126,48 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
                 )",
                 [],
             )?;
-            
+
             // Dynamically identify common columns for data migration
             let old_columns: Vec<String> = conn
                 .prepare("PRAGMA table_info(jobs_old)")?
                 .query_map([], |row| row.get(1))?
                 .collect::<Result<Vec<_>, _>>()?;
-                
+
             let target_columns = [
-                "id", "company_name", "job_title", "work_model", "employment_type",
-                "status", "raw_jd", "requirements", "core_responsibilities",
-                "custom_instruction", "reference_name", "reference_email", "social_link",
-                "created_at", "updated_at"
+                "id",
+                "company_name",
+                "job_title",
+                "work_model",
+                "employment_type",
+                "status",
+                "raw_jd",
+                "requirements",
+                "core_responsibilities",
+                "custom_instruction",
+                "reference_name",
+                "reference_email",
+                "social_link",
+                "created_at",
+                "updated_at",
             ];
-            
+
             let common_columns: Vec<&str> = target_columns
                 .iter()
                 .filter(|&&c| old_columns.contains(&c.to_string()))
                 .cloned()
                 .collect();
-                
+
             let cols_str = common_columns.join(", ");
             let insert_sql = format!(
                 "INSERT INTO jobs ({}) SELECT {} FROM jobs_old",
                 cols_str, cols_str
             );
-            
+
             conn.execute(&insert_sql, [])?;
-            
+
             // Drop old table
             conn.execute("DROP TABLE jobs_old", [])?;
-            
+
             // Re-create the trigger for the new table
             conn.execute(
                 "CREATE TRIGGER update_jobs_modtime 
@@ -162,7 +175,7 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
                 BEGIN UPDATE jobs SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; END;",
                 [],
             )?;
-            
+
             conn.execute("COMMIT", [])?;
             Ok(())
         })();
@@ -171,8 +184,20 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
             println!("Migration failed, attempting rollback: {}", e);
             let _ = conn.execute("ROLLBACK", []);
             // If jobs_old exists and jobs doesn't, try to restore
-            let jobs_exist: i32 = conn.query_row("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='jobs'", [], |row| row.get(0)).unwrap_or(0);
-            let jobs_old_exist: i32 = conn.query_row("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='jobs_old'", [], |row| row.get(0)).unwrap_or(0);
+            let jobs_exist: i32 = conn
+                .query_row(
+                    "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='jobs'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap_or(0);
+            let jobs_old_exist: i32 = conn
+                .query_row(
+                    "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='jobs_old'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap_or(0);
             if jobs_exist == 0 && jobs_old_exist == 1 {
                 let _ = conn.execute("ALTER TABLE jobs_old RENAME TO jobs", []);
             }
@@ -206,26 +231,34 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
     if !columns.contains(&"core_responsibilities".to_string()) {
         conn.execute("ALTER TABLE jobs ADD COLUMN core_responsibilities TEXT", [])?;
     }
+    if !columns.contains(&"job_url".to_string()) {
+        conn.execute("ALTER TABLE jobs ADD COLUMN job_url TEXT", [])?;
+    }
 
     // 3. Fix potential broken foreign keys in tailored_resumes (pointing to jobs_old)
     // This can happen if a previous migration renamed 'jobs' while foreign_keys was ON.
-    let tailored_sql: String = conn.query_row(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND name='tailored_resumes'",
-        [],
-        |row| row.get(0),
-    ).unwrap_or_default();
+    let tailored_sql: String = conn
+        .query_row(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='tailored_resumes'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or_default();
 
     if tailored_sql.contains("jobs_old") {
         println!("Fixing broken foreign key in 'tailored_resumes' table...");
-        
+
         conn.execute("PRAGMA foreign_keys=OFF", [])?;
-        
+
         let fix_result = (|| -> Result<()> {
             conn.execute("BEGIN TRANSACTION", [])?;
-            
+
             conn.execute("DROP TRIGGER IF EXISTS update_tailored_resumes_modtime", [])?;
-            conn.execute("ALTER TABLE tailored_resumes RENAME TO tailored_resumes_old", [])?;
-            
+            conn.execute(
+                "ALTER TABLE tailored_resumes RENAME TO tailored_resumes_old",
+                [],
+            )?;
+
             conn.execute(
                 "CREATE TABLE tailored_resumes (
                     id TEXT PRIMARY KEY,
@@ -240,7 +273,7 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
                 )",
                 [],
             )?;
-            
+
             conn.execute(
                 "INSERT INTO tailored_resumes (
                     id, job_id, base_resume_id, final_latex_content, 
@@ -251,16 +284,16 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
                 FROM tailored_resumes_old",
                 [],
             )?;
-            
+
             conn.execute("DROP TABLE tailored_resumes_old", [])?;
-            
+
             conn.execute(
                 "CREATE TRIGGER update_tailored_resumes_modtime 
                 AFTER UPDATE ON tailored_resumes 
                 BEGIN UPDATE tailored_resumes SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; END;",
                 [],
             )?;
-            
+
             conn.execute("COMMIT", [])?;
             Ok(())
         })();
@@ -269,16 +302,18 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
             println!("Failed to fix tailored_resumes: {}", e);
             let _ = conn.execute("ROLLBACK", []);
         }
-        
+
         conn.execute("PRAGMA foreign_keys=ON", [])?;
     }
 
     // 4. Final cleanup: Drop jobs_old if it somehow still exists
-    let jobs_old_exists: i32 = conn.query_row(
-        "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='jobs_old'",
-        [],
-        |row| row.get(0),
-    ).unwrap_or(0);
+    let jobs_old_exists: i32 = conn
+        .query_row(
+            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='jobs_old'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(0);
 
     if jobs_old_exists > 0 {
         println!("Cleaning up orphaned 'jobs_old' table...");

@@ -13,6 +13,7 @@ pub struct AppState {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_notification::init())
@@ -27,9 +28,9 @@ pub fn run() {
                 .path()
                 .app_local_data_dir()
                 .expect("could not resolve app local data path");
-            
+
             std::fs::create_dir_all(&local_data_dir).expect("Failed to create local data dir");
-            
+
             let salt_path = local_data_dir.join("salt.txt");
 
             app.handle()
@@ -64,7 +65,8 @@ pub fn run() {
             commands::resumes::update_resume,
             commands::resumes::delete_resume,
             commands::pdf::compile_resume_to_pdf,
-            commands::pdf::fix_latex_with_ai
+            commands::pdf::fix_latex_with_ai,
+            commands::pdf::refine_latex_with_ai
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

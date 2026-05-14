@@ -6,12 +6,13 @@ import { useJobsStore } from '../store/jobs';
 const router = useRouter();
 const jobsStore = useJobsStore();
 const rawJobDescription = ref('');
+const jobUrl = ref('');
 
 const handleParse = async () => {
   if (!rawJobDescription.value.trim()) return;
   
   try {
-    const slug = await jobsStore.parseNewJob(rawJobDescription.value);
+    const slug = await jobsStore.parseNewJob(rawJobDescription.value, jobUrl.value);
     // On success, instantly route them to the dynamic detail view for this job!
     router.push(`/job/${slug}`);
   } catch (e) {
@@ -29,6 +30,16 @@ const handleParse = async () => {
 
     <div class="editor-layout">
       <div class="input-section">
+        <div class="url-group">
+          <label>Job Listing URL (Optional)</label>
+          <input 
+            v-model="jobUrl" 
+            type="url" 
+            placeholder="https://linkedin.com/jobs/view/..."
+            class="url-input"
+          />
+        </div>
+
         <label>Paste Raw Job Description</label>
         <textarea 
           v-model="rawJobDescription" 
@@ -101,6 +112,24 @@ const handleParse = async () => {
   display: flex;
   flex-direction: column;
 }
+
+.url-group {
+  margin-bottom: 20px;
+}
+
+.url-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 16px;
+  color: var(--ink);
+  font-size: 0.95rem;
+  transition: 0.2s;
+  outline: none;
+}
+
+.url-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(11, 123, 107, 0.2); }
 
 label {
   color: var(--accent);

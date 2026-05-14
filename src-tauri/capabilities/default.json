@@ -18,6 +18,7 @@
     "dialog:default",
     "notification:default",
     "os:default",
-    "process:default"
+    "process:default",
+    "shell:default"
   ]
 }

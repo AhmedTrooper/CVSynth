@@ -1,8 +1,8 @@
-use rig::providers::{gemini, openai, groq, anthropic};
-use rig::completion::Prompt;
 use rig::client::CompletionClient;
-use serde::{Deserialize, Serialize};
+use rig::completion::Prompt;
+use rig::providers::{anthropic, gemini, groq, openai};
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]
 pub struct JobDetails {
@@ -17,32 +17,44 @@ pub struct JobDetails {
 pub async fn parse_job_description(
     provider: &str,
     model: &str,
-    api_key: &str, 
-    raw_jd: &str
+    api_key: &str,
+    raw_jd: &str,
 ) -> Result<JobDetails, String> {
     let model = model.trim();
     match provider {
         "gemini" => {
             let client = gemini::Client::new(api_key).map_err(|e| e.to_string())?;
             let extractor = client.extractor::<JobDetails>(model).build();
-            extractor.extract(raw_jd).await.map_err(|e| format!("Gemini AI Parsing Error: {}", e))
-        },
+            extractor
+                .extract(raw_jd)
+                .await
+                .map_err(|e| format!("Gemini AI Parsing Error: {}", e))
+        }
         "openai" => {
             let client = openai::Client::new(api_key).map_err(|e| e.to_string())?;
             let extractor = client.extractor::<JobDetails>(model).build();
-            extractor.extract(raw_jd).await.map_err(|e| format!("OpenAI Parsing Error: {}", e))
-        },
+            extractor
+                .extract(raw_jd)
+                .await
+                .map_err(|e| format!("OpenAI Parsing Error: {}", e))
+        }
         "groq" => {
             let client = groq::Client::new(api_key).map_err(|e| e.to_string())?;
             let extractor = client.extractor::<JobDetails>(model).build();
-            extractor.extract(raw_jd).await.map_err(|e| format!("Groq Parsing Error: {}", e))
-        },
+            extractor
+                .extract(raw_jd)
+                .await
+                .map_err(|e| format!("Groq Parsing Error: {}", e))
+        }
         "anthropic" => {
             let client = anthropic::Client::new(api_key).map_err(|e| e.to_string())?;
             let extractor = client.extractor::<JobDetails>(model).build();
-            extractor.extract(raw_jd).await.map_err(|e| format!("Anthropic Parsing Error: {}", e))
-        },
-        _ => Err(format!("Unsupported provider: {}", provider))
+            extractor
+                .extract(raw_jd)
+                .await
+                .map_err(|e| format!("Anthropic Parsing Error: {}", e))
+        }
+        _ => Err(format!("Unsupported provider: {}", provider)),
     }
 }
 
@@ -87,22 +99,87 @@ Please tailor the resume to match the job description. Return only the modified 
         "gemini" => {
             let client = gemini::Client::new(api_key).map_err(|e| e.to_string())?;
             let agent = client.agent(model).preamble(system_prompt).build();
-            agent.prompt(&user_prompt).await.map_err(|e| format!("Gemini AI Tailoring Error: {}", e))
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("Gemini AI Tailoring Error: {}", e))
+        }
+        "openai" => {
+            let client = openai::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("OpenAI Tailoring Error: {}", e))
+        }
+        "groq" => {
+            let client = groq::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("Groq Tailoring Error: {}", e))
+        }
+        "anthropic" => {
+            let client = anthropic::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("Anthropic Tailoring Error: {}", e))
+        }
+        _ => Err(format!("Unsupported provider: {}", provider)),
+    }
+}
+
+pub async fn refine_tailored_resume(
+    provider: &str,
+    model: &str,
+    api_key: &str,
+    current_latex: &str,
+    instruction: &str,
+) -> Result<String, String> {
+    let model = model.trim();
+    let system_prompt = r#"You are an expert LaTeX resume editor. Your task is to take an EXISTING tailored resume and apply specific refinements or formatting changes as requested by the user.
+
+Rules:
+1. Preserve all existing content and structure unless specifically asked to change it.
+2. Maintain valid LaTeX syntax at all times.
+3. Output ONLY the modified LaTeX code with no markdown, no explanations, no code fences.
+4. Ensure the output is a valid, compilable LaTeX document."#;
+
+    let user_prompt = format!(
+        r#"Current LaTeX Resume:
+{}
+
+Requested Refinement:
+{}
+
+Please apply the requested changes. Return only the updated LaTeX code."#,
+        current_latex,
+        instruction
+    );
+
+    match provider {
+        "gemini" => {
+            let client = gemini::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(system_prompt).build();
+            agent.prompt(&user_prompt).await.map_err(|e| format!("Gemini AI Refinement Error: {}", e))
         },
         "openai" => {
             let client = openai::Client::new(api_key).map_err(|e| e.to_string())?;
             let agent = client.agent(model).preamble(system_prompt).build();
-            agent.prompt(&user_prompt).await.map_err(|e| format!("OpenAI Tailoring Error: {}", e))
+            agent.prompt(&user_prompt).await.map_err(|e| format!("OpenAI Refinement Error: {}", e))
         },
         "groq" => {
             let client = groq::Client::new(api_key).map_err(|e| e.to_string())?;
             let agent = client.agent(model).preamble(system_prompt).build();
-            agent.prompt(&user_prompt).await.map_err(|e| format!("Groq Tailoring Error: {}", e))
+            agent.prompt(&user_prompt).await.map_err(|e| format!("Groq Refinement Error: {}", e))
         },
         "anthropic" => {
             let client = anthropic::Client::new(api_key).map_err(|e| e.to_string())?;
             let agent = client.agent(model).preamble(system_prompt).build();
-            agent.prompt(&user_prompt).await.map_err(|e| format!("Anthropic Tailoring Error: {}", e))
+            agent.prompt(&user_prompt).await.map_err(|e| format!("Anthropic Refinement Error: {}", e))
         },
         _ => Err(format!("Unsupported provider: {}", provider))
     }
@@ -132,31 +209,42 @@ Tectonic Error Logs:
 {}
 
 Please fix the LaTeX code so it compiles successfully. Return only the fixed LaTeX code."#,
-        broken_latex,
-        error_logs
+        broken_latex, error_logs
     );
 
     match provider {
         "gemini" => {
             let client = gemini::Client::new(api_key).map_err(|e| e.to_string())?;
             let agent = client.agent(model).preamble(system_prompt).build();
-            agent.prompt(&user_prompt).await.map_err(|e| format!("Gemini AI Fix Error: {}", e))
-        },
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("Gemini AI Fix Error: {}", e))
+        }
         "openai" => {
             let client = openai::Client::new(api_key).map_err(|e| e.to_string())?;
             let agent = client.agent(model).preamble(system_prompt).build();
-            agent.prompt(&user_prompt).await.map_err(|e| format!("OpenAI Fix Error: {}", e))
-        },
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("OpenAI Fix Error: {}", e))
+        }
         "groq" => {
             let client = groq::Client::new(api_key).map_err(|e| e.to_string())?;
             let agent = client.agent(model).preamble(system_prompt).build();
-            agent.prompt(&user_prompt).await.map_err(|e| format!("Groq Fix Error: {}", e))
-        },
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("Groq Fix Error: {}", e))
+        }
         "anthropic" => {
             let client = anthropic::Client::new(api_key).map_err(|e| e.to_string())?;
             let agent = client.agent(model).preamble(system_prompt).build();
-            agent.prompt(&user_prompt).await.map_err(|e| format!("Anthropic Fix Error: {}", e))
-        },
-        _ => Err(format!("Unsupported provider: {}", provider))
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("Anthropic Fix Error: {}", e))
+        }
+        _ => Err(format!("Unsupported provider: {}", provider)),
     }
 }

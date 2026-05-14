@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { invoke } from '@tauri-apps/api/core';
+import { save, message } from '@tauri-apps/plugin-dialog';
+import { writeFile } from '@tauri-apps/plugin-fs';
+import { open } from '@tauri-apps/plugin-shell';
 import { useSettingsStore } from '../store/settings';
 import { useResumesStore } from '../store/resumes';
 import { useJobsStore, Job } from '../store/jobs';
-import { useRouter } from 'vue-router';
 
 interface BaseResume {
   id: string;
@@ -106,15 +109,47 @@ const generateResume = async () => {
   }
 };
 
-import { save } from '@tauri-apps/plugin-dialog';
-import { writeFile } from '@tauri-apps/plugin-fs';
 
-// ... inside script setup ...
 const isDownloading = ref(false);
 const pdfBytesBuffer = ref<Uint8Array | null>(null);
 
 const isFixing = ref(false);
+const isRefining = ref(false);
+const refinementInstruction = ref('');
 const compilationError = ref<string | null>(null);
+
+const refineWithAi = async () => {
+  if (!generatedLatex.value || !refinementInstruction.value.trim()) return;
+  isRefining.value = true;
+  error.value = null;
+
+  try {
+    const apiKey = await settingsStore.getDecryptedKey();
+    if (!apiKey) throw new Error("API Key not found. Please set it in Settings.");
+
+    const provider = settingsStore.selectedAiProvider;
+    const model = settingsStore.selectedAiModel;
+
+    const refinedCode = await invoke<string>('refine_latex_with_ai', {
+      provider,
+      model,
+      apiKey,
+      currentLatex: generatedLatex.value,
+      instruction: refinementInstruction.value.trim()
+    });
+
+    generatedLatex.value = refinedCode;
+    refinementInstruction.value = ''; // Clear after success
+    error.value = "AI has refined the resume. Re-compiling...";
+    
+    await compilePdf();
+  } catch (err: any) {
+    console.error("AI Refinement Error:", err);
+    error.value = `AI Refinement failed: ${err.toString()}`;
+  } finally {
+    isRefining.value = false;
+  }
+};
 
 // Trigger PDF Compilation
 const compilePdf = async () => {
@@ -222,6 +257,17 @@ const downloadPdf = async () => {
   }
 };
 
+const openJobUrl = async () => {
+  if (jobDetails.value?.job_url) {
+    try {
+      await open(jobDetails.value.job_url);
+    } catch (err: any) {
+      console.error("Failed to open URL:", err);
+      error.value = `Failed to open URL: ${err.toString()}`;
+    }
+  }
+};
+
 const goBack = () => {
   router.push('/');
 };
@@ -272,6 +318,10 @@ const deleteJob = async () => {
           <div class="detail-row" v-if="jobDetails?.reference_name">
             <span class="label">Referral:</span>
             <span class="value">{{ jobDetails?.reference_name }}</span>
+          </div>
+          <div class="detail-row" v-if="jobDetails?.job_url">
+            <span class="label">Job Link:</span>
+            <button class="link-btn" @click="openJobUrl">Open in Browser ↗</button>
           </div>
         </div>
 
@@ -362,6 +412,22 @@ const deleteJob = async () => {
           <pre>{{ compilationError }}</pre>
         </div>
 
+        <div v-if="generatedLatex" class="refinement-panel">
+          <input 
+            v-model="refinementInstruction" 
+            placeholder="Apply a refinement (e.g., 'Make it 1 page', 'More focus on Python')..."
+            @keyup.enter="refineWithAi"
+            class="refine-input"
+          />
+          <button 
+            class="refine-btn" 
+            @click="refineWithAi" 
+            :disabled="isRefining || !refinementInstruction.trim()"
+          >
+            {{ isRefining ? '✨ Refining...' : 'Refine ✨' }}
+          </button>
+        </div>
+
         <textarea 
           v-model="generatedLatex" 
           class="code-editor" 
@@ -380,6 +446,22 @@ const deleteJob = async () => {
 .detail-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
 .detail-row .label { color: var(--muted); font-weight: 600; }
 .detail-row .value { color: var(--ink); font-weight: 700; }
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  transition: 0.2s;
+}
+
+.link-btn:hover {
+  color: #fff;
+}
 
 .raw-jd-preview {
   font-size: 0.85rem;
@@ -438,6 +520,41 @@ const deleteJob = async () => {
 .compilation-error-log header button { background: none; border: none; color: #ff6b6b; cursor: pointer; padding: 0 4px; }
 .compilation-error-log pre { margin: 0; padding: 12px; font-family: 'Monaco', monospace; font-size: 0.8rem; color: #fcc; white-space: pre-wrap; max-height: 120px; overflow-y: auto; }
 .download-btn:hover { background-color: var(--accent); color: white; }
+
+.refinement-panel {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 8px;
+  background: var(--surface-soft);
+  border-radius: 12px;
+  border: 1px dashed var(--accent);
+}
+
+.refine-input {
+  flex-grow: 1;
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  font-size: 0.9rem;
+  padding: 4px 8px;
+  outline: none;
+}
+
+.refine-btn {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: none;
+  border-radius: 8px;
+  padding: 6px 16px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.refine-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(32, 201, 151, 0.3); }
+.refine-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .code-editor { flex-grow: 1; background-color: var(--surface); color: var(--ink); font-family: 'Monaco', 'Menlo', monospace; padding: 14px; border: 1px solid var(--line); border-radius: 10px; resize: none; font-size: 0.9rem; min-height: 260px; }
 .code-editor:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(11, 123, 107, 0.2); }

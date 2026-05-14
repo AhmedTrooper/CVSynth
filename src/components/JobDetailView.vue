@@ -59,6 +59,12 @@ onMounted(async () => {
       resumesLoadError.value = 'No resume templates with LaTeX content found. Add LaTeX in Resume Templates.';
     }
     isLoadingResumes.value = false;
+
+    // 3. Fetch latest tailored resume if it exists
+    const latest = await invoke<string | null>('get_latest_tailored_resume', { jobId: props.id });
+    if (latest) {
+      generatedLatex.value = latest;
+    }
   } catch (err: any) {
     error.value = err.toString();
     isLoadingResumes.value = false;

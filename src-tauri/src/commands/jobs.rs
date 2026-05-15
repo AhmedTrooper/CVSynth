@@ -1,4 +1,5 @@
 use crate::ai::{self, JobDetails};
+use crate::commands::TailoredContent;
 use crate::AppState;
 use nanoid::nanoid;
 use serde::{Deserialize, Serialize};
@@ -267,25 +268,30 @@ pub async fn get_tailored_resume(state: State<'_, AppState>, id: String) -> Resu
 pub async fn get_latest_tailored_resume(
     state: State<'_, AppState>,
     job_id: String,
-) -> Result<Option<String>, String> {
+) -> Result<Option<TailoredContent>, String> {
     let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
     let conn = db_guard.as_mut().ok_or("Database connection lost")?;
 
     let mut stmt = conn
         .prepare(
-            "SELECT final_latex_content FROM tailored_resumes 
+            "SELECT id, final_latex_content FROM tailored_resumes 
          WHERE job_id = ?1 
          ORDER BY created_at DESC LIMIT 1",
         )
         .map_err(|e| e.to_string())?;
 
-    let content: Option<String> = match stmt.query_row([&job_id], |row| row.get(0)) {
+    let result: Option<TailoredContent> = match stmt.query_row([&job_id], |row| {
+        Ok(TailoredContent {
+            id: row.get(0)?,
+            content: row.get(1)?,
+        })
+    }) {
         Ok(v) => Some(v),
         Err(rusqlite::Error::QueryReturnedNoRows) => None,
         Err(e) => return Err(e.to_string()),
     };
 
-    Ok(content)
+    Ok(result)
 }
 
 #[tauri::command]

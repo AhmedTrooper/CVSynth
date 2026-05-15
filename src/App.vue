@@ -38,10 +38,10 @@ const handleExternalClick = (url: string) => {
 </script>
 
 <template>
-  <Titlebar />
+  <Titlebar class="desktop-only" />
   <div class="app-container">
     <aside class="sidebar">
-      <div class="logo-section">
+      <div class="logo-section mobile-only">
         <div class="logo-dot"></div>
       </div>
       
@@ -131,41 +131,71 @@ const handleExternalClick = (url: string) => {
   overflow: hidden;
 }
 
+.desktop-only {
+  display: flex !important;
+}
+
+.mobile-only {
+  display: none !important;
+}
+
 .sidebar {
   order: 2;
   background: var(--bg-accent);
   border-top: 1px solid var(--line);
   z-index: 100;
   display: flex;
+  align-items: center;
+  padding: 0 12px;
 }
 
 .logo-section {
-  display: none;
+  padding-right: 12px;
+  border-right: 1px solid var(--line);
+  margin-right: 4px;
+}
+
+.logo-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent);
 }
 
 .nav-menu {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  display: flex;
   width: 100%;
-  padding: 4px;
+  padding: 4px 0;
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+}
+
+.nav-menu::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 .nav-item {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 0;
+  padding: 8px 16px;
   color: var(--muted);
   text-decoration: none;
   transition: 0.15s;
   background: none;
   border: none;
   cursor: pointer;
-  width: 100%;
+  flex-shrink: 0;
 }
 
 .nav-divider {
-  display: none;
+  width: 1px;
+  height: 20px;
+  background: var(--line);
+  margin: 0 8px;
+  flex-shrink: 0;
 }
 
 .nav-item.external {
@@ -252,6 +282,22 @@ const handleExternalClick = (url: string) => {
   overflow-y: auto;
 }
 
+@media (max-width: 959px) {
+  .desktop-only {
+    display: none !important;
+  }
+  .mobile-only {
+    display: flex !important;
+  }
+  .app-container {
+    height: 100vh;
+    margin-top: 0;
+  }
+  .nav-divider {
+    display: block;
+  }
+}
+
 @media (min-width: 960px) {
   .flying-message {
     display: block;
@@ -268,19 +314,11 @@ const handleExternalClick = (url: string) => {
     border-top: none;
     border-right: 1px solid var(--line);
     padding: 12px 0;
+    align-items: center;
   }
 
   .logo-section {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 24px;
-  }
-
-  .logo-dot {
-    width: 6px;
-    height: 6px;
-    background: var(--accent);
-    border-radius: 50%;
+    display: none; /* Desktop uses titlebar logo */
   }
 
   .nav-menu {
@@ -288,10 +326,12 @@ const handleExternalClick = (url: string) => {
     flex-direction: column;
     gap: 8px;
     padding: 0;
+    overflow-x: visible;
   }
 
   .nav-divider {
     display: block;
+    width: auto;
     height: 1px;
     background: var(--line);
     margin: 8px 12px;

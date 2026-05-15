@@ -1,4 +1,5 @@
 use crate::commands::cover_letters::CoverLetterDetail;
+use crate::commands::downloads::DownloadRecord;
 use crate::commands::jobs::JobPayload;
 use crate::commands::resumes::ResumeDetail;
 use crate::AppState;
@@ -35,6 +36,7 @@ pub struct AppDataExport {
     pub base_cover_letters: Vec<CoverLetterDetail>,
     pub tailored_resumes: Vec<TailoredResumeExport>,
     pub tailored_cover_letters: Vec<TailoredCoverLetterExport>,
+    pub downloads: Vec<DownloadRecord>,
     pub compiler_state: Option<String>,
     pub exported_at: String,
 }
@@ -169,7 +171,29 @@ pub async fn export_all_data(state: State<'_, AppState>) -> Result<AppDataExport
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())?;
 
-    // 4. Fetch Compiler State
+    // 4. Fetch Downloads
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, filename, download_type, job_id, content_id, created_at FROM downloads",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let downloads = stmt
+        .query_map([], |row| {
+            Ok(DownloadRecord {
+                id: row.get(0)?,
+                filename: row.get(1)?,
+                download_type: row.get(2)?,
+                job_id: Some(row.get(3)?),
+                content_id: Some(row.get(4)?),
+                created_at: row.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    // 5. Fetch Compiler State
     let compiler_state: Option<String> = conn
         .query_row(
             "SELECT latex_content FROM compiler_state WHERE id = 1",
@@ -186,6 +210,7 @@ pub async fn export_all_data(state: State<'_, AppState>) -> Result<AppDataExport
         base_cover_letters,
         tailored_resumes,
         tailored_cover_letters,
+        downloads,
         compiler_state,
         exported_at: chrono::Local::now().to_rfc3339(),
     })
@@ -204,6 +229,8 @@ pub async fn import_data(
 
     if mode == "overwrite" {
         // Clear everything - order matters because of foreign keys
+        tx.execute("DELETE FROM downloads", [])
+            .map_err(|e| e.to_string())?;
         tx.execute("DELETE FROM tailored_cover_letters", [])
             .map_err(|e| e.to_string())?;
         tx.execute("DELETE FROM tailored_resumes", [])
@@ -352,7 +379,25 @@ pub async fn import_data(
         ).map_err(|e| e.to_string())?;
     }
 
-    // 4. Import Compiler State
+    // 4. Import Downloads
+    for download in data.downloads {
+        tx.execute(
+            "INSERT INTO downloads (id, filename, download_type, job_id, content_id, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+             ON CONFLICT(id) DO NOTHING",
+            [
+                &download.id,
+                &download.filename,
+                &download.download_type,
+                &download.job_id.unwrap_or_default(),
+                &download.content_id.unwrap_or_default(),
+                &download.created_at,
+            ],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
+    // 5. Import Compiler State
     if let Some(content) = data.compiler_state {
         tx.execute(
             "INSERT INTO compiler_state (id, latex_content) VALUES (1, ?1)

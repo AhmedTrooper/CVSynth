@@ -36,6 +36,11 @@ interface TemplateItem {
   name: string;
 }
 
+interface TailoredContent {
+  id: string;
+  content: string;
+}
+
 const router = useRouter();
 const settingsStore = useSettingsStore();
 const resumesStore = useResumesStore();
@@ -43,6 +48,10 @@ const clStore = useCoverLettersStore();
 const jobsStore = useJobsStore();
 
 const props = defineProps<{ id: string }>();
+
+// Tracking tailored IDs
+const tailoredResumeId = ref<string | null>(null);
+const tailoredClId = ref<string | null>(null);
 
 // Tooltip State
 const activeTooltip = ref<string | null>(null);
@@ -140,11 +149,17 @@ onMounted(async () => {
     isLoadingTemplates.value = false;
 
     // 3. Fetch latest tailored content
-    const latestResume = await invoke<string | null>('get_latest_tailored_resume', { jobId: props.id });
-    if (latestResume) resumeLatex.value = latestResume;
+    const latestResume = await invoke<TailoredContent | null>('get_latest_tailored_resume', { jobId: props.id });
+    if (latestResume) {
+      resumeLatex.value = latestResume.content;
+      tailoredResumeId.value = latestResume.id;
+    }
 
-    const latestCl = await invoke<string | null>('get_latest_tailored_cover_letter', { jobId: props.id });
-    if (latestCl) clLatex.value = latestCl;
+    const latestCl = await invoke<TailoredContent | null>('get_latest_tailored_cover_letter', { jobId: props.id });
+    if (latestCl) {
+      clLatex.value = latestCl.content;
+      tailoredClId.value = latestCl.id;
+    }
 
   } catch (err: any) {
     error.value = err.toString();
@@ -180,6 +195,7 @@ const generateContent = async () => {
         baseResumeId: selectedTemplate,
         customInstruction: resumeInstruction.value || null,
       });
+      tailoredResumeId.value = tailoredId;
       resumeLatex.value = await invoke<string>('get_tailored_resume', { id: tailoredId });
     } else {
       const tailoredId = await invoke<string>('tailor_cover_letter', {
@@ -190,6 +206,7 @@ const generateContent = async () => {
         baseClId: selectedTemplate,
         customInstruction: clInstruction.value || null,
       });
+      tailoredClId.value = tailoredId;
       clLatex.value = await invoke<string>('get_tailored_cover_letter', { id: tailoredId });
     }
   } catch (err: any) {
@@ -327,16 +344,32 @@ const downloadPdf = async () => {
   isDownloading.value = true;
   
   try {
-    const prefix = activeMode.value === 'resume' ? 'Resume' : 'CoverLetter';
-    const suggestedName = `${jobDetails.value?.company_name || 'Document'}_${prefix}_${jobDetails.value?.job_title || 'Tailored'}.pdf`.replace(/[^a-z0-9.]/gi, '_');
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}_${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
     
+    const typeLabel = activeMode.value === 'resume' ? 'resume' : 'cover_letter';
+    const defaultName = `${typeLabel}_${timestamp}.pdf`;
+
     const filePath = await save({
       filters: [{ name: 'PDF Document', extensions: ['pdf'] }],
-      defaultPath: suggestedName
+      defaultPath: defaultName
     });
 
     if (filePath) {
       await writeFile(filePath, activePdfBytes.value);
+      
+      const filename = filePath.split(/[/\\]/).pop() || defaultName;
+      const downloadType = activeMode.value === 'resume' ? 'tailored_resume' : 'tailored_cover_letter';
+      const contentId = activeMode.value === 'resume' ? tailoredResumeId.value : tailoredClId.value;
+
+      await invoke('record_download', {
+        filename,
+        downloadType,
+        jobId: jobDetails.value?.id,
+        contentId: contentId || null
+      });
+
+      await message('PDF saved successfully.', { title: 'Success', kind: 'info' });
     }
   } catch (err: any) {
     console.error("Download Error:", err);

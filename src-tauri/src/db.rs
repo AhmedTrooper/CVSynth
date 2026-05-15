@@ -109,6 +109,17 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
             latex_content TEXT NOT NULL,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
+
+        -- 6. Downloads Table
+        CREATE TABLE IF NOT EXISTS downloads (
+            id TEXT PRIMARY KEY,
+            filename TEXT NOT NULL,
+            download_type TEXT NOT NULL,
+            job_id TEXT,
+            content_id TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (job_id) REFERENCES jobs(id)
+        );
         "
     )?;
 

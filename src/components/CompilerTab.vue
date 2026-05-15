@@ -171,17 +171,33 @@ const downloadPdf = async () => {
   isDownloading.value = true;
   
   try {
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}_${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
+    const defaultName = `document_whole_${timestamp}.pdf`;
+
     const filePath = await save({
       filters: [{ name: 'PDF Document', extensions: ['pdf'] }],
-      defaultPath: 'document.pdf'
+      defaultPath: defaultName
     });
 
     if (filePath) {
       await writeFile(filePath, pdfBytesBuffer.value);
+      
+      // Extract filename from path
+      const filename = filePath.split(/[/\\]/).pop() || defaultName;
+      
+      await invoke('record_download', {
+        filename,
+        downloadType: 'compiler',
+        jobId: null,
+        contentId: null
+      });
+
       await message('PDF downloaded successfully.', { title: 'Success', kind: 'info' });
     }
   } catch (err: any) {
     console.error("Download Error:", err);
+    await message(err.toString(), { title: 'Download Failed', kind: 'error' });
   } finally {
     isDownloading.value = false;
   }

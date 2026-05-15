@@ -80,7 +80,9 @@ pub fn run() {
             commands::pdf::fix_latex_with_ai,
             commands::pdf::refine_latex_with_ai,
             commands::data::export_all_data,
-            commands::data::import_data
+            commands::data::import_data,
+            commands::downloads::record_download,
+            commands::downloads::get_downloads
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

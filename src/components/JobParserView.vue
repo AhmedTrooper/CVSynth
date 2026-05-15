@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useJobsStore } from '../store/jobs';
 import { Motion, AnimatePresence } from 'motion-v';
-import { ArrowLeft, Cpu, RotateCw } from '@lucide/vue';
+import { ArrowLeft, Cpu, RotateCw, AlertCircle } from '@lucide/vue';
 
 const router = useRouter();
 const jobsStore = useJobsStore();
@@ -19,8 +19,17 @@ const handleParse = async () => {
   try {
     const slug = await jobsStore.parseNewJob(rawJobDescription.value, jobUrl.value);
     router.push(`/job/${slug}`);
-  } catch (e) {
-    console.error(e);
+  } catch (err: any) {
+    console.error("Parsing failed:", err);
+    let errorMsg = "Extraction failed. ";
+    
+    if (err.toString().includes("fetch")) {
+      errorMsg += "The URL could not be reached or is blocked. Please paste the job description manually.";
+    } else {
+      errorMsg += "The AI couldn't identify job details from the provided content. Please ensure you've provided a valid job description.";
+    }
+    
+    jobsStore.error = errorMsg;
   }
 };
 </script>
@@ -48,6 +57,14 @@ const handleParse = async () => {
 
     <div class="workspace">
       <div class="input-panel">
+        <div class="manual-entry-banner">
+          <AlertCircle :size="18" class="banner-icon" />
+          <div class="banner-content">
+            <span class="banner-title">PRO TIP: BETTER RESULTS</span>
+            <p>Pasting the job description <strong>manually</strong> often provides more accurate tailoring than URL extraction.</p>
+          </div>
+        </div>
+
         <div class="field-group">
           <label>URL (OPTIONAL)</label>
           <input 
@@ -181,6 +198,42 @@ const handleParse = async () => {
   flex-direction: column;
   padding: 20px;
   gap: 20px;
+}
+
+.manual-entry-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  background: rgba(58, 134, 255, 0.1);
+  border: 1px solid rgba(58, 134, 255, 0.2);
+  border-radius: 12px;
+  margin-bottom: 8px;
+}
+
+.banner-icon {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.banner-title {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 900;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  margin-bottom: 2px;
+}
+
+.banner-content p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.banner-content strong {
+  color: var(--ink);
 }
 
 .field-group { display: flex; flex-direction: column; gap: 8px; }

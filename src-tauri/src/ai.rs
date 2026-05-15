@@ -1,12 +1,13 @@
 use rig::client::CompletionClient;
 use rig::completion::Prompt;
 use rig::providers::{anthropic, gemini, groq, openai};
-use scraper::{Html, Selector};
+use scraper::Html;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]
 pub struct JobDetails {
+    pub is_valid_job: bool,      // AI will set this to false if the content is not a job description
     pub job_title: String,
     pub company_name: String,
     pub work_model: String,      // Remote, Hybrid, On-site, Other
@@ -18,29 +19,20 @@ pub struct JobDetails {
 async fn fetch_url_content(url: &str) -> Result<String, String> {
     let client = reqwest::Client::builder()
         .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .timeout(std::time::Duration::from_secs(15))
         .build()
         .map_err(|e| e.to_string())?;
 
-    let resp = client.get(url).send().await.map_err(|e| format!("Failed to fetch URL: {}", e))?;
+    let resp = client.get(url).send().await.map_err(|e| format!("Failed to fetch URL: {}. Please ensure the link is correct and public.", e))?;
     let html = resp.text().await.map_err(|e| format!("Failed to read response body: {}", e))?;
 
     let document = Html::parse_document(&html);
-    
-    // Select body and get all text, joining with spaces
-    let selector = Selector::parse("body").map_err(|_| "Failed to parse body selector".to_string())?;
     let mut text_content = String::new();
     
-    if let Some(body) = document.select(&selector).next() {
-        for node in body.text() {
-            text_content.push_str(node);
-            text_content.push(' ');
-        }
-    } else {
-        // Fallback if no body, just get all text
-        for node in document.root_element().text() {
-            text_content.push_str(node);
-            text_content.push(' ');
-        }
+    // Iterate over all text nodes in the document
+    for node in document.root_element().text() {
+        text_content.push_str(node);
+        text_content.push(' ');
     }
 
     let cleaned = text_content
@@ -48,11 +40,18 @@ async fn fetch_url_content(url: &str) -> Result<String, String> {
         .collect::<Vec<_>>()
         .join(" ");
 
-    if cleaned.is_empty() {
-        return Err("Could not extract any text from the provided URL.".to_string());
+    if cleaned.len() < 100 {
+        return Err("The fetched page content seems too short to be a job description. Try copying the description manually.".to_string());
     }
 
-    Ok(cleaned)
+    // Limit text to avoid hitting context limits, but keep enough for JD
+    let limited = if cleaned.len() > 10000 {
+        cleaned.chars().take(10000).collect()
+    } else {
+        cleaned
+    };
+
+    Ok(limited)
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -79,12 +78,18 @@ pub async fn parse_job_description(
     }
 
     let model = model.trim();
+    
+    let prompt_prefix = "You are a job description extractor. Analyze the following text and extract structured details. 
+    IMPORTANT: If the text DOES NOT contain a job description (e.g., it's a login page, cookie notice, generic website content, or just noise), you MUST set 'is_valid_job' to false. Otherwise, set it to true.\n\nText to analyze:\n";
+
+    let full_prompt = format!("{}{}", prompt_prefix, input_text);
+
     let details = match provider {
         "gemini" => {
             let client = gemini::Client::new(api_key).map_err(|e| e.to_string())?;
             let extractor = client.extractor::<JobDetails>(model).build();
             extractor
-                .extract(&input_text)
+                .extract(&full_prompt)
                 .await
                 .map_err(|e| format!("Gemini AI Parsing Error: {}", e))?
         }
@@ -92,7 +97,7 @@ pub async fn parse_job_description(
             let client = openai::Client::new(api_key).map_err(|e| e.to_string())?;
             let extractor = client.extractor::<JobDetails>(model).build();
             extractor
-                .extract(&input_text)
+                .extract(&full_prompt)
                 .await
                 .map_err(|e| format!("OpenAI Parsing Error: {}", e))?
         }
@@ -100,7 +105,7 @@ pub async fn parse_job_description(
             let client = groq::Client::new(api_key).map_err(|e| e.to_string())?;
             let extractor = client.extractor::<JobDetails>(model).build();
             extractor
-                .extract(&input_text)
+                .extract(&full_prompt)
                 .await
                 .map_err(|e| format!("Groq Parsing Error: {}", e))?
         }
@@ -108,12 +113,16 @@ pub async fn parse_job_description(
             let client = anthropic::Client::new(api_key).map_err(|e| e.to_string())?;
             let extractor = client.extractor::<JobDetails>(model).build();
             extractor
-                .extract(&input_text)
+                .extract(&full_prompt)
                 .await
                 .map_err(|e| format!("Anthropic Parsing Error: {}", e))?
         }
         _ => return Err(format!("Unsupported provider: {}", provider)),
     };
+
+    if !details.is_valid_job {
+        return Err("The content provided (or fetched) does not appear to be a job description. Please paste the description manually.".to_string());
+    }
 
     Ok(JobParseResult {
         details,

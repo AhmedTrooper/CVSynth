@@ -132,6 +132,81 @@ Please tailor the resume to match the job description. Return only the modified 
     }
 }
 
+pub async fn tailor_latex_for_cover_letter(
+    provider: &str,
+    model: &str,
+    api_key: &str,
+    base_latex: &str,
+    raw_job_content: &str,
+    custom_instruction: Option<&str>,
+) -> Result<String, String> {
+    let model = model.trim();
+    let system_prompt = r#"You are an expert cover letter tailoring AI. Your task is to take a base LaTeX cover letter template and tailor it to match a specific job description. 
+    
+Rules:
+1. Only modify the cover letter content (e.g., recipient info, body paragraphs), NOT the structure or LaTeX commands unless necessary for content.
+2. Emphasize how the candidate's skills and experiences align with the job requirements.
+3. Maintain a professional, persuasive, and concise tone.
+4. Keep all original sections and formatting.
+5. Output ONLY valid LaTeX code with no markdown, no explanations, no code fences.
+6. Ensure the output is a valid, compilable LaTeX document.
+
+If custom instructions are provided, prioritize them."#;
+
+    let user_prompt = format!(
+        r#"Base LaTeX Cover Letter:
+{}
+
+Job Description:
+{}
+
+{}
+
+Please tailor the cover letter to match the job description. Return only the modified LaTeX code."#,
+        base_latex,
+        raw_job_content,
+        custom_instruction
+            .map(|ci| format!("Custom Instructions:\n{}", ci))
+            .unwrap_or_default()
+    );
+
+    match provider {
+        "gemini" => {
+            let client = gemini::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("Gemini AI Tailoring Error: {}", e))
+        }
+        "openai" => {
+            let client = openai::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("OpenAI Tailoring Error: {}", e))
+        }
+        "groq" => {
+            let client = groq::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("Groq Tailoring Error: {}", e))
+        }
+        "anthropic" => {
+            let client = anthropic::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("Anthropic Tailoring Error: {}", e))
+        }
+        _ => Err(format!("Unsupported provider: {}", provider)),
+    }
+}
+
 pub async fn refine_tailored_resume(
     provider: &str,
     model: &str,
@@ -156,32 +231,43 @@ Requested Refinement:
 {}
 
 Please apply the requested changes. Return only the updated LaTeX code."#,
-        current_latex,
-        instruction
+        current_latex, instruction
     );
 
     match provider {
         "gemini" => {
             let client = gemini::Client::new(api_key).map_err(|e| e.to_string())?;
             let agent = client.agent(model).preamble(system_prompt).build();
-            agent.prompt(&user_prompt).await.map_err(|e| format!("Gemini AI Refinement Error: {}", e))
-        },
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("Gemini AI Refinement Error: {}", e))
+        }
         "openai" => {
             let client = openai::Client::new(api_key).map_err(|e| e.to_string())?;
             let agent = client.agent(model).preamble(system_prompt).build();
-            agent.prompt(&user_prompt).await.map_err(|e| format!("OpenAI Refinement Error: {}", e))
-        },
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("OpenAI Refinement Error: {}", e))
+        }
         "groq" => {
             let client = groq::Client::new(api_key).map_err(|e| e.to_string())?;
             let agent = client.agent(model).preamble(system_prompt).build();
-            agent.prompt(&user_prompt).await.map_err(|e| format!("Groq Refinement Error: {}", e))
-        },
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("Groq Refinement Error: {}", e))
+        }
         "anthropic" => {
             let client = anthropic::Client::new(api_key).map_err(|e| e.to_string())?;
             let agent = client.agent(model).preamble(system_prompt).build();
-            agent.prompt(&user_prompt).await.map_err(|e| format!("Anthropic Refinement Error: {}", e))
-        },
-        _ => Err(format!("Unsupported provider: {}", provider))
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("Anthropic Refinement Error: {}", e))
+        }
+        _ => Err(format!("Unsupported provider: {}", provider)),
     }
 }
 

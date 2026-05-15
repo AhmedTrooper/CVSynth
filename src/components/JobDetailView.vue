@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { invoke } from '@tauri-apps/api/core';
 import { save, message, ask } from '@tauri-apps/plugin-dialog';
@@ -8,6 +8,7 @@ import { open } from '@tauri-apps/plugin-shell';
 import { Motion, AnimatePresence } from 'motion-v';
 import { useSettingsStore } from '../store/settings';
 import { useResumesStore } from '../store/resumes';
+import { useCoverLettersStore } from '../store/cover_letters';
 import { useJobsStore, Job } from '../store/jobs';
 
 import { 
@@ -22,15 +23,15 @@ import {
   RotateCw,
   Info,
   ListChecks,
-  Target,
   Settings,
-  FileCode,
   Briefcase,
   Layers,
-  Activity
+  Activity,
+  Mail,
+  FileText
 } from '@lucide/vue';
 
-interface BaseResume {
+interface TemplateItem {
   id: string;
   name: string;
 }
@@ -38,6 +39,7 @@ interface BaseResume {
 const router = useRouter();
 const settingsStore = useSettingsStore();
 const resumesStore = useResumesStore();
+const clStore = useCoverLettersStore();
 const jobsStore = useJobsStore();
 
 const props = defineProps<{ id: string }>();
@@ -45,64 +47,119 @@ const props = defineProps<{ id: string }>();
 // Tooltip State
 const activeTooltip = ref<string | null>(null);
 
-// State
+// Global State
 const isLoading = ref(true);
 const isGenerating = ref(false);
 const isCompilingPDF = ref(false);
 const error = ref<string | null>(null);
-const selectedStandardResume = ref<string | null>(null);
-const customInstruction = ref('');
-const generatedLatex = ref('');
-const pdfUrl = ref<string | null>(null);
-
-// Data
+const activeMode = ref<'resume' | 'cl'>('resume');
 const jobDetails = ref<Job | null>(null);
-const standardResumes = ref<BaseResume[]>([]);
-const resumesLoadError = ref<string | null>(null);
-const isLoadingResumes = ref(false);
 
-// Load job details and base resumes on mount
+// Resume Specific State
+const resumeSelectedId = ref<string | null>(null);
+const resumeInstruction = ref('');
+const resumeLatex = ref('');
+const resumePdfUrl = ref<string | null>(null);
+const resumePdfBytes = ref<Uint8Array | null>(null);
+const resumeCompError = ref<string | null>(null);
+
+// Cover Letter Specific State
+const clSelectedId = ref<string | null>(null);
+const clInstruction = ref('');
+const clLatex = ref('');
+const clPdfUrl = ref<string | null>(null);
+const clPdfBytes = ref<Uint8Array | null>(null);
+const clCompError = ref<string | null>(null);
+
+// Common Editor/Preview State (Active)
+const isDownloading = ref(false);
+const isFixing = ref(false);
+const isRefining = ref(false);
+const refinementInstruction = ref('');
+
+// Computed bindings for active mode
+const activeLatex = computed({
+  get: () => activeMode.value === 'resume' ? resumeLatex.value : clLatex.value,
+  set: (val) => {
+    if (activeMode.value === 'resume') resumeLatex.value = val;
+    else clLatex.value = val;
+  }
+});
+
+const activePdfUrl = computed(() => activeMode.value === 'resume' ? resumePdfUrl.value : clPdfUrl.value);
+const activeCompError = computed({
+  get: () => activeMode.value === 'resume' ? resumeCompError.value : clCompError.value,
+  set: (val) => {
+    if (activeMode.value === 'resume') resumeCompError.value = val;
+    else clCompError.value = val;
+  }
+});
+
+const activePdfBytes = computed(() => activeMode.value === 'resume' ? resumePdfBytes.value : clPdfBytes.value);
+
+// Template data
+const standardResumes = ref<TemplateItem[]>([]);
+const standardCls = ref<TemplateItem[]>([]);
+const isLoadingTemplates = ref(false);
+
+// Load job details and base templates on mount
 onMounted(async () => {
   try {
     // 1. Fetch job details from backend
     jobDetails.value = await jobsStore.getJobById(props.id);
-    customInstruction.value = jobDetails.value.custom_instruction || '';
+    resumeInstruction.value = jobDetails.value.custom_instruction || '';
+    clInstruction.value = jobDetails.value.custom_instruction || '';
     
-    // 2. Load base resumes from store
-    isLoadingResumes.value = true;
+    // 2. Load templates
+    isLoadingTemplates.value = true;
+    
+    // Resume Templates
     await resumesStore.loadAllResumes();
-    const withContent: BaseResume[] = [];
-    for (const resume of resumesStore.resumes) {
-      const detail = await resumesStore.getResumeById(resume.id);
+    const withResumeContent: TemplateItem[] = [];
+    for (const r of resumesStore.resumes) {
+      const detail = await resumesStore.getResumeById(r.id);
       if (detail.latex_content && detail.latex_content.trim().length > 0) {
-        withContent.push({ id: resume.id, name: resume.name });
+        withResumeContent.push({ id: r.id, name: r.name });
       }
     }
-    standardResumes.value = withContent;
-    if (standardResumes.value.length > 0) {
-      selectedStandardResume.value = standardResumes.value[0].id;
-    }
-    if (!standardResumes.value.length) {
-      resumesLoadError.value = 'No resume templates with LaTeX content found. Add LaTeX in Resume Templates.';
-    }
-    isLoadingResumes.value = false;
+    standardResumes.value = withResumeContent;
+    if (standardResumes.value.length > 0) resumeSelectedId.value = standardResumes.value[0].id;
 
-    // 3. Fetch latest tailored resume if it exists
-    const latest = await invoke<string | null>('get_latest_tailored_resume', { jobId: props.id });
-    if (latest) {
-      generatedLatex.value = latest;
+    // Cover Letter Templates
+    await clStore.loadAllCoverLetters();
+    const withClContent: TemplateItem[] = [];
+    for (const c of clStore.coverLetters) {
+      const detail = await clStore.getCoverLetterById(c.id);
+      if (detail.latex_content && detail.latex_content.trim().length > 0) {
+        withClContent.push({ id: c.id, name: c.name });
+      }
     }
+    standardCls.value = withClContent;
+    if (standardCls.value.length > 0) clSelectedId.value = standardCls.value[0].id;
+
+    isLoadingTemplates.value = false;
+
+    // 3. Fetch latest tailored content
+    const latestResume = await invoke<string | null>('get_latest_tailored_resume', { jobId: props.id });
+    if (latestResume) resumeLatex.value = latestResume;
+
+    const latestCl = await invoke<string | null>('get_latest_tailored_cover_letter', { jobId: props.id });
+    if (latestCl) clLatex.value = latestCl;
+
   } catch (err: any) {
     error.value = err.toString();
-    isLoadingResumes.value = false;
+    isLoadingTemplates.value = false;
   } finally {
     isLoading.value = false;
   }
 });
 
 // Trigger AI Generation
-const generateResume = async () => {
-  if (!jobDetails.value || !selectedStandardResume.value) return;
+const generateContent = async () => {
+  const isResume = activeMode.value === 'resume';
+  const selectedTemplate = isResume ? resumeSelectedId.value : clSelectedId.value;
+  
+  if (!jobDetails.value || !selectedTemplate) return;
   
   isGenerating.value = true;
   error.value = null;
@@ -114,17 +171,27 @@ const generateResume = async () => {
     const provider = settingsStore.selectedAiProvider;
     const model = settingsStore.selectedAiModel;
 
-    const tailoredId = await invoke<string>('tailor_resume', {
-      provider,
-      model,
-      apiKey: apiKey,
-      jobId: props.id,
-      baseResumeId: selectedStandardResume.value,
-      customInstruction: customInstruction.value || null,
-    });
-    
-    // Fetch the generated LaTeX content by tailored_id
-    generatedLatex.value = await invoke<string>('get_tailored_resume', { id: tailoredId });
+    if (isResume) {
+      const tailoredId = await invoke<string>('tailor_resume', {
+        provider,
+        model,
+        apiKey,
+        jobId: props.id,
+        baseResumeId: selectedTemplate,
+        customInstruction: resumeInstruction.value || null,
+      });
+      resumeLatex.value = await invoke<string>('get_tailored_resume', { id: tailoredId });
+    } else {
+      const tailoredId = await invoke<string>('tailor_cover_letter', {
+        provider,
+        model,
+        apiKey,
+        jobId: props.id,
+        baseClId: selectedTemplate,
+        customInstruction: clInstruction.value || null,
+      });
+      clLatex.value = await invoke<string>('get_tailored_cover_letter', { id: tailoredId });
+    }
   } catch (err: any) {
     console.error("Tailoring Error:", err);
     error.value = err.toString();
@@ -133,17 +200,9 @@ const generateResume = async () => {
   }
 };
 
-
-const isDownloading = ref(false);
-const pdfBytesBuffer = ref<Uint8Array | null>(null);
-
-const isFixing = ref(false);
-const isRefining = ref(false);
-const refinementInstruction = ref('');
-const compilationError = ref<string | null>(null);
-
 const refineWithAi = async () => {
-  if (!generatedLatex.value || !refinementInstruction.value.trim()) return;
+  if (!activeLatex.value || !refinementInstruction.value.trim() || isRefining.value) return;
+  
   isRefining.value = true;
   error.value = null;
 
@@ -158,13 +217,13 @@ const refineWithAi = async () => {
       provider,
       model,
       apiKey,
-      currentLatex: generatedLatex.value,
+      currentLatex: activeLatex.value,
       instruction: refinementInstruction.value.trim()
     });
 
-    generatedLatex.value = refinedCode;
-    refinementInstruction.value = ''; // Clear after success
-    error.value = "AI has refined the resume. Re-compiling...";
+    activeLatex.value = refinedCode;
+    refinementInstruction.value = '';
+    error.value = `AI has refined the ${activeMode.value}. Re-compiling...`;
     
     await compilePdf();
   } catch (err: any) {
@@ -177,55 +236,63 @@ const refineWithAi = async () => {
 
 // Trigger PDF Compilation
 const compilePdf = async () => {
-  if (!generatedLatex.value) return;
+  if (!activeLatex.value) return;
+  
   isCompilingPDF.value = true;
   error.value = null;
-  compilationError.value = null;
+  activeCompError.value = null;
   
   try {
     const pdfBytes = await invoke<number[]>('compile_resume_to_pdf', { 
-      latexCode: generatedLatex.value 
+      latexCode: activeLatex.value 
     });
     
-    // Store bytes for downloading later
-    pdfBytesBuffer.value = new Uint8Array(pdfBytes);
+    const bytes = new Uint8Array(pdfBytes);
+    const blob = new Blob([bytes], { type: 'application/pdf' });
     
-    // Convert byte array to Blob and then to a URL for preview
-    const blob = new Blob([pdfBytesBuffer.value], { type: 'application/pdf' });
-    
-    // Revoke old URL if it exists to avoid memory leaks
-    if (pdfUrl.value) {
-      URL.revokeObjectURL(pdfUrl.value);
+    if (activeMode.value === 'resume') {
+      resumePdfBytes.value = bytes;
+      if (resumePdfUrl.value) URL.revokeObjectURL(resumePdfUrl.value);
+      resumePdfUrl.value = URL.createObjectURL(blob);
+    } else {
+      clPdfBytes.value = bytes;
+      if (clPdfUrl.value) URL.revokeObjectURL(clPdfUrl.value);
+      clPdfUrl.value = URL.createObjectURL(blob);
     }
-    
-    pdfUrl.value = URL.createObjectURL(blob);
 
-    // Auto-save on successful compilation
-    await saveLatexContent();
+    await saveLatexContent(true); // Silent save after successful compilation
   } catch (err: any) {
     console.error("PDF Compilation Error:", err);
-    compilationError.value = err.toString();
+    activeCompError.value = err.toString();
     error.value = "LaTeX Compilation Failed. You can try 'AI Fix' or manually edit and Save.";
   } finally {
     isCompilingPDF.value = false;
   }
 };
 
-const saveLatexContent = async () => {
+const saveLatexContent = async (silent = false) => {
   try {
-    await invoke('update_tailored_resume', {
-      jobId: props.id,
-      latexContent: generatedLatex.value
-    });
-    await message('Resume content saved successfully.', { title: 'Success', kind: 'info' });
+    if (activeMode.value === 'resume') {
+      await invoke('update_tailored_resume', {
+        jobId: props.id,
+        latexContent: resumeLatex.value
+      });
+    } else {
+      await invoke('update_tailored_cover_letter', {
+        jobId: props.id,
+        latexContent: clLatex.value
+      });
+    }
+    if (!silent) await message('Content saved successfully.', { title: 'Success', kind: 'info' });
   } catch (err: any) {
     console.error("Save Error:", err);
-    error.value = `Failed to save changes: ${err.toString()}`;
+    if (!silent) error.value = `Failed to save changes: ${err.toString()}`;
   }
 };
 
 const fixWithAi = async () => {
-  if (!generatedLatex.value || !compilationError.value || isFixing.value) return;
+  if (!activeLatex.value || !activeCompError.value || isFixing.value) return;
+  
   isFixing.value = true;
   error.value = null;
 
@@ -240,14 +307,12 @@ const fixWithAi = async () => {
       provider,
       model,
       apiKey,
-      brokenLatex: generatedLatex.value,
-      errorLogs: compilationError.value
+      brokenLatex: activeLatex.value,
+      errorLogs: activeCompError.value
     });
 
-    generatedLatex.value = fixedCode;
+    activeLatex.value = fixedCode;
     error.value = "AI has suggested a fix. Trying to re-compile...";
-    
-    // Automatically re-compile with the fixed code
     await compilePdf();
   } catch (err: any) {
     console.error("AI Fix Error:", err);
@@ -258,11 +323,12 @@ const fixWithAi = async () => {
 };
 
 const downloadPdf = async () => {
-  if (!pdfBytesBuffer.value) return;
+  if (!activePdfBytes.value) return;
   isDownloading.value = true;
   
   try {
-    const suggestedName = `${jobDetails.value?.company_name || 'Resume'}_${jobDetails.value?.job_title || 'Tailored'}.pdf`.replace(/[^a-z0-9.]/gi, '_');
+    const prefix = activeMode.value === 'resume' ? 'Resume' : 'CoverLetter';
+    const suggestedName = `${jobDetails.value?.company_name || 'Document'}_${prefix}_${jobDetails.value?.job_title || 'Tailored'}.pdf`.replace(/[^a-z0-9.]/gi, '_');
     
     const filePath = await save({
       filters: [{ name: 'PDF Document', extensions: ['pdf'] }],
@@ -270,8 +336,7 @@ const downloadPdf = async () => {
     });
 
     if (filePath) {
-      await writeFile(filePath, pdfBytesBuffer.value);
-      // Optional: show a success message or notification
+      await writeFile(filePath, activePdfBytes.value);
     }
   } catch (err: any) {
     console.error("Download Error:", err);
@@ -292,9 +357,7 @@ const openJobUrl = async () => {
   }
 };
 
-const goBack = () => {
-  router.push('/');
-};
+const goBack = () => router.push('/');
 
 const updateStatus = async (newStatus: string) => {
   try {
@@ -338,7 +401,7 @@ const deleteJob = async () => {
         <div class="ai-loader-content">
           <RotateCw :size="48" class="spinner ai-spinner" />
           <h2 class="ai-loader-title">
-            {{ isGenerating ? 'TAILORING RESUME...' : isFixing ? 'DEBUGGING LATEX...' : 'REFINING CONTENT...' }}
+            {{ isGenerating ? (activeMode === 'resume' ? 'TAILORING RESUME...' : 'CRAFTING COVER LETTER...') : isFixing ? 'DEBUGGING LATEX...' : 'REFINING CONTENT...' }}
           </h2>
           <p class="ai-loader-subtitle">The intelligence engine is processing your request.</p>
         </div>
@@ -478,43 +541,46 @@ const deleteJob = async () => {
           </ul>
         </div>
 
-        <div class="section scroll-section" v-if="jobDetails?.core_responsibilities">
-          <div class="section-header-icon" @mouseenter="activeTooltip = 'res-sec'" @mouseleave="activeTooltip = null">
-            <Target :size="16" />
-            <AnimatePresence>
-              <Motion v-if="activeTooltip === 'res-sec'" class="flying-message sidebar-tooltip" :initial="{ opacity: 0, x: 5 }" :animate="{ opacity: 1, x: 12 }">Responsibilities</Motion>
-            </AnimatePresence>
-          </div>
-          <ul class="tight-list">
-            <li v-for="res in JSON.parse(jobDetails.core_responsibilities)" :key="res">{{ res }}</li>
-          </ul>
-        </div>
-
         <div class="section footer-section">
           <div class="section-header-icon" @mouseenter="activeTooltip = 'config-sec'" @mouseleave="activeTooltip = null">
             <Settings :size="16" />
             <AnimatePresence>
-              <Motion v-if="activeTooltip === 'config-sec'" class="flying-message sidebar-tooltip" :initial="{ opacity: 0, x: 5 }" :animate="{ opacity: 1, x: 12 }">Configuration</Motion>
+              <Motion v-if="activeTooltip === 'config-sec'" class="flying-message sidebar-tooltip" :initial="{ opacity: 0, x: 5 }" :animate="{ opacity: 1, x: 12 }">Configuration ({{ activeMode === 'resume' ? 'Resume' : 'CL' }})</Motion>
             </AnimatePresence>
           </div>
+          
           <div class="form-group">
             <label>Base Template</label>
-            <select v-model="selectedStandardResume" class="compact-select">
+            <select v-if="activeMode === 'resume'" v-model="resumeSelectedId" class="compact-select">
               <option v-for="resume in standardResumes" :key="resume.id" :value="resume.id">
                 {{ resume.name }}
               </option>
             </select>
+            <select v-else v-model="clSelectedId" class="compact-select">
+              <option v-for="cl in standardCls" :key="cl.id" :value="cl.id">
+                {{ cl.name }}
+              </option>
+            </select>
           </div>
+
           <div class="form-group">
             <label>Tailor Logic</label>
             <textarea 
-              v-model="customInstruction" 
+              v-if="activeMode === 'resume'"
+              v-model="resumeInstruction" 
               class="compact-textarea" 
-              placeholder="Custom tailoring rules..."
+              placeholder="Resume tailoring rules..."
+            ></textarea>
+            <textarea 
+              v-else
+              v-model="clInstruction" 
+              class="compact-textarea" 
+              placeholder="Cover letter rules..."
             ></textarea>
           </div>
+
           <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'run-intelligence'" @mouseleave="activeTooltip = null">
-            <button class="btn-accent w-full" @click="generateResume" :disabled="isGenerating || !selectedStandardResume">
+            <button class="btn-accent w-full" @click="generateContent" :disabled="isGenerating || (activeMode === 'resume' ? !resumeSelectedId : !clSelectedId)">
               <Play v-if="!isGenerating" :size="14" />
               <RotateCw v-else :size="14" class="spinner" />
             </button>
@@ -537,17 +603,38 @@ const deleteJob = async () => {
       <div class="panel main-panel">
         <div class="panel-tabs">
           <div class="left-tabs">
-            <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'source-tab'" @mouseleave="activeTooltip = null">
-              <button class="tab active"><FileCode :size="14" /></button>
+            <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'resume-mode'" @mouseleave="activeTooltip = null">
+              <button 
+                class="tab-btn-mode" 
+                :class="{ active: activeMode === 'resume' }" 
+                @click="activeMode = 'resume'"
+              >
+                <FileText :size="14" />
+                <span>RESUME</span>
+              </button>
               <AnimatePresence>
-                <Motion v-if="activeTooltip === 'source-tab'" class="flying-message tab-tooltip" :initial="{ opacity: 0, y: 5 }" :animate="{ opacity: 1, y: 0 }">Source Code</Motion>
+                <Motion v-if="activeTooltip === 'resume-mode'" class="flying-message tab-tooltip" :initial="{ opacity: 0, y: 5 }" :animate="{ opacity: 1, y: 0 }">Resume Workspace</Motion>
               </AnimatePresence>
             </div>
-            <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'save-latex'" @mouseleave="activeTooltip = null">
-              <button class="tab-btn" @click="saveLatexContent"><Save :size="14" /></button>
+            <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'cl-mode'" @mouseleave="activeTooltip = null">
+              <button 
+                class="tab-btn-mode" 
+                :class="{ active: activeMode === 'cl' }" 
+                @click="activeMode = 'cl'"
+              >
+                <Mail :size="14" />
+                <span>COVER LETTER</span>
+              </button>
+              <AnimatePresence>
+                <Motion v-if="activeTooltip === 'cl-mode'" class="flying-message tab-tooltip" :initial="{ opacity: 0, y: 5 }" :animate="{ opacity: 1, y: 0 }">Cover Letter Workspace</Motion>
+              </AnimatePresence>
+            </div>
+            <div class="divider"></div>
+            <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'save-content'" @mouseleave="activeTooltip = null">
+              <button class="tab-btn" @click="saveLatexContent(false)"><Save :size="14" /></button>
               <AnimatePresence>
                 <Motion
-                  v-if="activeTooltip === 'save-latex'"
+                  v-if="activeTooltip === 'save-content'"
                   :initial="{ opacity: 0, y: 5, scale: 0.9 }"
                   :animate="{ opacity: 1, y: 0, scale: 1 }"
                   :exit="{ opacity: 0, y: 5, scale: 0.9 }"
@@ -561,7 +648,7 @@ const deleteJob = async () => {
           </div>
           <div class="right-tabs">
             <AnimatePresence>
-              <div class="btn-tooltip-wrapper" v-if="compilationError" @mouseenter="activeTooltip = 'ai-fix'" @mouseleave="activeTooltip = null">
+              <div class="btn-tooltip-wrapper" v-if="activeCompError" @mouseenter="activeTooltip = 'ai-fix'" @mouseleave="activeTooltip = null">
                 <Motion
                   :initial="{ scale: 0.9, opacity: 0 }"
                   :animate="{ scale: 1, opacity: 1 }"
@@ -586,7 +673,7 @@ const deleteJob = async () => {
               </div>
             </AnimatePresence>
             <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'build-pdf'" @mouseleave="activeTooltip = null">
-              <button class="tab-btn accent-btn" @click="compilePdf" :disabled="!generatedLatex || isCompilingPDF">
+              <button class="tab-btn accent-btn" @click="compilePdf" :disabled="!activeLatex || isCompilingPDF">
                 <Hammer v-if="!isCompilingPDF" :size="14" />
                 <RotateCw v-else :size="14" class="spinner" />
               </button>
@@ -603,7 +690,7 @@ const deleteJob = async () => {
                 </Motion>
               </AnimatePresence>
             </div>
-            <div class="btn-tooltip-wrapper" v-if="pdfBytesBuffer" @mouseenter="activeTooltip = 'export-pdf'" @mouseleave="activeTooltip = null">
+            <div class="btn-tooltip-wrapper" v-if="activePdfBytes" @mouseenter="activeTooltip = 'export-pdf'" @mouseleave="activeTooltip = null">
               <button class="tab-btn" @click="downloadPdf" :disabled="isDownloading">
                 <Download v-if="!isDownloading" :size="14" />
                 <RotateCw v-else :size="14" class="spinner" />
@@ -626,7 +713,7 @@ const deleteJob = async () => {
 
         <AnimatePresence>
           <Motion
-            v-if="compilationError"
+            v-if="activeCompError"
             :initial="{ height: 0 }"
             :animate="{ height: 'auto' }"
             :exit="{ height: 0 }"
@@ -634,18 +721,18 @@ const deleteJob = async () => {
           >
             <header>
               <span>COMPILATION ERROR</span>
-              <button @click="compilationError = null">✕</button>
+              <button @click="activeCompError = null">✕</button>
             </header>
-            <pre>{{ compilationError }}</pre>
+            <pre>{{ activeCompError }}</pre>
           </Motion>
         </AnimatePresence>
 
         <div class="editor-container">
-          <textarea v-model="generatedLatex" class="native-editor" spellcheck="false"></textarea>
+          <textarea v-model="activeLatex" class="native-editor" spellcheck="false"></textarea>
           
           <AnimatePresence>
             <Motion 
-              v-if="generatedLatex"
+              v-if="activeLatex"
               class="refinement-bar"
               :initial="{ opacity: 0, y: -10, x: '-50%' }"
               :animate="{ opacity: 1, y: 0, x: '-50%' }"
@@ -653,7 +740,7 @@ const deleteJob = async () => {
             >
               <input 
                 v-model="refinementInstruction" 
-                placeholder="Refine tailored resume (e.g. 'Shorten summary')..."
+                :placeholder="`Refine tailored ${activeMode === 'resume' ? 'resume' : 'cover letter'}...`"
                 @keyup.enter="refineWithAi"
               />
               <button @click="refineWithAi" :disabled="isRefining">
@@ -663,8 +750,8 @@ const deleteJob = async () => {
           </AnimatePresence>
         </div>
 
-        <div v-if="pdfUrl" class="preview-pane">
-          <iframe :src="pdfUrl"></iframe>
+        <div v-if="activePdfUrl" class="preview-pane">
+          <iframe :src="activePdfUrl"></iframe>
         </div>
       </div>
     </div>
@@ -970,6 +1057,50 @@ const deleteJob = async () => {
   background: var(--bg);
   border: none;
   border-top: 1px solid var(--accent);
+}
+
+.tab-btn-mode {
+  height: 32px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+  letter-spacing: 0.05em;
+  position: relative;
+}
+
+.tab-btn-mode.active {
+  color: var(--ink);
+  background: var(--bg);
+}
+
+.tab-btn-mode.active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--accent);
+}
+
+.tab-btn-mode:hover:not(.active) {
+  color: var(--ink);
+  background: var(--surface-soft);
+}
+
+.divider {
+  width: 1px;
+  height: 16px;
+  background: var(--line);
+  margin: 0 8px;
 }
 
 .tab-btn {

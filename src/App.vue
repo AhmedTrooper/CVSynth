@@ -7,6 +7,7 @@ import {
   Home, 
   Briefcase, 
   FileText, 
+  Mail,
   Settings, 
   Code, 
   Video,
@@ -17,7 +18,8 @@ import {
 const tabs = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/jobs', label: 'Jobs', icon: Briefcase },
-  { path: '/resumes', label: 'Templates', icon: FileText },
+  { path: '/resumes', label: 'Resume Templates', icon: FileText },
+  { path: '/cover-letters', label: 'CL Templates', icon: Mail },
   { path: '/compiler', label: 'Compiler', icon: Cpu },
   { path: '/settings', label: 'Settings', icon: Settings },
   { path: '/about', label: 'About', icon: Info },

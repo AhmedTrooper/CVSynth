@@ -222,11 +222,8 @@ pub async fn update_job_status(
     let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
     let conn = db_guard.as_mut().ok_or("Database connection lost")?;
 
-    conn.execute(
-        "UPDATE jobs SET status = ?1 WHERE id = ?2",
-        [&status, &id],
-    )
-    .map_err(|e| format!("Database error: {}", e))?;
+    conn.execute("UPDATE jobs SET status = ?1 WHERE id = ?2", [&status, &id])
+        .map_err(|e| format!("Database error: {}", e))?;
 
     Ok(())
 }

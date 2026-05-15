@@ -4,6 +4,8 @@ import SettingsTab from '../components/SettingsTab.vue';
 import JobDetailView from '../components/JobDetailView.vue';
 import ResumesTab from '../components/ResumesTab.vue';
 import ResumeDetailView from '../components/ResumeDetailView.vue';
+import CoverLettersTab from '../components/CoverLettersTab.vue';
+import CoverLetterDetailView from '../components/CoverLetterDetailView.vue';
 import CompilerTab from '../components/CompilerTab.vue';
 import AboutTab from '../components/AboutTab.vue';
 
@@ -34,6 +36,11 @@ const routes = [
     component: ResumesTab
   },
   {
+    path: '/cover-letters',
+    name: 'CoverLetters',
+    component: CoverLettersTab
+  },
+  {
     path: '/jobs',
     name: 'Jobs',
     component: () => import('../components/JobsTab.vue')
@@ -42,6 +49,12 @@ const routes = [
     path: '/resume/:id',
     name: 'ResumeDetail',
     component: ResumeDetailView,
+    props: true
+  },
+  {
+    path: '/cover-letter/:id',
+    name: 'CoverLetterDetail',
+    component: CoverLetterDetailView,
     props: true
   },
   { 

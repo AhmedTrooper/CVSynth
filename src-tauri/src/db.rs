@@ -36,6 +36,19 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
             AFTER UPDATE ON base_resumes 
             BEGIN UPDATE base_resumes SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; END;
 
+        -- 2b. Base Cover Letters Table
+        CREATE TABLE IF NOT EXISTS base_cover_letters (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            category TEXT NOT NULL,
+            latex_content TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER IF NOT EXISTS update_base_cover_letters_modtime 
+            AFTER UPDATE ON base_cover_letters 
+            BEGIN UPDATE base_cover_letters SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; END;
+
         -- 3. Jobs Table
         CREATE TABLE IF NOT EXISTS jobs (
             id TEXT PRIMARY KEY,
@@ -73,6 +86,22 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
         CREATE TRIGGER IF NOT EXISTS update_tailored_resumes_modtime 
             AFTER UPDATE ON tailored_resumes 
             BEGIN UPDATE tailored_resumes SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; END;
+
+        -- 4b. Tailored Cover Letters Table (Generated Output)
+        CREATE TABLE IF NOT EXISTS tailored_cover_letters (
+            id TEXT PRIMARY KEY,
+            job_id TEXT NOT NULL,
+            base_cl_id TEXT NOT NULL,
+            final_latex_content TEXT NOT NULL,
+            is_active BOOLEAN DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (job_id) REFERENCES jobs(id),
+            FOREIGN KEY (base_cl_id) REFERENCES base_cover_letters(id)
+        );
+        CREATE TRIGGER IF NOT EXISTS update_tailored_cover_letters_modtime 
+            AFTER UPDATE ON tailored_cover_letters 
+            BEGIN UPDATE tailored_cover_letters SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id; END;
 
         -- 5. Standalone Compiler State Table
         CREATE TABLE IF NOT EXISTS compiler_state (

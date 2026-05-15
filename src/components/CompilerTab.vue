@@ -15,7 +15,22 @@ import {
   Terminal
 } from '@lucide/vue';
 
+// Codemirror imports
+import { Codemirror } from 'vue-codemirror';
+import { latex, latexLanguage, autoCloseTags } from 'codemirror-lang-latex';
+import { oneDark } from '@codemirror/theme-one-dark';
+import { EditorView } from '@codemirror/view';
+
 const settingsStore = useSettingsStore();
+
+// Codemirror Extensions
+const extensions = [
+  latex(),
+  latexLanguage,
+  ...autoCloseTags,
+  oneDark,
+  EditorView.lineWrapping
+];
 
 // State
 const latexCode = ref(`\\documentclass{article}
@@ -275,16 +290,19 @@ const downloadPdf = async () => {
             <span>LATEX SOURCE</span>
           </div>
           <div class="editor-relative-wrapper">
-            <textarea 
-              v-model="latexCode" 
-              class="latex-editor" 
-              spellcheck="false"
+            <codemirror
+              v-model="latexCode"
               placeholder="Enter your LaTeX code here..."
+              :style="{ height: '100%' }"
+              :autofocus="true"
+              :indent-with-tab="true"
+              :tab-size="2"
+              :extensions="extensions"
               @blur="handleBlur"
-            ></textarea>
+              class="latex-editor-cm"
+            />
 
-            <AnimatePresence>
-              <Motion 
+            <AnimatePresence>              <Motion 
                 v-if="latexCode"
                 class="refinement-bar"
                 :initial="{ opacity: 0, y: -10, x: '-50%' }"
@@ -499,20 +517,33 @@ const downloadPdf = async () => {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  background: #282c34; /* One Dark background */
 }
 
-.latex-editor {
+.latex-editor-cm {
   flex: 1;
   width: 100%;
-  background: var(--bg);
-  border: none;
-  color: var(--ink);
-  padding: 20px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.9rem;
-  line-height: 1.6;
-  resize: none;
-  outline: none;
+}
+
+:deep(.cm-editor) {
+  height: 100%;
+  outline: none !important;
+}
+
+:deep(.cm-scroller) {
+  font-family: inherit;
+}
+
+:deep(.cm-content) {
+  padding: 20px 0;
+}
+
+:deep(.cm-gutters) {
+  background-color: #282c34 !important;
+  border-right: 1px solid #3e4451 !important;
+  color: #abb2bf !important;
 }
 
 .refinement-bar {

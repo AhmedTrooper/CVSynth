@@ -47,6 +47,8 @@ dist-ssr
 *.sln
 *.sw?
 
+potential_features.txt
+
 
 # Logs
 logs

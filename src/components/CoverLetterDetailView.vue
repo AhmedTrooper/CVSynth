@@ -13,8 +13,23 @@ import {
   RotateCw 
 } from '@lucide/vue';
 
+// Codemirror imports
+import { Codemirror } from 'vue-codemirror';
+import { latex, latexLanguage, autoCloseTags } from 'codemirror-lang-latex';
+import { oneDark } from '@codemirror/theme-one-dark';
+import { EditorView } from '@codemirror/view';
+
 const router = useRouter();
 const clStore = useCoverLettersStore();
+
+// Codemirror Extensions
+const extensions = [
+  latex(),
+  latexLanguage,
+  ...autoCloseTags,
+  oneDark,
+  EditorView.lineWrapping
+];
 
 const props = defineProps<{ id: string }>();
 
@@ -281,13 +296,17 @@ const hasLatexContent = () => {
         </div>
       </div>
       
-      <textarea 
+      <codemirror
         v-if="isEditing"
-        v-model="editedLatex" 
-        class="latex-editor edit-mode"
+        v-model="editedLatex"
         placeholder="Enter your LaTeX code here..."
-        spellcheck="false"
-      ></textarea>
+        :style="{ minHeight: '400px', height: 'auto' }"
+        :autofocus="true"
+        :indent-with-tab="true"
+        :tab-size="2"
+        :extensions="extensions"
+        class="latex-editor-cm"
+      />
       
       <div v-else-if="!hasLatexContent()" class="empty-latex">
         <p>No LaTeX content yet.</p>
@@ -589,25 +608,32 @@ const hasLatexContent = () => {
 
 .editor-actions { display: flex; gap: 10px; }
 
-.latex-editor {
+.latex-editor-cm {
   width: 100%;
-  min-height: 520px;
-  max-height: 520px;
-  background-color: var(--surface);
+  background-color: #282c34; /* One Dark background */
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 16px;
-  color: var(--ink);
+  overflow: hidden;
   font-family: 'Monaco', 'Menlo', monospace;
   font-size: 0.9rem;
-  line-height: 1.6;
-  outline: none;
-  resize: vertical;
-  overflow: auto;
 }
 
-.latex-editor:focus {
-  border-color: var(--accent);
+:deep(.cm-editor) {
+  outline: none !important;
+}
+
+:deep(.cm-scroller) {
+  font-family: inherit;
+}
+
+:deep(.cm-content) {
+  padding: 16px 0;
+}
+
+:deep(.cm-gutters) {
+  background-color: #282c34 !important;
+  border-right: 1px solid #3e4451 !important;
+  color: #abb2bf !important;
 }
 
 .latex-preview {

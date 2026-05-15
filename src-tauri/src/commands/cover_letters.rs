@@ -304,17 +304,32 @@ pub async fn get_latest_tailored_cover_letter(
 pub async fn update_tailored_cover_letter(
     state: State<'_, AppState>,
     job_id: String,
+    base_cl_id: Option<String>,
     latex_content: String,
 ) -> Result<(), String> {
     let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
     let conn = db_guard.as_mut().ok_or("Database connection lost")?;
 
-    conn.execute(
+    let rows_affected = conn.execute(
         "UPDATE tailored_cover_letters SET final_latex_content = ?1, updated_at = CURRENT_TIMESTAMP 
          WHERE job_id = ?2",
         [&latex_content, &job_id],
     )
-    .map_err(|e| format!("Database error: {}", e))?;
+    .map_err(|e| format!("Database error (update): {}", e))?;
+
+    if rows_affected == 0 {
+        if let Some(base_id) = base_cl_id {
+            let id = nanoid!(10);
+            conn.execute(
+                "INSERT INTO tailored_cover_letters (id, job_id, base_cl_id, final_latex_content, is_active)
+                 VALUES (?1, ?2, ?3, ?4, 1)",
+                [&id, &job_id, &base_id, &latex_content],
+            )
+            .map_err(|e| format!("Database error (insert): {}", e))?;
+        } else {
+            return Err("No tailored cover letter found to update. Please generate one first or select a template to initialize.".to_string());
+        }
+    }
 
     Ok(())
 }

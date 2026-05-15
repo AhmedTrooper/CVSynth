@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { invoke } from '@tauri-apps/api/core';
 import { save, message, ask } from '@tauri-apps/plugin-dialog';
@@ -10,6 +10,12 @@ import { useSettingsStore } from '../store/settings';
 import { useResumesStore } from '../store/resumes';
 import { useCoverLettersStore } from '../store/cover_letters';
 import { useJobsStore, Job } from '../store/jobs';
+
+// Codemirror imports
+import { Codemirror } from 'vue-codemirror';
+import { latex, latexLanguage, autoCloseTags } from 'codemirror-lang-latex';
+import { oneDark } from '@codemirror/theme-one-dark';
+import { EditorView } from '@codemirror/view';
 
 import { 
   ArrowLeft, 
@@ -52,6 +58,23 @@ const props = defineProps<{ id: string }>();
 // Tracking tailored IDs
 const tailoredResumeId = ref<string | null>(null);
 const tailoredClId = ref<string | null>(null);
+
+// Dirty State Tracking
+const isResumeDirty = ref(false);
+const isClDirty = ref(false);
+
+const hasUnsavedChanges = computed(() => {
+  return activeMode.value === 'resume' ? isResumeDirty.value : isClDirty.value;
+});
+
+// Codemirror Extensions
+const extensions = [
+  latex(),
+  latexLanguage,
+  ...autoCloseTags,
+  oneDark,
+  EditorView.lineWrapping
+];
 
 // Tooltip State
 const activeTooltip = ref<string | null>(null);
@@ -161,6 +184,12 @@ onMounted(async () => {
       tailoredClId.value = latestCl.id;
     }
 
+    // Initialize dirty state tracking after initial load
+    setTimeout(() => {
+      watch(resumeLatex, () => { isResumeDirty.value = true; });
+      watch(clLatex, () => { isClDirty.value = true; });
+    }, 500);
+
   } catch (err: any) {
     error.value = err.toString();
     isLoadingTemplates.value = false;
@@ -197,6 +226,7 @@ const generateContent = async () => {
       });
       tailoredResumeId.value = tailoredId;
       resumeLatex.value = await invoke<string>('get_tailored_resume', { id: tailoredId });
+      isResumeDirty.value = false;
     } else {
       const tailoredId = await invoke<string>('tailor_cover_letter', {
         provider,
@@ -208,6 +238,7 @@ const generateContent = async () => {
       });
       tailoredClId.value = tailoredId;
       clLatex.value = await invoke<string>('get_tailored_cover_letter', { id: tailoredId });
+      isClDirty.value = false;
     }
   } catch (err: any) {
     console.error("Tailoring Error:", err);
@@ -287,23 +318,41 @@ const compilePdf = async () => {
   }
 };
 
+const handleTabSwitch = async (mode: 'resume' | 'cl') => {
+  if (activeMode.value === mode) return;
+  
+  if (hasUnsavedChanges.value) {
+    const confirmed = await ask(
+      `You have unsaved changes in your tailored ${activeMode.value === 'resume' ? 'resume' : 'cover letter'}. Are you sure you want to switch tabs? Changes will be lost unless saved.`,
+      { title: 'Unsaved Changes', kind: 'warning' }
+    );
+    if (!confirmed) return;
+  }
+  
+  activeMode.value = mode;
+};
+
 const saveLatexContent = async (silent = false) => {
   try {
     if (activeMode.value === 'resume') {
       await invoke('update_tailored_resume', {
         jobId: props.id,
+        baseResumeId: resumeSelectedId.value,
         latexContent: resumeLatex.value
       });
+      isResumeDirty.value = false;
     } else {
       await invoke('update_tailored_cover_letter', {
         jobId: props.id,
+        baseClId: clSelectedId.value,
         latexContent: clLatex.value
       });
+      isClDirty.value = false;
     }
     if (!silent) await message('Content saved successfully.', { title: 'Success', kind: 'info' });
   } catch (err: any) {
     console.error("Save Error:", err);
-    if (!silent) error.value = `Failed to save changes: ${err.toString()}`;
+    if (!silent) await message(`Failed to save changes: ${err.toString()}`, { title: 'Save Failed', kind: 'error' });
   }
 };
 
@@ -640,7 +689,7 @@ const deleteJob = async () => {
               <button 
                 class="tab-btn-mode" 
                 :class="{ active: activeMode === 'resume' }" 
-                @click="activeMode = 'resume'"
+                @click="handleTabSwitch('resume')"
               >
                 <FileText :size="14" />
                 <span>RESUME</span>
@@ -653,7 +702,7 @@ const deleteJob = async () => {
               <button 
                 class="tab-btn-mode" 
                 :class="{ active: activeMode === 'cl' }" 
-                @click="activeMode = 'cl'"
+                @click="handleTabSwitch('cl')"
               >
                 <Mail :size="14" />
                 <span>COVER LETTER</span>
@@ -761,7 +810,28 @@ const deleteJob = async () => {
         </AnimatePresence>
 
         <div class="editor-container">
-          <textarea v-model="activeLatex" class="native-editor" spellcheck="false"></textarea>
+          <codemirror
+            v-if="activeMode === 'resume'"
+            v-model="resumeLatex"
+            placeholder="Tailored Resume LaTeX content will appear here..."
+            :style="{ height: '100%' }"
+            :autofocus="true"
+            :indent-with-tab="true"
+            :tab-size="2"
+            :extensions="extensions"
+            class="latex-editor-cm"
+          />
+          <codemirror
+            v-else
+            v-model="clLatex"
+            placeholder="Tailored Cover Letter LaTeX content will appear here..."
+            :style="{ height: '100%' }"
+            :autofocus="true"
+            :indent-with-tab="true"
+            :tab-size="2"
+            :extensions="extensions"
+            class="latex-editor-cm"
+          />
           
           <AnimatePresence>
             <Motion 
@@ -1184,20 +1254,33 @@ const deleteJob = async () => {
   display: flex;
   flex-direction: column;
   min-height: 200px;
+  background: #282c34; /* One Dark background */
 }
 
-.native-editor {
+.latex-editor-cm {
   flex: 1;
   width: 100%;
-  background: var(--bg);
-  border: none;
-  color: var(--ink);
-  padding: 16px;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 0.85rem;
-  line-height: 1.6;
-  resize: none;
-  outline: none;
+}
+
+:deep(.cm-editor) {
+  height: 100%;
+  outline: none !important;
+}
+
+:deep(.cm-scroller) {
+  font-family: inherit;
+}
+
+:deep(.cm-content) {
+  padding: 16px 0;
+}
+
+:deep(.cm-gutters) {
+  background-color: #282c34 !important;
+  border-right: 1px solid #3e4451 !important;
+  color: #abb2bf !important;
 }
 
 .refinement-bar {

@@ -27,6 +27,14 @@ jobs:
             args: ""
 
     runs-on: ${{ matrix.platform }}
+    
+    # CRITICAL: Define environment overrides globally at the job level so Tauri action intercepts them on all OS types
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      VCPKG_DISABLE: 1
+      # On Windows/macOS, this forces tectonic to bypass system pkg-config entirely and source-compile safely
+      LIBPNG_NO_PKG_CONFIG: 1 
+
     steps:
       - uses: actions/checkout@v4
 
@@ -40,33 +48,16 @@ jobs:
         with:
           targets: ${{ startsWith(matrix.platform, 'macos') && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
-      # Fix for macOS: Force Homebrew path integration and explicit target mappings
-      - name: install dependencies (macOS)
-        if: startsWith(matrix.platform, 'macos')
-        run: |
-          brew install libpng pkg-config
-          echo "PKG_CONFIG_PATH=$(brew --prefix libpng)/lib/pkgconfig" >> $env:GITHUB_ENV
-          echo "VCPKG_DISABLE=1" >> $env:GITHUB_ENV
-
-      # Fix for Windows: Clean environmental setup using the built-in chocolatey manager
-      - name: install dependencies (Windows)
-        if: matrix.platform == 'windows-latest'
-        run: |
-          choco install pkgconfigportable libpng
-          echo "VCPKG_DISABLE=1" >> $env:GITHUB_ENV
-
       - name: install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libpng-dev pkg-config
+          sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: install frontend dependencies
         run: bun install --frozen-lockfile
 
       - uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: app-v__VERSION__
           releaseName: "App v__VERSION__"

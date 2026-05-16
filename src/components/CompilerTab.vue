@@ -66,6 +66,10 @@ const fileTree = ref<FileItem[]>([]);
 const activeFilePath = ref<string | null>(null);
 const latexCode = ref('');
 
+const isSidebarVisible = ref(true);
+const sidebarWidth = ref(240);
+const isResizing = ref(false);
+
 const pdfUrl = ref<string | null>(null);
 const pdfBytesBuffer = ref<Uint8Array | null>(null);
 const isCompiling = ref(false);
@@ -81,6 +85,31 @@ const isLoadingWorkspace = ref(false);
 
 // Tooltip State
 const activeTooltip = ref<string | null>(null);
+
+// Workspace Management
+const toggleSidebar = () => {
+  isSidebarVisible.value = !isSidebarVisible.value;
+};
+
+const startResizing = (e: MouseEvent) => {
+  isResizing.value = true;
+  document.addEventListener('mousemove', handleMouseMove);
+  document.addEventListener('mouseup', stopResizing);
+};
+
+const handleMouseMove = (e: MouseEvent) => {
+  if (!isResizing.value) return;
+  const newWidth = e.clientX;
+  if (newWidth > 150 && newWidth < 500) {
+    sidebarWidth.value = newWidth;
+  }
+};
+
+const stopResizing = () => {
+  isResizing.value = false;
+  document.removeEventListener('mousemove', handleMouseMove);
+  document.removeEventListener('mouseup', stopResizing);
+};
 
 // Persistence & Initialization
 onMounted(async () => {
@@ -460,6 +489,9 @@ const activeFileName = computed(() => {
 
     <header class="compiler-header">
       <div class="header-left">
+        <button class="toggle-sidebar-btn" @click="toggleSidebar" title="Toggle Sidebar">
+          <Layout :size="18" />
+        </button>
         <Files :size="20" class="header-icon" />
         <h1>LaTeX IDE</h1>
         <span v-if="workspacePath" class="workspace-label">
@@ -507,7 +539,7 @@ const activeFileName = computed(() => {
     <main class="compiler-main">
       <div class="split-pane">
         <!-- Sidebar File Explorer -->
-        <aside class="workspace-sidebar">
+        <aside v-if="isSidebarVisible" class="workspace-sidebar" :style="{ width: sidebarWidth + 'px' }">
           <div class="sidebar-header">
             <span>EXPLORER</span>
             <div class="header-tools">
@@ -590,6 +622,9 @@ const activeFileName = computed(() => {
             </template>
           </div>
         </aside>
+
+        <!-- Sidebar Resizer -->
+        <div v-if="isSidebarVisible" class="sidebar-resizer" @mousedown="startResizing"></div>
 
         <!-- Editor Section -->
         <section class="editor-section">
@@ -703,6 +738,24 @@ const activeFileName = computed(() => {
   gap: 12px;
 }
 
+.toggle-sidebar-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: 0.15s;
+}
+
+.toggle-sidebar-btn:hover {
+  background: var(--surface-soft);
+  color: var(--ink);
+}
+
 .header-icon {
   color: var(--accent);
 }
@@ -806,15 +859,30 @@ const activeFileName = computed(() => {
   flex: 1;
   display: flex;
   min-height: 0;
+  position: relative;
 }
 
 .workspace-sidebar {
-  width: 240px;
   background: var(--bg-accent);
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  min-width: 150px;
+  max-width: 500px;
+}
+
+.sidebar-resizer {
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.2s;
+  z-index: 10;
+  margin-left: -2px;
+}
+
+.sidebar-resizer:hover, .sidebar-resizer:active {
+  background: var(--accent);
 }
 
 .sidebar-header {

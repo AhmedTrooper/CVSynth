@@ -16,6 +16,16 @@ import { useSettingsStore } from '../store/settings';
 import { useDialogStore } from '../store/dialog';
 import mermaid from 'mermaid';
 import svgPanZoom from 'svg-pan-zoom';
+
+// Markdown imports
+import MarkdownIt from 'markdown-it';
+import DOMPurify from 'dompurify';
+import markdownItKatex from 'markdown-it-katex';
+import highlightjs from 'highlight.js';
+import 'github-markdown-css/github-markdown-dark.css';
+import 'highlight.js/styles/github-dark.css';
+import 'katex/dist/katex.min.css';
+
 import { 
   Download, 
   RotateCw, 
@@ -31,7 +41,9 @@ import {
   Share2,
   Workflow,
   Maximize2,
-  Layout
+  Layout,
+  Eye,
+  Type
 } from '@lucide/vue';
 
 // Codemirror imports
@@ -42,6 +54,21 @@ import { EditorView } from '@codemirror/view';
 const settingsStore = useSettingsStore();
 const dialog = useDialogStore();
 
+// Markdown Init
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true,
+  highlight: (str, lang) => {
+    if (lang && highlightjs.getLanguage(lang)) {
+      try {
+        return highlightjs.highlight(str, { language: lang }).value;
+      } catch (__) {}
+    }
+    return ''; // use external default escaping
+  }
+}).use(markdownItKatex);
+
 // Mermaid Init
 mermaid.initialize({
   startOnLoad: false,
@@ -50,7 +77,7 @@ mermaid.initialize({
   flowchart: { useMaxWidth: false, htmlLabels: true }
 });
 
-// Codemirror Extensions (Generic for Mermaid for now)
+// Codemirror Extensions
 const extensions = [
   oneDark,
   EditorView.lineWrapping
@@ -71,7 +98,12 @@ const fileTree = ref<FileItem[]>([]);
 const activeFilePath = ref<string | null>(null);
 const diagramCode = ref('graph TD\n    A[Start] --> B{Process}\n    B -->|Success| C[End]\n    B -->|Failure| D[Retry]');
 
+const isSidebarVisible = ref(true);
+const sidebarWidth = ref(240);
+const isResizing = ref(false);
+
 const diagramSvg = ref('');
+const markdownHtml = ref('');
 const isRendering = ref(false);
 const renderingError = ref<string | null>(null);
 const isDirty = ref(false);
@@ -80,8 +112,9 @@ const previewContainer = ref<HTMLElement | null>(null);
 const isLoadingWorkspace = ref(false);
 const panZoomInstance = ref<any>(null);
 
-// Tooltip State
 const activeTooltip = ref<string | null>(null);
+
+const isMarkdown = computed(() => activeFilePath.value?.endsWith('.md'));
 
 // Persistence & Initialization
 onMounted(async () => {
@@ -97,15 +130,29 @@ onMounted(async () => {
       }
     }
     
-    // Initial render
-    await renderDiagram();
-    
-    // Ensure initial load doesn't mark it as dirty
+    await renderContent();
     setTimeout(() => { isDirty.value = false; }, 100);
   } catch (err) {
     console.error('Failed to initialize Diagram Studio:', err);
   }
 });
+
+// Sidebar methods
+const toggleSidebar = () => isSidebarVisible.value = !isSidebarVisible.value;
+const startResizing = () => {
+  isResizing.value = true;
+  document.addEventListener('mousemove', handleMouseMove);
+  document.addEventListener('mouseup', stopResizing);
+};
+const handleMouseMove = (e: MouseEvent) => {
+  if (!isResizing.value) return;
+  if (e.clientX > 150 && e.clientX < 500) sidebarWidth.value = e.clientX;
+};
+const stopResizing = () => {
+  isResizing.value = false;
+  document.removeEventListener('mousemove', handleMouseMove);
+  document.removeEventListener('mouseup', stopResizing);
+};
 
 // Workspace Management
 const selectWorkspace = async () => {
@@ -146,6 +193,9 @@ const scanDirectory = async (dir: string): Promise<FileItem[]> => {
     const fullPath = await join(dir, entry.name);
     const isDir = entry.isDirectory;
     
+    // Support .mmd and .md
+    if (!isDir && !entry.name.endsWith('.mmd') && !entry.name.endsWith('.md')) continue;
+
     items.push({
       name: entry.name,
       path: fullPath,
@@ -182,7 +232,7 @@ const selectFile = async (item: FileItem) => {
     activeFilePath.value = item.path;
     isDirty.value = false;
     await invoke('save_last_opened_diagram', { path: item.path });
-    await renderDiagram();
+    await renderContent();
   } catch (err) {
     console.error('Failed to read file:', err);
   }
@@ -199,16 +249,18 @@ const saveActiveFile = async () => {
   }
 };
 
-const createNewFile = async (parent: FileItem | null = null) => {
+const createNewFile = async (parent: FileItem | null = null, ext = '.mmd') => {
   const dir = parent ? parent.path : workspacePath.value;
   if (!dir) return;
 
-  const fileName = await dialog.showPrompt('Enter diagram name (e.g. flow.mmd):', '', 'New Diagram');
+  const fileName = await dialog.showPrompt(`Enter name (e.g. flow${ext}):`, '', 'New File');
   if (!fileName) return;
 
   const fullPath = await join(dir, fileName);
+  const initialContent = ext === '.md' ? '# New Document\n\n```mermaid\ngraph TD\n  A --> B\n```' : 'graph TD\n    A --> B';
+  
   try {
-    await writeFile(fullPath, new TextEncoder().encode('graph TD\n    A --> B'));
+    await writeFile(fullPath, new TextEncoder().encode(initialContent));
     if (parent) {
       parent.isOpen = true;
       parent.children = await scanDirectory(parent.path);
@@ -268,21 +320,43 @@ const closeWorkspace = async () => {
 };
 
 // Rendering Logic
-const renderDiagram = async () => {
+const renderContent = async () => {
   if (!diagramCode.value.trim()) return;
   
   isRendering.value = true;
   renderingError.value = null;
   
   try {
-    const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
-    const { svg } = await mermaid.render(id, diagramCode.value);
-    diagramSvg.value = svg;
-    
-    await nextTick();
-    initializePanZoom();
+    if (isMarkdown.value) {
+      const rawHtml = md.render(diagramCode.value);
+      markdownHtml.value = DOMPurify.sanitize(rawHtml);
+      diagramSvg.value = '';
+      
+      await nextTick();
+      // Render mermaid inside markdown
+      const mermaidNodes = previewContainer.value?.querySelectorAll('.language-mermaid');
+      if (mermaidNodes) {
+        for (const node of mermaidNodes) {
+          const code = node.textContent || '';
+          const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
+          const { svg } = await mermaid.render(id, code);
+          const wrapper = document.createElement('div');
+          wrapper.className = 'mermaid-rendered-wrapper';
+          wrapper.innerHTML = svg;
+          node.parentElement?.replaceWith(wrapper);
+        }
+      }
+    } else {
+      const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
+      const { svg } = await mermaid.render(id, diagramCode.value);
+      diagramSvg.value = svg;
+      markdownHtml.value = '';
+      
+      await nextTick();
+      initializePanZoom();
+    }
   } catch (err: any) {
-    console.error("Mermaid Render Error:", err);
+    console.error("Render Error:", err);
     renderingError.value = err.toString();
   } finally {
     isRendering.value = false;
@@ -292,7 +366,10 @@ const renderDiagram = async () => {
 const initializePanZoom = () => {
   if (panZoomInstance.value) {
     panZoomInstance.value.destroy();
+    panZoomInstance.value = null;
   }
+
+  if (isMarkdown.value) return;
 
   const svgElement = previewContainer.value?.querySelector('svg');
   if (svgElement) {
@@ -318,7 +395,7 @@ watch(diagramCode, () => {
 const handleBlur = () => {
   if (isDirty.value) {
     saveActiveFile();
-    renderDiagram();
+    renderContent();
   }
 };
 
@@ -332,6 +409,9 @@ const activeFileName = computed(() => {
   <div class="studio-container">
     <header class="studio-header">
       <div class="header-left">
+        <button class="toggle-sidebar-btn" @click="toggleSidebar" title="Toggle Sidebar">
+          <Layout :size="18" />
+        </button>
         <Share2 :size="20" class="header-icon" />
         <h1>Diagram Studio</h1>
         <span v-if="workspacePath" class="workspace-label">
@@ -342,11 +422,12 @@ const activeFileName = computed(() => {
       <div class="header-actions">
         <button 
           class="action-btn render-btn" 
-          @click="renderDiagram" 
+          @click="renderContent" 
           :disabled="isRendering || !diagramCode"
         >
-          <Workflow :size="16" />
-          <span>Render</span>
+          <Workflow v-if="!isRendering" :size="16" />
+          <RotateCw v-else :size="16" class="spinner" />
+          <span>{{ isMarkdown ? 'Preview' : 'Render' }}</span>
         </button>
       </div>
     </header>
@@ -354,12 +435,13 @@ const activeFileName = computed(() => {
     <main class="studio-main">
       <div class="split-pane">
         <!-- Sidebar File Explorer -->
-        <aside class="workspace-sidebar">
+        <aside v-if="isSidebarVisible" class="workspace-sidebar" :style="{ width: sidebarWidth + 'px' }">
           <div class="sidebar-header">
             <span>EXPLORER</span>
             <div class="header-tools">
               <button @click="refreshFileTree" title="Refresh"><RotateCw :size="12" /></button>
-              <button @click="createNewFile()" title="New File"><Plus :size="14" /></button>
+              <button @click="createNewFile(null, '.mmd')" title="New Diagram"><Plus :size="14" /></button>
+              <button @click="createNewFile(null, '.md')" title="New Markdown"><FileCode :size="14" /></button>
               <button @click="createNewFolder()" title="New Folder"><FolderPlus :size="14" /></button>
               <button v-if="workspacePath" @click="closeWorkspace" title="Close Workspace" class="close-workspace-btn"><X :size="14" /></button>
             </div>
@@ -393,8 +475,8 @@ const activeFileName = computed(() => {
                   <span class="item-name">{{ item.name }}</span>
                   <div class="item-actions">
                     <template v-if="item.isDir">
-                      <button @click.stop="createNewFile(item)" title="New File"><Plus :size="12" /></button>
-                      <button @click.stop="createNewFolder(item)" title="New Folder"><FolderPlus :size="12" /></button>
+                      <button @click.stop="createNewFile(item, '.mmd')" title="New Diagram"><Plus :size="12" /></button>
+                      <button @click.stop="createNewFile(item, '.md')" title="New Markdown"><FileCode :size="12" /></button>
                     </template>
                     <button class="item-delete" @click.stop="deleteItem(item)" title="Delete"><Trash2 :size="12" /></button>
                   </div>
@@ -424,8 +506,8 @@ const activeFileName = computed(() => {
                         <span class="item-name">{{ child.name }}</span>
                         <div class="item-actions">
                           <template v-if="child.isDir">
-                            <button @click.stop="createNewFile(child)" title="New File"><Plus :size="12" /></button>
-                            <button @click.stop="createNewFolder(child)" title="New Folder"><FolderPlus :size="12" /></button>
+                            <button @click.stop="createNewFile(child, '.mmd')" title="New Diagram"><Plus :size="12" /></button>
+                            <button @click.stop="createNewFile(child, '.md')" title="New Markdown"><FileCode :size="12" /></button>
                           </template>
                           <button class="item-delete" @click.stop="deleteItem(child)" title="Delete"><Trash2 :size="12" /></button>
                         </div>
@@ -438,6 +520,9 @@ const activeFileName = computed(() => {
           </div>
         </aside>
 
+        <!-- Sidebar Resizer -->
+        <div v-if="isSidebarVisible" class="sidebar-resizer" @mousedown="startResizing"></div>
+
         <!-- Editor Section -->
         <section class="editor-section">
           <div class="pane-header">
@@ -448,7 +533,7 @@ const activeFileName = computed(() => {
           <div class="editor-relative-wrapper" ref="editorContainer">
             <codemirror
               v-model="diagramCode"
-              placeholder="Enter Mermaid diagram code..."
+              placeholder="Enter Mermaid or Markdown code..."
               :style="{ height: '100%' }"
               :autofocus="true"
               :indent-with-tab="true"
@@ -464,14 +549,15 @@ const activeFileName = computed(() => {
         <section class="preview-section">
           <div class="pane-header">
             <Layout :size="14" />
-            <span>DIAGRAM PREVIEW</span>
+            <span>{{ isMarkdown ? 'DOCUMENT PREVIEW' : 'DIAGRAM PREVIEW' }}</span>
           </div>
-          <div class="preview-wrapper" ref="previewContainer">
-             <div v-if="diagramSvg" v-html="diagramSvg" class="svg-container"></div>
+          <div class="preview-wrapper" ref="previewContainer" :class="{ 'markdown-view': isMarkdown }">
+             <div v-if="isMarkdown" class="markdown-body" v-html="markdownHtml"></div>
+             <div v-else-if="diagramSvg" v-html="diagramSvg" class="svg-container"></div>
              <div v-else class="empty-preview">
                 <Workflow :size="48" />
-                <h3>No diagram rendered</h3>
-                <p>Enter Mermaid code to see the preview.</p>
+                <h3>No content rendered</h3>
+                <p>Enter Mermaid or Markdown code to see the preview.</p>
              </div>
              
              <div v-if="isRendering" class="render-overlay">
@@ -528,6 +614,24 @@ const activeFileName = computed(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.toggle-sidebar-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: 0.15s;
+}
+
+.toggle-sidebar-btn:hover {
+  background: var(--surface-soft);
+  color: var(--ink);
 }
 
 .header-icon {
@@ -595,15 +699,30 @@ const activeFileName = computed(() => {
   flex: 1;
   display: flex;
   min-height: 0;
+  position: relative;
 }
 
 .workspace-sidebar {
-  width: 240px;
   background: var(--bg-accent);
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  min-width: 150px;
+  max-width: 500px;
+}
+
+.sidebar-resizer {
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.2s;
+  z-index: 10;
+  margin-left: -2px;
+}
+
+.sidebar-resizer:hover, .sidebar-resizer:active {
+  background: var(--accent);
 }
 
 .sidebar-header {
@@ -637,6 +756,10 @@ const activeFileName = computed(() => {
 
 .header-tools button:hover {
   color: var(--ink);
+}
+
+.close-workspace-btn:hover {
+  color: var(--warning) !important;
 }
 
 .sidebar-empty {
@@ -813,6 +936,13 @@ const activeFileName = computed(() => {
   justify-content: center;
 }
 
+.preview-wrapper.markdown-view {
+  display: block;
+  overflow-y: auto;
+  padding: 24px;
+  background: #0d1117;
+}
+
 .svg-container {
   width: 100%;
   height: 100%;
@@ -824,6 +954,15 @@ const activeFileName = computed(() => {
 :deep(svg) {
   max-width: 100%;
   max-height: 100%;
+}
+
+:deep(.mermaid-rendered-wrapper) {
+  margin: 20px 0;
+  background: #161b22;
+  padding: 16px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
 }
 
 .empty-preview {

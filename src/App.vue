@@ -15,7 +15,8 @@ import {
   Code, 
   Video,
   Cpu,
-  Info
+  Info,
+  Share2
 } from '@lucide/vue';
 
 const tabs = [
@@ -24,6 +25,7 @@ const tabs = [
   { path: '/resumes', label: 'Resume Templates', icon: FileText },
   { path: '/cover-letters', label: 'CL Templates', icon: Mail },
   { path: '/compiler', label: 'Compiler', icon: Cpu },
+  { path: '/diagrams', label: 'Diagrams', icon: Share2 },
   { path: '/settings', label: 'Settings', icon: Settings },
   { path: '/about', label: 'About', icon: Info },
 ];
@@ -165,7 +167,7 @@ const handleExternalClick = (url: string) => {
   z-index: 100;
   display: flex;
   align-items: center;
-  padding: 0 12px;
+  padding: 0 8px;
 }
 
 .logo-section {
@@ -185,10 +187,11 @@ const handleExternalClick = (url: string) => {
 .nav-menu {
   display: flex;
   width: 100%;
-  padding: 4px 0;
+  padding: 2px 0;
   overflow-x: auto;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none;  /* IE and Edge */
+  gap: 2px;
 }
 
 .nav-menu::-webkit-scrollbar {
@@ -199,7 +202,7 @@ const handleExternalClick = (url: string) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 16px;
+  padding: 8px 12px;
   color: var(--muted);
   text-decoration: none;
   transition: 0.15s;
@@ -308,7 +311,13 @@ const handleExternalClick = (url: string) => {
     margin-top: 36px;
   }
   .nav-divider {
-    display: block;
+    display: none; /* Hide divider on mobile to save space */
+  }
+  .nav-item {
+    padding: 8px 10px; /* More compact padding */
+  }
+  .icon-wrapper {
+    font-size: 1rem; /* Slightly smaller icons on mobile */
   }
 }
 

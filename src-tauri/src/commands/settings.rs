@@ -226,3 +226,53 @@ pub async fn get_last_opened_file(state: State<'_, AppState>) -> Result<Option<S
         Ok(path)
     }).await
 }
+
+#[tauri::command]
+pub async fn save_diagram_workspace_path(state: State<'_, AppState>, path: String) -> Result<(), String> {
+    state.with_db(|conn| {
+        conn.execute(
+            "INSERT INTO app_settings (key, value) VALUES ('diagram_workspace', ?1) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            [&path],
+        ).map_err(|e| e.to_string())?;
+        Ok(())
+    }).await
+}
+
+#[tauri::command]
+pub async fn get_diagram_workspace_path(state: State<'_, AppState>) -> Result<Option<String>, String> {
+    state.with_db(|conn| {
+        let path: Option<String> = conn
+            .query_row(
+                "SELECT value FROM app_settings WHERE key = 'diagram_workspace'",
+                [],
+                |row| row.get(0),
+            )
+            .ok();
+        Ok(path)
+    }).await
+}
+
+#[tauri::command]
+pub async fn save_last_opened_diagram(state: State<'_, AppState>, path: String) -> Result<(), String> {
+    state.with_db(|conn| {
+        conn.execute(
+            "INSERT INTO app_settings (key, value) VALUES ('last_opened_diagram', ?1) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            [&path],
+        ).map_err(|e| e.to_string())?;
+        Ok(())
+    }).await
+}
+
+#[tauri::command]
+pub async fn get_last_opened_diagram(state: State<'_, AppState>) -> Result<Option<String>, String> {
+    state.with_db(|conn| {
+        let path: Option<String> = conn
+            .query_row(
+                "SELECT value FROM app_settings WHERE key = 'last_opened_diagram'",
+                [],
+                |row| row.get(0),
+            )
+            .ok();
+        Ok(path)
+    }).await
+}

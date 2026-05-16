@@ -8,6 +8,7 @@ import CoverLettersTab from '../components/CoverLettersTab.vue';
 import CoverLetterDetailView from '../components/CoverLetterDetailView.vue';
 import CompilerTab from '../components/CompilerTab.vue';
 import AboutTab from '../components/AboutTab.vue';
+import DiagramTab from '../components/DiagramTab.vue';
 
 const routes = [
   { 
@@ -24,6 +25,11 @@ const routes = [
     path: '/compiler',
     name: 'Compiler',
     component: CompilerTab
+  },
+  {
+    path: '/diagrams',
+    name: 'Diagrams',
+    component: DiagramTab
   },
   { 
     path: '/settings', 

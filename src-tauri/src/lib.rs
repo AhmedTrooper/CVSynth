@@ -10,6 +10,25 @@ pub struct AppState {
     pub db: Mutex<Option<Connection>>,
 }
 
+impl AppState {
+    /// Helper to access the database, waiting for initialization if needed.
+    pub async fn with_db<F, R>(&self, f: F) -> Result<R, String>
+    where
+        F: FnOnce(&mut Connection) -> Result<R, String>,
+    {
+        for _ in 0..50 { // 5 seconds timeout
+            {
+                let mut db_guard = self.db.lock().map_err(|e| e.to_string())?;
+                if let Some(conn) = db_guard.as_mut() {
+                    return f(conn);
+                }
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
+        Err("Database initialization timed out".to_string())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -37,10 +56,23 @@ pub fn run() {
                 .plugin(tauri_plugin_stronghold::Builder::with_argon2(&salt_path).build())
                 .expect("Failed to initialize Stronghold");
 
-            // 2. Initialize SQLite Database
-            let conn = db::init_db(app.handle()).expect("Failed to init DB");
+            // 2. Initialize SQLite Database Asynchronously
+            let app_handle = app.handle().clone();
             app.manage(AppState {
-                db: Mutex::new(Some(conn)),
+                db: Mutex::new(None),
+            });
+
+            tauri::async_runtime::spawn(async move {
+                match db::init_db(&app_handle) {
+                    Ok(conn) => {
+                        if let Ok(mut db_guard) = app_handle.state::<AppState>().db.lock() {
+                            *db_guard = Some(conn);
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Database initialization failed: {}", e);
+                    }
+                }
             });
 
             Ok(())

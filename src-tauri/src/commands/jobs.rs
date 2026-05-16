@@ -122,51 +122,50 @@ pub async fn get_job_by_id(state: State<'_, AppState>, id: String) -> Result<Job
 
 #[tauri::command]
 pub async fn get_all_jobs(state: State<'_, AppState>) -> Result<Vec<JobPayload>, String> {
-    let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
-    let conn = db_guard.as_mut().ok_or("Database connection lost")?;
+    state.with_db(|conn| {
+        let mut stmt = conn
+            .prepare(
+                "SELECT id, company_name, job_title, work_model, employment_type, 
+                    status, raw_jd, requirements, core_responsibilities,
+                    custom_instruction, reference_name, 
+                    reference_email, social_link, job_url,
+                    base_resume_id, base_cl_id,
+                    created_at, updated_at
+             FROM jobs ORDER BY created_at DESC",
+            )
+            .map_err(|e| e.to_string())?;
 
-    let mut stmt = conn
-        .prepare(
-            "SELECT id, company_name, job_title, work_model, employment_type, 
-                status, raw_jd, requirements, core_responsibilities,
-                custom_instruction, reference_name, 
-                reference_email, social_link, job_url,
-                base_resume_id, base_cl_id,
-                created_at, updated_at
-         FROM jobs ORDER BY created_at DESC",
-        )
-        .map_err(|e| e.to_string())?;
-
-    let job_iter = stmt
-        .query_map([], |row| {
-            Ok(JobPayload {
-                id: row.get(0)?,
-                company_name: row.get(1)?,
-                job_title: row.get(2)?,
-                work_model: row.get(3)?,
-                employment_type: row.get(4)?,
-                status: row.get(5)?,
-                raw_jd: row.get(6)?,
-                requirements: row.get(7)?,
-                core_responsibilities: row.get(8)?,
-                custom_instruction: row.get(9)?,
-                reference_name: row.get(10)?,
-                reference_email: row.get(11)?,
-                social_link: row.get(12)?,
-                job_url: row.get(13)?,
-                base_resume_id: row.get::<_, Option<String>>(14)?,
-                base_cl_id: row.get::<_, Option<String>>(15)?,
-                created_at: Some(row.get(16)?),
-                updated_at: Some(row.get(17)?),
+        let job_iter = stmt
+            .query_map([], |row| {
+                Ok(JobPayload {
+                    id: row.get(0)?,
+                    company_name: row.get(1)?,
+                    job_title: row.get(2)?,
+                    work_model: row.get(3)?,
+                    employment_type: row.get(4)?,
+                    status: row.get(5)?,
+                    raw_jd: row.get(6)?,
+                    requirements: row.get(7)?,
+                    core_responsibilities: row.get(8)?,
+                    custom_instruction: row.get(9)?,
+                    reference_name: row.get(10)?,
+                    reference_email: row.get(11)?,
+                    social_link: row.get(12)?,
+                    job_url: row.get(13)?,
+                    base_resume_id: row.get::<_, Option<String>>(14)?,
+                    base_cl_id: row.get::<_, Option<String>>(15)?,
+                    created_at: Some(row.get(16)?),
+                    updated_at: Some(row.get(17)?),
+                })
             })
-        })
-        .map_err(|e| e.to_string())?;
+            .map_err(|e| e.to_string())?;
 
-    let mut jobs = Vec::new();
-    for job in job_iter {
-        jobs.push(job.map_err(|e| e.to_string())?);
-    }
-    Ok(jobs)
+        let mut jobs = Vec::new();
+        for job in job_iter {
+            jobs.push(job.map_err(|e| e.to_string())?);
+        }
+        Ok(jobs)
+    }).await
 }
 
 #[tauri::command]

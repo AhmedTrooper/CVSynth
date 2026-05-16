@@ -38,14 +38,8 @@ const isAppLoading = ref(true);
 
 onMounted(async () => {
   try {
-    // 1. Minimum delay for smooth transition
-    await new Promise(resolve => setTimeout(resolve, 2500));
-    
-    // 2. Load settings (database, stronghold, etc.)
+    // Load settings (database, stronghold, etc.)
     await settingsStore.loadSettings();
-    
-    // 3. Optional: Finalizing phase
-    await new Promise(resolve => setTimeout(resolve, 500));
   } catch (error) {
     console.error('Initialization error:', error);
   } finally {

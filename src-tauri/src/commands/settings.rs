@@ -15,8 +15,7 @@ pub async fn save_model_pref(
     provider: String,
     model: String,
 ) -> Result<(), String> {
-    let mut db_guard = state.db.lock().map_err(|e| e.to_string())?;
-    if let Some(conn) = db_guard.as_mut() {
+    state.with_db(|conn| {
         // Save Provider
         conn.execute(
             "INSERT INTO app_settings (key, value) VALUES ('ai_provider', ?1) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
@@ -30,15 +29,12 @@ pub async fn save_model_pref(
         ).map_err(|e| e.to_string())?;
 
         Ok(())
-    } else {
-        Err("Database not initialized".to_string())
-    }
+    }).await
 }
 
 #[tauri::command]
 pub async fn get_model_pref(state: State<'_, AppState>) -> Result<AiConfig, String> {
-    let mut db_guard = state.db.lock().map_err(|e| e.to_string())?;
-    if let Some(conn) = db_guard.as_mut() {
+    state.with_db(|conn| {
         // Fetch Provider (Default to 'openai')
         let provider: String = conn
             .query_row(
@@ -58,7 +54,5 @@ pub async fn get_model_pref(state: State<'_, AppState>) -> Result<AiConfig, Stri
             .unwrap_or_else(|_| "gpt-4o".to_string());
 
         Ok(AiConfig { provider, model })
-    } else {
-        Err("Database not initialized".to_string())
-    }
+    }).await
 }

@@ -87,6 +87,7 @@ const isCompilingPDF = ref(false);
 const error = ref<string | null>(null);
 const activeMode = ref<'resume' | 'cl'>('resume');
 const jobDetails = ref<Job | null>(null);
+const editorContainer = ref<HTMLElement | null>(null);
 
 // Resume Specific State
 const resumeSelectedId = ref<string | null>(null);
@@ -835,7 +836,7 @@ const deleteJob = async () => {
           </Motion>
         </AnimatePresence>
 
-        <div class="editor-container">
+        <div class="editor-container" ref="editorContainer">
           <codemirror
             v-if="activeMode === 'resume'"
             v-model="resumeLatex"
@@ -863,6 +864,9 @@ const deleteJob = async () => {
             <Motion 
               v-if="activeLatex"
               class="refinement-bar"
+              drag
+              :drag-constraints="editorContainer || undefined"
+              :drag-elastic="0.1"
               :initial="{ opacity: 0, y: -10, x: '-50%' }"
               :animate="{ opacity: 1, y: 0, x: '-50%' }"
               :exit="{ opacity: 0, y: -10, x: '-50%' }"
@@ -1321,6 +1325,12 @@ const deleteJob = async () => {
   padding: 4px 14px;
   box-shadow: 0 12px 40px rgba(0,0,0,0.5);
   z-index: 20;
+  cursor: grab;
+  touch-action: none;
+}
+
+.refinement-bar:active {
+  cursor: grabbing;
 }
 
 .refinement-bar input {

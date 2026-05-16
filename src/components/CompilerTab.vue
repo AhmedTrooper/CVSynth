@@ -48,6 +48,7 @@ const isDownloading = ref(false);
 const compilationError = ref<string | null>(null);
 const isAutoCompileEnabled = ref(true);
 const isDirty = ref(false);
+const editorContainer = ref<HTMLElement | null>(null);
 
 // Persistence
 onMounted(async () => {
@@ -289,7 +290,7 @@ const downloadPdf = async () => {
             <FileCode :size="14" />
             <span>LATEX SOURCE</span>
           </div>
-          <div class="editor-relative-wrapper">
+          <div class="editor-relative-wrapper" ref="editorContainer">
             <codemirror
               v-model="latexCode"
               placeholder="Enter your LaTeX code here..."
@@ -302,9 +303,13 @@ const downloadPdf = async () => {
               class="latex-editor-cm"
             />
 
-            <AnimatePresence>              <Motion 
+            <AnimatePresence>
+              <Motion 
                 v-if="latexCode"
                 class="refinement-bar"
+                drag
+                :drag-constraints="editorContainer || undefined"
+                :drag-elastic="0.1"
                 :initial="{ opacity: 0, y: -10, x: '-50%' }"
                 :animate="{ opacity: 1, y: 0, x: '-50%' }"
                 :exit="{ opacity: 0, y: -10, x: '-50%' }"
@@ -559,6 +564,12 @@ const downloadPdf = async () => {
   padding: 4px 14px;
   box-shadow: 0 12px 40px rgba(0,0,0,0.5);
   z-index: 20;
+  cursor: grab;
+  touch-action: none;
+}
+
+.refinement-bar:active {
+  cursor: grabbing;
 }
 
 .refinement-bar input {

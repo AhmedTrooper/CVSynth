@@ -18,6 +18,8 @@ export interface Job {
   reference_email?: string;
   social_link?: string;
   job_url?: string;
+  base_resume_id?: string;
+  base_cl_id?: string;
   created_at?: string;
   updated_at?: string;
 }

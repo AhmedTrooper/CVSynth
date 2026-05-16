@@ -21,6 +21,8 @@ pub struct JobPayload {
     pub reference_email: Option<String>,
     pub social_link: Option<String>,
     pub job_url: Option<String>,
+    pub base_resume_id: Option<String>,
+    pub base_cl_id: Option<String>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
 }
@@ -46,9 +48,10 @@ pub async fn save_job(state: State<'_, AppState>, payload: JobPayload) -> Result
             id, company_name, job_title, work_model, employment_type, 
             status, raw_jd, requirements, core_responsibilities,
             custom_instruction, reference_name, 
-            reference_email, social_link, job_url
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
-        [
+            reference_email, social_link, job_url,
+            base_resume_id, base_cl_id
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+        (
             &payload.id,
             &payload.company_name,
             &payload.job_title,
@@ -56,14 +59,16 @@ pub async fn save_job(state: State<'_, AppState>, payload: JobPayload) -> Result
             &payload.employment_type,
             &payload.status,
             &payload.raw_jd,
-            &payload.requirements.unwrap_or_default(),
-            &payload.core_responsibilities.unwrap_or_default(),
-            &payload.custom_instruction.unwrap_or_default(),
-            &payload.reference_name.unwrap_or_default(),
-            &payload.reference_email.unwrap_or_default(),
-            &payload.social_link.unwrap_or_default(),
-            &payload.job_url.unwrap_or_default(),
-        ],
+            &payload.requirements,
+            &payload.core_responsibilities,
+            &payload.custom_instruction,
+            &payload.reference_name,
+            &payload.reference_email,
+            &payload.social_link,
+            &payload.job_url,
+            &payload.base_resume_id,
+            &payload.base_cl_id,
+        ),
     )
     .map_err(|e| format!("Database error: {}", e))?;
 
@@ -81,6 +86,7 @@ pub async fn get_job_by_id(state: State<'_, AppState>, id: String) -> Result<Job
                 status, raw_jd, requirements, core_responsibilities,
                 custom_instruction, reference_name, 
                 reference_email, social_link, job_url,
+                base_resume_id, base_cl_id,
                 created_at, updated_at
          FROM jobs WHERE id = ?1",
         )
@@ -103,8 +109,10 @@ pub async fn get_job_by_id(state: State<'_, AppState>, id: String) -> Result<Job
                 reference_email: row.get(11)?,
                 social_link: row.get(12)?,
                 job_url: row.get(13)?,
-                created_at: Some(row.get(14)?),
-                updated_at: Some(row.get(15)?),
+                base_resume_id: row.get::<_, Option<String>>(14)?,
+                base_cl_id: row.get::<_, Option<String>>(15)?,
+                created_at: Some(row.get(16)?),
+                updated_at: Some(row.get(17)?),
             })
         })
         .map_err(|e| format!("Job not found: {}", e))?;
@@ -123,6 +131,7 @@ pub async fn get_all_jobs(state: State<'_, AppState>) -> Result<Vec<JobPayload>,
                 status, raw_jd, requirements, core_responsibilities,
                 custom_instruction, reference_name, 
                 reference_email, social_link, job_url,
+                base_resume_id, base_cl_id,
                 created_at, updated_at
          FROM jobs ORDER BY created_at DESC",
         )
@@ -145,8 +154,10 @@ pub async fn get_all_jobs(state: State<'_, AppState>) -> Result<Vec<JobPayload>,
                 reference_email: row.get(11)?,
                 social_link: row.get(12)?,
                 job_url: row.get(13)?,
-                created_at: Some(row.get(14)?),
-                updated_at: Some(row.get(15)?),
+                base_resume_id: row.get::<_, Option<String>>(14)?,
+                base_cl_id: row.get::<_, Option<String>>(15)?,
+                created_at: Some(row.get(16)?),
+                updated_at: Some(row.get(17)?),
             })
         })
         .map_err(|e| e.to_string())?;
@@ -163,14 +174,21 @@ pub async fn delete_job(state: State<'_, AppState>, id: String) -> Result<(), St
     let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
     let conn = db_guard.as_mut().ok_or("Database connection lost")?;
 
-    // Disable foreign keys temporarily to delete from all related tables if necessary,
-    // though tailored_resumes has ON DELETE RESTRICT by default in many SQLites if not specified.
-    // Better to delete related tailored_resumes first.
-    conn.execute("DELETE FROM tailored_resumes WHERE job_id = ?1", [&id])
+    let tx = conn.transaction().map_err(|e| format!("Transaction error: {}", e))?;
+
+    tx.execute("DELETE FROM downloads WHERE job_id = ?1", [&id])
+        .map_err(|e| format!("Database error (downloads): {}", e))?;
+
+    tx.execute("DELETE FROM tailored_cover_letters WHERE job_id = ?1", [&id])
+        .map_err(|e| format!("Database error (tailored_cover_letters): {}", e))?;
+
+    tx.execute("DELETE FROM tailored_resumes WHERE job_id = ?1", [&id])
         .map_err(|e| format!("Database error (tailored_resumes): {}", e))?;
 
-    conn.execute("DELETE FROM jobs WHERE id = ?1", [&id])
+    tx.execute("DELETE FROM jobs WHERE id = ?1", [&id])
         .map_err(|e| format!("Database error (jobs): {}", e))?;
+
+    tx.commit().map_err(|e| format!("Commit error: {}", e))?;
 
     Ok(())
 }
@@ -185,8 +203,15 @@ pub async fn delete_jobs_batch(state: State<'_, AppState>, ids: Vec<String>) -> 
         .map_err(|e| format!("Transaction error: {}", e))?;
 
     for id in ids {
+        tx.execute("DELETE FROM downloads WHERE job_id = ?1", [&id])
+            .map_err(|e| format!("Database error (downloads): {}", e))?;
+            
+        tx.execute("DELETE FROM tailored_cover_letters WHERE job_id = ?1", [&id])
+            .map_err(|e| format!("Database error (tailored_cover_letters): {}", e))?;
+
         tx.execute("DELETE FROM tailored_resumes WHERE job_id = ?1", [&id])
             .map_err(|e| format!("Database error (tailored_resumes): {}", e))?;
+
         tx.execute("DELETE FROM jobs WHERE id = ?1", [&id])
             .map_err(|e| format!("Database error (jobs): {}", e))?;
     }
@@ -205,8 +230,15 @@ pub async fn delete_all_jobs(state: State<'_, AppState>) -> Result<(), String> {
         .transaction()
         .map_err(|e| format!("Transaction error: {}", e))?;
 
+    tx.execute("DELETE FROM downloads", [])
+        .map_err(|e| format!("Database error (downloads): {}", e))?;
+
+    tx.execute("DELETE FROM tailored_cover_letters", [])
+        .map_err(|e| format!("Database error (tailored_cover_letters): {}", e))?;
+
     tx.execute("DELETE FROM tailored_resumes", [])
         .map_err(|e| format!("Database error (tailored_resumes): {}", e))?;
+
     tx.execute("DELETE FROM jobs", [])
         .map_err(|e| format!("Database error (jobs): {}", e))?;
 
@@ -240,7 +272,10 @@ pub async fn update_tailored_resume(
     let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
     let conn = db_guard.as_mut().ok_or("Database connection lost")?;
 
-    let rows_affected = conn.execute(
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+    // 1. Update tailored_resumes
+    let rows_affected = tx.execute(
         "UPDATE tailored_resumes SET final_latex_content = ?1, updated_at = CURRENT_TIMESTAMP 
          WHERE job_id = ?2",
         [&latex_content, &job_id],
@@ -248,9 +283,9 @@ pub async fn update_tailored_resume(
     .map_err(|e| format!("Database error (update): {}", e))?;
 
     if rows_affected == 0 {
-        if let Some(base_id) = base_resume_id {
+        if let Some(base_id) = base_resume_id.clone() {
             let id = nanoid!(10);
-            conn.execute(
+            tx.execute(
                 "INSERT INTO tailored_resumes (id, job_id, base_resume_id, final_latex_content, is_active)
                  VALUES (?1, ?2, ?3, ?4, 1)",
                 [&id, &job_id, &base_id, &latex_content],
@@ -261,6 +296,16 @@ pub async fn update_tailored_resume(
         }
     }
 
+    // 2. Update jobs table to reflect which base resume is being used
+    if let Some(base_id) = base_resume_id {
+        tx.execute(
+            "UPDATE jobs SET base_resume_id = ?1 WHERE id = ?2",
+            [&base_id, &job_id],
+        )
+        .map_err(|e| format!("Database error (jobs update): {}", e))?;
+    }
+
+    tx.commit().map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -290,7 +335,7 @@ pub async fn get_latest_tailored_resume(
 
     let mut stmt = conn
         .prepare(
-            "SELECT id, final_latex_content FROM tailored_resumes 
+            "SELECT id, base_resume_id, final_latex_content FROM tailored_resumes 
          WHERE job_id = ?1 
          ORDER BY created_at DESC LIMIT 1",
         )
@@ -299,7 +344,8 @@ pub async fn get_latest_tailored_resume(
     let result: Option<TailoredContent> = match stmt.query_row([&job_id], |row| {
         Ok(TailoredContent {
             id: row.get(0)?,
-            content: row.get(1)?,
+            base_template_id: row.get(1)?,
+            content: row.get(2)?,
         })
     }) {
         Ok(v) => Some(v),
@@ -323,7 +369,7 @@ pub async fn tailor_resume(
     // 1. Fetch job and resume data
     let (raw_job_content, requirements, core_responsibilities, base_latex) = {
         let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
-
+        
         if let Some(conn) = db_guard.as_mut() {
             let mut stmt = conn
                 .prepare(
@@ -349,15 +395,15 @@ pub async fn tailor_resume(
         }
     };
 
-    // 2. Prepare tailored prompt content
+    // 2. Prepare context
     let job_context = format!(
-        "Raw JD:\n{}\n\nExtracted Requirements:\n{}\n\nExtracted Responsibilities:\n{}",
+        "Job Description: {}\nRequirements: {}\nResponsibilities: {}",
         raw_job_content,
         requirements.unwrap_or_default(),
         core_responsibilities.unwrap_or_default()
     );
 
-    // 3. Call AI to tailor the resume
+    // 3. Call AI
     let tailored_latex = ai::tailor_latex_for_job(
         &provider,
         &model,
@@ -373,9 +419,11 @@ pub async fn tailor_resume(
         let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
 
         if let Some(conn) = db_guard.as_mut() {
+            let tx = conn.transaction().map_err(|e| e.to_string())?;
+
             let tailored_id = nanoid!(10);
 
-            conn.execute(
+            tx.execute(
                 "INSERT INTO tailored_resumes (id, job_id, base_resume_id, final_latex_content, is_active)
                  VALUES (?1, ?2, ?3, ?4, 1)",
                 [
@@ -384,8 +432,14 @@ pub async fn tailor_resume(
                     &base_resume_id,
                     &tailored_latex,
                 ],
-            ).map_err(|e| format!("Database error: {}", e))?;
+            ).map_err(|e| format!("Database error (insert tailored): {}", e))?;
 
+            tx.execute(
+                "UPDATE jobs SET base_resume_id = ?1 WHERE id = ?2",
+                [&base_resume_id, &job_id],
+            ).map_err(|e| format!("Database error (update job): {}", e))?;
+
+            tx.commit().map_err(|e| e.to_string())?;
             Ok(tailored_id)
         } else {
             Err("Database connection lost".to_string())

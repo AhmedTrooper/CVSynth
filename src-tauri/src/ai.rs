@@ -1,7 +1,6 @@
 use rig::client::CompletionClient;
 use rig::completion::Prompt;
 use rig::providers::{anthropic, gemini, groq, openai};
-use scraper::Html;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -14,44 +13,6 @@ pub struct JobDetails {
     pub employment_type: String, // Full-time, Part-time, Contract, Freelance, Temporary, Internship
     pub requirements: Vec<String>,
     pub core_responsibilities: Vec<String>,
-}
-
-async fn fetch_url_content(url: &str) -> Result<String, String> {
-    let client = reqwest::Client::builder()
-        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-        .timeout(std::time::Duration::from_secs(15))
-        .build()
-        .map_err(|e| e.to_string())?;
-
-    let resp = client.get(url).send().await.map_err(|e| format!("Failed to fetch URL: {}. Please ensure the link is correct and public.", e))?;
-    let html = resp.text().await.map_err(|e| format!("Failed to read response body: {}", e))?;
-
-    let document = Html::parse_document(&html);
-    let mut text_content = String::new();
-    
-    // Iterate over all text nodes in the document
-    for node in document.root_element().text() {
-        text_content.push_str(node);
-        text_content.push(' ');
-    }
-
-    let cleaned = text_content
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ");
-
-    if cleaned.len() < 100 {
-        return Err("The fetched page content seems too short to be a job description. Try copying the description manually.".to_string());
-    }
-
-    // Limit text to avoid hitting context limits, but keep enough for JD
-    let limited = if cleaned.len() > 10000 {
-        cleaned.chars().take(10000).collect()
-    } else {
-        cleaned
-    };
-
-    Ok(limited)
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -67,53 +28,65 @@ pub async fn parse_job_description(
     raw_jd: &str,
     job_url: Option<&str>,
 ) -> Result<JobParseResult, String> {
-    let mut input_text = raw_jd.trim().to_string();
+    let input_text = raw_jd.trim();
+    let url = job_url.unwrap_or("").trim();
 
-    if input_text.is_empty() {
-        if let Some(url) = job_url {
-            input_text = fetch_url_content(url).await?;
-        } else {
-            return Err("Either a job description or a URL must be provided.".to_string());
-        }
+    if input_text.is_empty() && url.is_empty() {
+        return Err("Either a job description or a URL must be provided.".to_string());
     }
 
     let model = model.trim();
     
-    let prompt_prefix = "You are a job description extractor. Analyze the following text and extract structured details. 
-    IMPORTANT: If the text DOES NOT contain a job description (e.g., it's a login page, cookie notice, generic website content, or just noise), you MUST set 'is_valid_job' to false. Otherwise, set it to true.\n\nText to analyze:\n";
+    // System prompt explaining the dual capability
+    let system_prompt = "You are an expert job details extractor.
+    
+TASK:
+- If a RAW DESCRIPTION is provided below, extract details from that text.
+- If ONLY a URL is provided, crawl/fetch the content from that URL and extract details.
+- If BOTH are provided, PRIORITIZE the manual RAW DESCRIPTION for extraction.
 
-    let full_prompt = format!("{}{}", prompt_prefix, input_text);
+VALIDATION:
+- Be permissive: If the text looks like a job posting (even if short or partial), set 'is_valid_job' to true.
+- ONLY set 'is_valid_job' to false if the content is clearly NOT a job (e.g., just a login page, cookie consent, or site navigation).
+
+Output the results in the requested structured format.";
+
+    let user_prompt = if !input_text.is_empty() {
+        format!("RAW DESCRIPTION:\n{}\n\n(Optional URL for reference: {})", input_text, url)
+    } else {
+        format!("PLEASE FETCH AND PARSE THIS URL: {}", url)
+    };
 
     let details = match provider {
         "gemini" => {
             let client = gemini::Client::new(api_key).map_err(|e| e.to_string())?;
-            let extractor = client.extractor::<JobDetails>(model).build();
+            let extractor = client.extractor::<JobDetails>(model).preamble(system_prompt).build();
             extractor
-                .extract(&full_prompt)
+                .extract(&user_prompt)
                 .await
                 .map_err(|e| format!("Gemini AI Parsing Error: {}", e))?
         }
         "openai" => {
             let client = openai::Client::new(api_key).map_err(|e| e.to_string())?;
-            let extractor = client.extractor::<JobDetails>(model).build();
+            let extractor = client.extractor::<JobDetails>(model).preamble(system_prompt).build();
             extractor
-                .extract(&full_prompt)
+                .extract(&user_prompt)
                 .await
                 .map_err(|e| format!("OpenAI Parsing Error: {}", e))?
         }
         "groq" => {
             let client = groq::Client::new(api_key).map_err(|e| e.to_string())?;
-            let extractor = client.extractor::<JobDetails>(model).build();
+            let extractor = client.extractor::<JobDetails>(model).preamble(system_prompt).build();
             extractor
-                .extract(&full_prompt)
+                .extract(&user_prompt)
                 .await
                 .map_err(|e| format!("Groq Parsing Error: {}", e))?
         }
         "anthropic" => {
             let client = anthropic::Client::new(api_key).map_err(|e| e.to_string())?;
-            let extractor = client.extractor::<JobDetails>(model).build();
+            let extractor = client.extractor::<JobDetails>(model).preamble(system_prompt).build();
             extractor
-                .extract(&full_prompt)
+                .extract(&user_prompt)
                 .await
                 .map_err(|e| format!("Anthropic Parsing Error: {}", e))?
         }
@@ -121,12 +94,12 @@ pub async fn parse_job_description(
     };
 
     if !details.is_valid_job {
-        return Err("The content provided (or fetched) does not appear to be a job description. Please paste the description manually.".to_string());
+        return Err("The content provided (or the URL) does not appear to contain a valid job description. Please ensure the link is public or paste the description manually.".to_string());
     }
 
     Ok(JobParseResult {
         details,
-        raw_description: input_text,
+        raw_description: if !input_text.is_empty() { input_text.to_string() } else { format!("Source URL: {}", url) },
     })
 }
 

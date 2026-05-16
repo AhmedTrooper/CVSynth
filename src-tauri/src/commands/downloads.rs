@@ -28,13 +28,13 @@ pub async fn record_download(
 
     conn.execute(
         "INSERT INTO downloads (id, filename, download_type, job_id, content_id) VALUES (?1, ?2, ?3, ?4, ?5)",
-        [
+        (
             &id,
             &filename,
             &download_type,
-            &job_id.unwrap_or_default(),
-            &content_id.unwrap_or_default(),
-        ],
+            &job_id,
+            &content_id,
+        ),
     )
     .map_err(|e| e.to_string())?;
 
@@ -56,8 +56,8 @@ pub async fn get_downloads(state: State<'_, AppState>) -> Result<Vec<DownloadRec
                 id: row.get(0)?,
                 filename: row.get(1)?,
                 download_type: row.get(2)?,
-                job_id: Some(row.get(3)?),
-                content_id: Some(row.get(4)?),
+                job_id: row.get(3)?,
+                content_id: row.get(4)?,
                 created_at: row.get(5)?,
             })
         })

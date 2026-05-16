@@ -64,8 +64,13 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
             reference_name TEXT,
             reference_email TEXT,
             social_link TEXT,
+            job_url TEXT,
+            base_resume_id TEXT,
+            base_cl_id TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (base_resume_id) REFERENCES base_resumes(id),
+            FOREIGN KEY (base_cl_id) REFERENCES base_cover_letters(id)
         );
         CREATE TRIGGER IF NOT EXISTS update_jobs_modtime 
             AFTER UPDATE ON jobs 
@@ -365,6 +370,21 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
     if jobs_old_exists > 0 {
         println!("Cleaning up orphaned 'jobs_old' table...");
         let _ = conn.execute("DROP TABLE jobs_old", []);
+    }
+
+    // 5. Add base_resume_id and base_cl_id to 'jobs' table
+    let table_sql: String = conn
+        .query_row(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='jobs'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or_default();
+
+    if !table_sql.contains("base_resume_id") {
+        println!("Adding 'base_resume_id' and 'base_cl_id' to 'jobs' table...");
+        let _ = conn.execute("ALTER TABLE jobs ADD COLUMN base_resume_id TEXT REFERENCES base_resumes(id)", []);
+        let _ = conn.execute("ALTER TABLE jobs ADD COLUMN base_cl_id TEXT REFERENCES base_cover_letters(id)", []);
     }
 
     Ok(conn)

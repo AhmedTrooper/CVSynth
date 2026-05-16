@@ -3,7 +3,7 @@ use crate::commands::downloads::DownloadRecord;
 use crate::commands::jobs::JobPayload;
 use crate::commands::resumes::ResumeDetail;
 use crate::AppState;
-use rusqlite::OptionalExtension;
+use rusqlite::{params, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
@@ -53,6 +53,7 @@ pub async fn export_all_data(state: State<'_, AppState>) -> Result<AppDataExport
                 status, raw_jd, requirements, core_responsibilities,
                 custom_instruction, reference_name, 
                 reference_email, social_link, job_url,
+                base_resume_id, base_cl_id,
                 created_at, updated_at
          FROM jobs",
         )
@@ -75,8 +76,10 @@ pub async fn export_all_data(state: State<'_, AppState>) -> Result<AppDataExport
                 reference_email: row.get(11)?,
                 social_link: row.get(12)?,
                 job_url: row.get(13)?,
-                created_at: Some(row.get(14)?),
-                updated_at: Some(row.get(15)?),
+                base_resume_id: row.get(14)?,
+                base_cl_id: row.get(15)?,
+                created_at: Some(row.get(16)?),
+                updated_at: Some(row.get(17)?),
             })
         })
         .map_err(|e| e.to_string())?
@@ -184,8 +187,8 @@ pub async fn export_all_data(state: State<'_, AppState>) -> Result<AppDataExport
                 id: row.get(0)?,
                 filename: row.get(1)?,
                 download_type: row.get(2)?,
-                job_id: Some(row.get(3)?),
-                content_id: Some(row.get(4)?),
+                job_id: row.get(3)?,
+                content_id: row.get(4)?,
                 created_at: row.get(5)?,
             })
         })
@@ -255,14 +258,14 @@ pub async fn import_data(
                 category=excluded.category, 
                 latex_content=excluded.latex_content,
                 updated_at=excluded.updated_at",
-            [
+            (
                 &resume.id,
                 &resume.name,
                 &resume.category,
                 &resume.latex_content,
                 &resume.created_at,
                 &resume.updated_at,
-            ],
+            ),
         )
         .map_err(|e| e.to_string())?;
     }
@@ -277,14 +280,14 @@ pub async fn import_data(
                 category=excluded.category, 
                 latex_content=excluded.latex_content,
                 updated_at=excluded.updated_at",
-            [
+            (
                 &cl.id,
                 &cl.name,
                 &cl.category,
                 &cl.latex_content,
                 &cl.created_at,
                 &cl.updated_at,
-            ],
+            ),
         ).map_err(|e| e.to_string())?;
     }
 
@@ -296,8 +299,9 @@ pub async fn import_data(
                 status, raw_jd, requirements, core_responsibilities,
                 custom_instruction, reference_name, 
                 reference_email, social_link, job_url,
+                base_resume_id, base_cl_id,
                 created_at, updated_at
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)
             ON CONFLICT(id) DO UPDATE SET 
                 company_name=excluded.company_name,
                 job_title=excluded.job_title,
@@ -312,8 +316,10 @@ pub async fn import_data(
                 reference_email=excluded.reference_email,
                 social_link=excluded.social_link,
                 job_url=excluded.job_url,
+                base_resume_id=excluded.base_resume_id,
+                base_cl_id=excluded.base_cl_id,
                 updated_at=excluded.updated_at",
-            [
+            params![
                 &job.id,
                 &job.company_name,
                 &job.job_title,
@@ -321,13 +327,15 @@ pub async fn import_data(
                 &job.employment_type,
                 &job.status,
                 &job.raw_jd,
-                &job.requirements.unwrap_or_default(),
-                &job.core_responsibilities.unwrap_or_default(),
-                &job.custom_instruction.unwrap_or_default(),
-                &job.reference_name.unwrap_or_default(),
-                &job.reference_email.unwrap_or_default(),
-                &job.social_link.unwrap_or_default(),
-                &job.job_url.unwrap_or_default(),
+                &job.requirements,
+                &job.core_responsibilities,
+                &job.custom_instruction,
+                &job.reference_name,
+                &job.reference_email,
+                &job.social_link,
+                &job.job_url,
+                &job.base_resume_id,
+                &job.base_cl_id,
                 &job.created_at
                     .unwrap_or_else(|| chrono::Local::now().to_rfc3339()),
                 &job.updated_at
@@ -346,15 +354,15 @@ pub async fn import_data(
                 final_latex_content=excluded.final_latex_content,
                 is_active=excluded.is_active,
                 updated_at=excluded.updated_at",
-            [
+            (
                 &tailored.id,
                 &tailored.job_id,
                 &tailored.base_resume_id,
                 &tailored.final_latex_content,
-                &tailored.is_active.to_string(),
+                &tailored.is_active,
                 &tailored.created_at,
                 &tailored.updated_at,
-            ],
+            ),
         ).map_err(|e| e.to_string())?;
     }
 
@@ -367,15 +375,15 @@ pub async fn import_data(
                 final_latex_content=excluded.final_latex_content,
                 is_active=excluded.is_active,
                 updated_at=excluded.updated_at",
-            [
+            (
                 &tailored.id,
                 &tailored.job_id,
                 &tailored.base_cl_id,
                 &tailored.final_latex_content,
-                &tailored.is_active.to_string(),
+                &tailored.is_active,
                 &tailored.created_at,
                 &tailored.updated_at,
-            ],
+            ),
         ).map_err(|e| e.to_string())?;
     }
 
@@ -385,14 +393,14 @@ pub async fn import_data(
             "INSERT INTO downloads (id, filename, download_type, job_id, content_id, created_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)
              ON CONFLICT(id) DO NOTHING",
-            [
+            (
                 &download.id,
                 &download.filename,
                 &download.download_type,
-                &download.job_id.unwrap_or_default(),
-                &download.content_id.unwrap_or_default(),
+                &download.job_id,
+                &download.content_id,
                 &download.created_at,
-            ],
+            ),
         )
         .map_err(|e| e.to_string())?;
     }

@@ -44,6 +44,7 @@ interface TemplateItem {
 
 interface TailoredContent {
   id: string;
+  base_template_id: string;
   content: string;
 }
 
@@ -134,6 +135,17 @@ const standardResumes = ref<TemplateItem[]>([]);
 const standardCls = ref<TemplateItem[]>([]);
 const isLoadingTemplates = ref(false);
 
+// Helper to parse JSON fields safely
+const parseJsonField = (field: string | undefined | null): string[] => {
+  if (!field) return [];
+  try {
+    return JSON.parse(field);
+  } catch (e) {
+    console.error("Failed to parse JSON field:", field, e);
+    return [];
+  }
+};
+
 // Load job details and base templates on mount
 onMounted(async () => {
   try {
@@ -176,12 +188,14 @@ onMounted(async () => {
     if (latestResume) {
       resumeLatex.value = latestResume.content;
       tailoredResumeId.value = latestResume.id;
+      resumeSelectedId.value = latestResume.base_template_id;
     }
 
     const latestCl = await invoke<TailoredContent | null>('get_latest_tailored_cover_letter', { jobId: props.id });
     if (latestCl) {
       clLatex.value = latestCl.content;
       tailoredClId.value = latestCl.id;
+      clSelectedId.value = latestCl.base_template_id;
     }
 
     // Initialize dirty state tracking after initial load
@@ -619,7 +633,19 @@ const deleteJob = async () => {
             </AnimatePresence>
           </div>
           <ul class="tight-list">
-            <li v-for="req in JSON.parse(jobDetails.requirements)" :key="req">{{ req }}</li>
+            <li v-for="req in parseJsonField(jobDetails.requirements)" :key="req">{{ req }}</li>
+          </ul>
+        </div>
+
+        <div class="section scroll-section" v-if="jobDetails?.core_responsibilities">
+          <div class="section-header-icon" @mouseenter="activeTooltip = 'resp-sec'" @mouseleave="activeTooltip = null">
+            <Briefcase :size="16" />
+            <AnimatePresence>
+              <Motion v-if="activeTooltip === 'resp-sec'" class="flying-message sidebar-tooltip" :initial="{ opacity: 0, x: 5 }" :animate="{ opacity: 1, x: 12 }">Responsibilities</Motion>
+            </AnimatePresence>
+          </div>
+          <ul class="tight-list">
+            <li v-for="resp in parseJsonField(jobDetails.core_responsibilities)" :key="resp">{{ resp }}</li>
           </ul>
         </div>
 

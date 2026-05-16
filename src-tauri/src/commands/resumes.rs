@@ -39,10 +39,52 @@ pub struct UpdateResumeArgs {
     pub latex_content: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TemplateUsage {
+    pub job_id: String,
+    pub company_name: String,
+    pub job_title: String,
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteResumeArgs {
     pub resume_id: String,
+}
+
+#[tauri::command]
+pub fn check_resume_usage(
+    state: State<'_, AppState>,
+    resume_id: String,
+) -> Result<Vec<TemplateUsage>, String> {
+    let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
+    let conn = db_guard.as_mut().ok_or("Database connection lost")?;
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT j.id, j.company_name, j.job_title 
+             FROM tailored_resumes tr
+             JOIN jobs j ON tr.job_id = j.id
+             WHERE tr.base_resume_id = ?1",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let usage_iter = stmt
+        .query_map([&resume_id], |row| {
+            Ok(TemplateUsage {
+                job_id: row.get(0)?,
+                company_name: row.get(1)?,
+                job_title: row.get(2)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut usages = Vec::new();
+    for usage in usage_iter {
+        usages.push(usage.map_err(|e| e.to_string())?);
+    }
+
+    Ok(usages)
 }
 
 #[tauri::command]
@@ -148,8 +190,20 @@ pub fn delete_resume(state: State<'_, AppState>, args: DeleteResumeArgs) -> Resu
     let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
 
     if let Some(conn) = db_guard.as_mut() {
-        conn.execute("DELETE FROM base_resumes WHERE id = ?1", [&args.resume_id])
-            .map_err(|e| format!("Database error: {}", e))?;
+        let tx = conn.transaction().map_err(|e| format!("Transaction error: {}", e))?;
+
+        // 1. Delete dependent tailored resumes
+        tx.execute(
+            "DELETE FROM tailored_resumes WHERE base_resume_id = ?1",
+            [&args.resume_id],
+        )
+        .map_err(|e| format!("Database error (tailored): {}", e))?;
+
+        // 2. Delete the base resume
+        tx.execute("DELETE FROM base_resumes WHERE id = ?1", [&args.resume_id])
+            .map_err(|e| format!("Database error (base): {}", e))?;
+
+        tx.commit().map_err(|e| format!("Commit error: {}", e))?;
 
         Ok(())
     } else {

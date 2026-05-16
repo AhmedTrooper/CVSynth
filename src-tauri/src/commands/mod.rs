@@ -12,5 +12,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TailoredContent {
     pub id: String,
+    pub base_template_id: String,
     pub content: String,
 }

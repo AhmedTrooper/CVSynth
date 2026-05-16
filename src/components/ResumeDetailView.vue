@@ -3,7 +3,8 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useResumesStore, type ResumeDetail } from '../store/resumes';
 import { Motion, AnimatePresence } from 'motion-v';
-import { ask } from '@tauri-apps/plugin-dialog';
+import { ask, message } from '@tauri-apps/plugin-dialog';
+import { invoke } from '@tauri-apps/api/core';
 import { 
   ArrowLeft, 
   Edit, 
@@ -33,6 +34,12 @@ const extensions = [
 
 const props = defineProps<{ id: string }>();
 
+interface UsageRecord {
+  job_id: string;
+  company_name: string;
+  job_title: string;
+}
+
 // Tooltip State
 const activeTooltip = ref<string | null>(null);
 
@@ -49,11 +56,10 @@ const editedLatex = ref('');
 
 onMounted(async () => {
   try {
-    const data = await resumesStore.getResumeById(props.id);
-    resume.value = data;
-    editedName.value = data.name;
-    editedCategory.value = data.category;
-    editedLatex.value = data.latex_content || '';
+    resume.value = await resumesStore.getResumeById(props.id);
+    editedName.value = resume.value.name;
+    editedCategory.value = resume.value.category;
+    editedLatex.value = resume.value.latex_content;
   } catch (err: any) {
     error.value = err.toString();
   } finally {
@@ -61,18 +67,14 @@ onMounted(async () => {
   }
 });
 
-const goBack = () => {
-  router.push('/resumes');
-};
+const goBack = () => router.push('/resumes');
 
 const toggleEditMode = () => {
   if (isEditing.value) {
-    // Reset to original values if canceling
-    if (resume.value) {
-      editedName.value = resume.value.name;
-      editedCategory.value = resume.value.category;
-      editedLatex.value = resume.value.latex_content;
-    }
+    // Reset to current values if cancelling
+    editedName.value = resume.value?.name || '';
+    editedCategory.value = resume.value?.category || '';
+    editedLatex.value = resume.value?.latex_content || '';
   }
   isEditing.value = !isEditing.value;
 };
@@ -107,16 +109,30 @@ const handleSave = async () => {
 
 const handleDelete = async () => {
   if (!resume.value) return;
-  const confirmed = await ask('Delete this resume template? This cannot be undone.', {
-    title: 'Confirm Deletion',
-    kind: 'warning'
-  });
-  if (!confirmed) return;
-
-  isDeleting.value = true;
-  error.value = null;
 
   try {
+    // 1. Check for usage in tailored resumes
+    const usages = await invoke<UsageRecord[]>('check_resume_usage', { resumeId: resume.value.id });
+
+    if (usages.length > 0) {
+      const jobList = usages.map(u => `• ${u.company_name} (${u.job_title})`).join('\n');
+      await message(
+        `This template cannot be deleted because it is currently used by tailored resumes for the following jobs:\n\n${jobList}\n\nPlease delete these tailored versions or the jobs themselves before deleting this base template.`,
+        { title: 'Template In Use', kind: 'error' }
+      );
+      return;
+    }
+
+    // 2. Proceed with normal confirmation
+    const confirmed = await ask('Delete this resume template? This cannot be undone.', {
+      title: 'Confirm Deletion',
+      kind: 'warning'
+    });
+    if (!confirmed) return;
+
+    isDeleting.value = true;
+    error.value = null;
+
     await resumesStore.deleteResume(resume.value.id);
     router.push('/resumes');
   } catch (err: any) {
@@ -150,460 +166,257 @@ const hasLatexContent = () => {
           </Motion>
         </AnimatePresence>
       </div>
-      <div class="title-section">
-        <h1 v-if="!isEditing">{{ resume?.name }}</h1>
-        <input 
-          v-else 
-          v-model="editedName" 
-          type="text" 
-          class="edit-input title-input"
-        />
-        <span v-if="!isEditing" class="category">{{ resume?.category }}</span>
-        <input 
-          v-else 
-          v-model="editedCategory" 
-          type="text" 
-          class="edit-input category-input"
-          placeholder="Category"
-        />
+      
+      <div class="header-main">
+        <div class="title-group" v-if="!isEditing">
+          <h1>{{ resume?.name }}</h1>
+          <span class="category-tag">{{ resume?.category }}</span>
+        </div>
+        <div class="edit-group" v-else>
+          <input v-model="editedName" class="edit-input name-input" placeholder="Template Name" />
+          <input v-model="editedCategory" class="edit-input category-input" placeholder="Category" />
+        </div>
       </div>
-      <div class="actions-top">
-        <div v-if="!isEditing" class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'edit-template'" @mouseleave="activeTooltip = null">
-          <button class="btn-edit" @click="toggleEditMode"><Edit :size="16" /></button>
-          <AnimatePresence>
-            <Motion
-              v-if="activeTooltip === 'edit-template'"
-              :initial="{ opacity: 0, y: 5, scale: 0.9 }"
-              :animate="{ opacity: 1, y: 0, scale: 1 }"
-              :exit="{ opacity: 0, y: 5, scale: 0.9 }"
-              :transition="{ duration: 0.15 }"
-              class="flying-message"
-            >
-              Edit Template
-            </Motion>
-          </AnimatePresence>
-        </div>
-        <div v-if="!isEditing" class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'delete-template'" @mouseleave="activeTooltip = null">
-          <button class="btn-delete" @click="handleDelete" :disabled="isDeleting">
-            <Trash2 v-if="!isDeleting" :size="16" />
-            <RotateCw v-else :size="16" class="spinner" />
-          </button>
-          <AnimatePresence>
-            <Motion
-              v-if="activeTooltip === 'delete-template'"
-              :initial="{ opacity: 0, y: 5, scale: 0.9 }"
-              :animate="{ opacity: 1, y: 0, scale: 1 }"
-              :exit="{ opacity: 0, y: 5, scale: 0.9 }"
-              :transition="{ duration: 0.15 }"
-              class="flying-message delete-tooltip"
-            >
-              Delete Template
-            </Motion>
-          </AnimatePresence>
-        </div>
-        
-        <div v-else class="edit-actions">
-          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'cancel-edit'" @mouseleave="activeTooltip = null">
-            <button class="btn-cancel" @click="toggleEditMode"><X :size="16" /></button>
+
+      <div class="header-actions">
+        <template v-if="!isEditing">
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'edit-tpl'" @mouseleave="activeTooltip = null">
+            <button class="action-btn" @click="toggleEditMode"><Edit :size="16" /></button>
             <AnimatePresence>
               <Motion
-                v-if="activeTooltip === 'cancel-edit'"
+                v-if="activeTooltip === 'edit-tpl'"
                 :initial="{ opacity: 0, y: 5, scale: 0.9 }"
                 :animate="{ opacity: 1, y: 0, scale: 1 }"
                 :exit="{ opacity: 0, y: 5, scale: 0.9 }"
                 :transition="{ duration: 0.15 }"
-                class="flying-message"
+                class="flying-message header-tooltip"
               >
-                Cancel Changes
+                Edit Template
               </Motion>
             </AnimatePresence>
           </div>
-          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'save-template'" @mouseleave="activeTooltip = null">
-            <button class="btn-save" @click="handleSave" :disabled="isSaving">
-              <Save v-if="!isSaving" :size="16" />
-              <RotateCw v-else :size="16" class="spinner" />
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'delete-tpl'" @mouseleave="activeTooltip = null">
+            <button class="action-btn delete-btn" @click="handleDelete" :disabled="isDeleting">
+              <RotateCw v-if="isDeleting" :size="16" class="spinner" />
+              <Trash2 v-else :size="16" />
             </button>
             <AnimatePresence>
               <Motion
-                v-if="activeTooltip === 'save-template'"
+                v-if="activeTooltip === 'delete-tpl'"
                 :initial="{ opacity: 0, y: 5, scale: 0.9 }"
                 :animate="{ opacity: 1, y: 0, scale: 1 }"
                 :exit="{ opacity: 0, y: 5, scale: 0.9 }"
                 :transition="{ duration: 0.15 }"
-                class="flying-message"
+                class="flying-message header-tooltip delete-tooltip"
               >
-                Save Template
+                Delete Template
               </Motion>
             </AnimatePresence>
           </div>
-        </div>
+        </template>
+        <template v-else>
+          <button class="action-btn cancel-btn" @click="toggleEditMode"><X :size="16" /></button>
+          <button class="action-btn save-btn" @click="handleSave" :disabled="isSaving">
+            <RotateCw v-if="isSaving" :size="16" class="spinner" />
+            <Save v-else :size="16" />
+          </button>
+        </template>
       </div>
     </header>
 
-    <div v-if="error" class="error-banner">
-      {{ error }}
-    </div>
+    <div class="content-wrapper">
+      <div v-if="error" class="error-banner">{{ error }}</div>
 
-    <div class="meta-info">
-      <span class="meta-item">
-        <strong>ID:</strong> {{ resume?.id }}
-      </span>
-      <span class="meta-item">
-        <strong>Created:</strong> {{ new Date(resume?.created_at || '').toLocaleString() }}
-      </span>
-      <span class="meta-item">
-        <strong>Updated:</strong> {{ new Date(resume?.updated_at || '').toLocaleString() }}
-      </span>
-    </div>
-
-    <div class="editor-section">
-      <div class="editor-header">
-        <h2>LaTeX Template</h2>
-        <div v-if="isEditing" class="editor-actions">
-          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'cancel-edit-editor'" @mouseleave="activeTooltip = null">
-            <button class="btn-cancel" @click="toggleEditMode"><X :size="16" /></button>
+      <div class="latex-section">
+        <div class="section-header">
+          <h2>LATEX SOURCE</h2>
+          <div class="editor-actions">
+            <span class="status-indicator" v-if="isEditing">Editing Mode</span>
+          </div>
+        </div>
+        
+        <codemirror
+          v-if="isEditing"
+          v-model="editedLatex"
+          placeholder="Enter your LaTeX code here..."
+          :style="{ minHeight: '400px', height: 'auto' }"
+          :autofocus="true"
+          :indent-with-tab="true"
+          :tab-size="2"
+          :extensions="extensions"
+          class="latex-editor-cm"
+        />
+        <div v-else-if="hasLatexContent()" class="latex-preview">
+          <pre><code>{{ resume?.latex_content }}</code></pre>
+        </div>
+        <div v-else class="empty-latex">
+          <p>This template has no LaTeX content yet.</p>
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'add-latex'" @mouseleave="activeTooltip = null">
+            <button class="btn-edit" @click="toggleEditMode"><Edit :size="16" /></button>
             <AnimatePresence>
               <Motion
-                v-if="activeTooltip === 'cancel-edit-editor'"
+                v-if="activeTooltip === 'add-latex'"
                 :initial="{ opacity: 0, y: 5, scale: 0.9 }"
                 :animate="{ opacity: 1, y: 0, scale: 1 }"
                 :exit="{ opacity: 0, y: 5, scale: 0.9 }"
                 :transition="{ duration: 0.15 }"
                 class="flying-message"
               >
-                Cancel Changes
-              </Motion>
-            </AnimatePresence>
-          </div>
-          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'save-template-editor'" @mouseleave="activeTooltip = null">
-            <button class="btn-save" @click="handleSave" :disabled="isSaving">
-              <Save v-if="!isSaving" :size="16" />
-              <RotateCw v-else :size="16" class="spinner" />
-            </button>
-            <AnimatePresence>
-              <Motion
-                v-if="activeTooltip === 'save-template-editor'"
-                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
-                :animate="{ opacity: 1, y: 0, scale: 1 }"
-                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
-                :transition="{ duration: 0.15 }"
-                class="flying-message"
-              >
-                Save Template
+                Add LaTeX
               </Motion>
             </AnimatePresence>
           </div>
         </div>
       </div>
-      
-      <codemirror
-        v-if="isEditing"
-        v-model="editedLatex"
-        placeholder="Enter your LaTeX code here..."
-        :style="{ minHeight: '400px', height: 'auto' }"
-        :autofocus="true"
-        :indent-with-tab="true"
-        :tab-size="2"
-        :extensions="extensions"
-        class="latex-editor-cm"
-      />
-      
-      <div v-else-if="!hasLatexContent()" class="empty-latex">
-        <p>No LaTeX content yet.</p>
-        <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'add-latex'" @mouseleave="activeTooltip = null">
-          <button class="btn-edit" @click="toggleEditMode"><Edit :size="16" /></button>
-          <AnimatePresence>
-            <Motion
-              v-if="activeTooltip === 'add-latex'"
-              :initial="{ opacity: 0, y: 5, scale: 0.9 }"
-              :animate="{ opacity: 1, y: 0, scale: 1 }"
-              :exit="{ opacity: 0, y: 5, scale: 0.9 }"
-              :transition="{ duration: 0.15 }"
-              class="flying-message"
-            >
-              Add LaTeX
-            </Motion>
-          </AnimatePresence>
+
+      <div class="meta-info" v-if="!isEditing">
+        <div class="meta-item">
+          <label>CREATED</label>
+          <span>{{ new Date(resume?.created_at || '').toLocaleString() }}</span>
         </div>
-      </div>
-      
-      <pre v-else class="latex-preview">{{ resume?.latex_content }}</pre>
-    </div>
-
-    <div class="footer-info">
-      <p>💡 Tip: This LaTeX template will be used when tailoring resumes for job applications.</p>
-    </div>
-
-    <div v-if="isEditing" class="edit-bar">
-      <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'cancel-edit-footer'" @mouseleave="activeTooltip = null">
-        <button class="btn-cancel" @click="toggleEditMode"><X :size="16" /></button>
-        <AnimatePresence>
-          <Motion
-            v-if="activeTooltip === 'cancel-edit-footer'"
-            :initial="{ opacity: 0, y: 5, scale: 0.9 }"
-            :animate="{ opacity: 1, y: 0, scale: 1 }"
-            :exit="{ opacity: 0, y: 5, scale: 0.9 }"
-            :transition="{ duration: 0.15 }"
-            class="flying-message"
-          >
-            Cancel Changes
-          </Motion>
-        </AnimatePresence>
-      </div>
-      <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'save-template-footer'" @mouseleave="activeTooltip = null">
-        <button class="btn-save" @click="handleSave" :disabled="isSaving">
-          <Save v-if="!isSaving" :size="16" />
-          <RotateCw v-else :size="16" class="spinner" />
-        </button>
-        <AnimatePresence>
-          <Motion
-            v-if="activeTooltip === 'save-template-footer'"
-            :initial="{ opacity: 0, y: 5, scale: 0.9 }"
-            :animate="{ opacity: 1, y: 0, scale: 1 }"
-            :exit="{ opacity: 0, y: 5, scale: 0.9 }"
-            :transition="{ duration: 0.15 }"
-            class="flying-message"
-          >
-            Save Template
-          </Motion>
-        </AnimatePresence>
+        <div class="meta-item">
+          <label>LAST UPDATED</label>
+          <span>{{ new Date(resume?.updated_at || '').toLocaleString() }}</span>
+        </div>
       </div>
     </div>
   </div>
-
-  <div v-else class="loading">
-    Loading resume...
+  <div class="loading" v-else>
+    Loading resume details...
   </div>
 </template>
 
 <style scoped>
-.btn-tooltip-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.flying-message {
-  position: absolute;
-  bottom: 140%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--accent);
-  color: white;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 0.65rem;
-  font-weight: 700;
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 1000;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-}
-
-.flying-message::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 4px solid transparent;
-  border-top-color: var(--accent);
-}
-
-.header-tooltip { bottom: auto; top: 140%; }
-.header-tooltip::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: var(--accent); }
-.delete-tooltip { background: var(--warning); }
-.delete-tooltip::after { border-bottom-color: var(--warning); }
-
-.spinner {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
 .detail-container {
-  padding: 24px 20px 40px;
-  max-width: 1400px;
-  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
 }
 
 .detail-header {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 16px;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  background: var(--bg-accent);
   border-bottom: 1px solid var(--line);
+  gap: 20px;
 }
 
 .back-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  display: flex;
+  transition: 0.2s;
+}
+.back-btn:hover { background: var(--surface); color: var(--ink); }
+
+.header-main { flex: 1; min-width: 0; }
+.title-group { display: flex; align-items: center; gap: 12px; }
+.title-group h1 { font-size: 1.1rem; font-weight: 700; color: var(--ink); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.category-tag {
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.6rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.edit-group { display: flex; gap: 12px; }
+.edit-input {
   background: var(--surface);
   border: 1px solid var(--line);
-  color: var(--muted);
-  padding: 8px 14px;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: 0.2s;
-  white-space: nowrap;
-}
-
-.back-btn:hover { color: var(--ink); border-color: var(--accent); }
-
-.title-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.title-section h1 {
-  margin: 0;
-  font-size: 1.6rem;
+  border-radius: 6px;
   color: var(--ink);
-}
-
-.category {
-  background: rgba(11, 123, 107, 0.12);
-  color: var(--accent);
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  width: fit-content;
-}
-
-.edit-input {
-  background-color: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 12px;
-  color: var(--ink);
-  font-size: 1rem;
+  padding: 6px 12px;
+  font-size: 0.9rem;
   outline: none;
 }
-
-.title-input {
-  font-size: 1.4rem;
-  font-weight: 700;
-}
-
+.name-input { font-weight: 700; flex: 1; }
 .category-input { width: fit-content; }
 
 .edit-input:focus {
   border-color: var(--accent);
 }
 
-.actions-top {
+.header-actions {
   display: flex;
   gap: 10px;
   align-items: center;
 }
 
-.btn-edit {
-  background-color: var(--accent);
-  color: #fff;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 10px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.btn-edit:hover { background-color: #0a6b5e; }
-
-.edit-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.btn-cancel, .btn-save {
-  border: none;
-  padding: 10px 16px;
-  border-radius: 10px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.btn-delete {
-  background: #fff0ef;
-  color: var(--warning);
-  border: 1px solid rgba(180, 35, 24, 0.2);
-  padding: 10px 16px;
-  border-radius: 10px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.btn-delete:hover:not(:disabled) {
-  background: #ffe5e2;
-}
-
-.btn-delete:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-cancel {
-  background: var(--surface-soft);
+.action-btn {
+  background: var(--surface);
+  border: 1px solid var(--line);
   color: var(--muted);
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.2s;
 }
+.action-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.btn-cancel:hover { color: var(--ink); }
+.delete-btn:hover:not(:disabled) { border-color: var(--warning); color: var(--warning); }
+.save-btn { background: var(--accent); color: white; border: none; }
+.save-btn:hover:not(:disabled) { background: var(--accent-hover); color: white; }
 
-.btn-save {
-  background-color: var(--accent);
-  color: #fff;
+.content-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 24px;
+  max-width: 1000px;
+  width: 100%;
+  margin: 0 auto;
 }
-
-.btn-save:hover:not(:disabled) { background-color: #0a6b5e; }
-.btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .error-banner {
-  background: rgba(180, 35, 24, 0.1);
-  border: 1px solid rgba(180, 35, 24, 0.2);
-  border-radius: 10px;
-  padding: 12px 16px;
-  margin-bottom: 16px;
+  background: rgba(248, 81, 73, 0.1);
   color: var(--warning);
-}
-
-.meta-info {
-  display: grid;
-  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
   margin-bottom: 24px;
-  padding: 16px;
-  background: var(--surface);
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  font-size: 0.9rem;
-  box-shadow: var(--shadow);
 }
 
-.meta-item { color: var(--muted); }
-.meta-item strong { color: var(--accent); }
+.latex-section {
+  margin-bottom: 32px;
+}
 
-.editor-section { margin-bottom: 24px; }
-
-.editor-header {
-  margin-bottom: 12px;
+.section-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
 }
 
-.editor-header h2 {
+.section-header h2 {
+  font-size: 0.7rem;
+  font-weight: 900;
+  color: var(--muted);
+  letter-spacing: 0.1em;
   margin: 0;
-  color: var(--ink);
-  font-size: 1.1rem;
 }
 
-.editor-actions { display: flex; gap: 10px; }
+.status-indicator {
+  font-size: 0.65rem;
+  color: var(--accent);
+  font-weight: 700;
+}
 
 .latex-editor-cm {
   width: 100%;
@@ -643,13 +456,12 @@ const hasLatexContent = () => {
   padding: 16px;
   color: var(--ink);
   font-family: 'Monaco', 'Menlo', monospace;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   line-height: 1.6;
   overflow: auto;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  margin: 0;
 }
+
+.latex-preview pre { margin: 0; white-space: pre-wrap; }
 
 .empty-latex {
   width: 100%;
@@ -661,44 +473,94 @@ const hasLatexContent = () => {
   color: var(--muted);
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.empty-latex p { margin: 0; font-size: 0.9rem; }
+
+.btn-edit {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
 }
 
-.footer-info {
-  padding: 14px 16px;
-  background: var(--surface-soft);
-  border: 1px solid var(--line);
-  border-radius: 12px;
+.meta-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+
+.meta-item label {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 800;
   color: var(--muted);
-  font-size: 0.9rem;
+  margin-bottom: 4px;
 }
 
-.edit-bar {
-  position: sticky;
-  bottom: 12px;
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  margin-top: 20px;
-  padding: 12px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow);
+.meta-item span {
+  font-size: 0.85rem;
+  color: var(--ink);
 }
+
+.btn-tooltip-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.flying-message {
+  position: absolute;
+  bottom: 140%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.flying-message::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: var(--accent);
+}
+
+.header-tooltip { bottom: auto; top: 140%; }
+.header-tooltip::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: var(--accent); }
+.delete-tooltip { background: var(--warning); left: auto; right: 0; transform: none; }
+.delete-tooltip::after { border-bottom-color: var(--warning); left: auto; right: 8px; transform: none; }
 
 .loading {
-  text-align: center;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--muted);
-  padding: 40px;
 }
 
-@media (min-width: 960px) {
-  .detail-container { padding: 40px 32px 60px; }
-  .detail-header { grid-template-columns: auto 1fr auto; align-items: center; }
-  .meta-info { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .latex-editor, .latex-preview { min-height: 520px; }
-  .edit-bar { position: static; margin-top: 24px; background: transparent; border: none; box-shadow: none; padding: 0; }
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 </style>

@@ -23,6 +23,12 @@ pub struct JobPayload {
     pub job_url: Option<String>,
     pub base_resume_id: Option<String>,
     pub base_cl_id: Option<String>,
+    pub salary: Option<String>,
+    pub applied_date: Option<String>,
+    pub interview_date: Option<String>,
+    pub offer_date: Option<String>,
+    pub rejected_date: Option<String>,
+    pub joining_date: Option<String>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
 }
@@ -49,9 +55,10 @@ pub async fn save_job(state: State<'_, AppState>, payload: JobPayload) -> Result
             status, raw_jd, requirements, core_responsibilities,
             custom_instruction, reference_name, 
             reference_email, social_link, job_url,
-            base_resume_id, base_cl_id
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
-        (
+            base_resume_id, base_cl_id, salary,
+            applied_date, interview_date, offer_date, rejected_date, joining_date
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22)",
+        rusqlite::params![
             &payload.id,
             &payload.company_name,
             &payload.job_title,
@@ -68,7 +75,13 @@ pub async fn save_job(state: State<'_, AppState>, payload: JobPayload) -> Result
             &payload.job_url,
             &payload.base_resume_id,
             &payload.base_cl_id,
-        ),
+            &payload.salary,
+            &payload.applied_date,
+            &payload.interview_date,
+            &payload.offer_date,
+            &payload.rejected_date,
+            &payload.joining_date,
+        ],
     )
     .map_err(|e| format!("Database error: {}", e))?;
 
@@ -87,6 +100,7 @@ pub async fn get_job_by_id(state: State<'_, AppState>, id: String) -> Result<Job
                 custom_instruction, reference_name, 
                 reference_email, social_link, job_url,
                 base_resume_id, base_cl_id,
+                salary, applied_date, interview_date, offer_date, rejected_date, joining_date,
                 created_at, updated_at
          FROM jobs WHERE id = ?1",
         )
@@ -111,8 +125,14 @@ pub async fn get_job_by_id(state: State<'_, AppState>, id: String) -> Result<Job
                 job_url: row.get(13)?,
                 base_resume_id: row.get::<_, Option<String>>(14)?,
                 base_cl_id: row.get::<_, Option<String>>(15)?,
-                created_at: Some(row.get(16)?),
-                updated_at: Some(row.get(17)?),
+                salary: row.get(16)?,
+                applied_date: row.get(17)?,
+                interview_date: row.get(18)?,
+                offer_date: row.get(19)?,
+                rejected_date: row.get(20)?,
+                joining_date: row.get(21)?,
+                created_at: Some(row.get(22)?),
+                updated_at: Some(row.get(23)?),
             })
         })
         .map_err(|e| format!("Job not found: {}", e))?;
@@ -130,6 +150,7 @@ pub async fn get_all_jobs(state: State<'_, AppState>) -> Result<Vec<JobPayload>,
                     custom_instruction, reference_name, 
                     reference_email, social_link, job_url,
                     base_resume_id, base_cl_id,
+                    salary, applied_date, interview_date, offer_date, rejected_date, joining_date,
                     created_at, updated_at
              FROM jobs ORDER BY created_at DESC",
             )
@@ -154,11 +175,18 @@ pub async fn get_all_jobs(state: State<'_, AppState>) -> Result<Vec<JobPayload>,
                     job_url: row.get(13)?,
                     base_resume_id: row.get::<_, Option<String>>(14)?,
                     base_cl_id: row.get::<_, Option<String>>(15)?,
-                    created_at: Some(row.get(16)?),
-                    updated_at: Some(row.get(17)?),
+                    salary: row.get(16)?,
+                    applied_date: row.get(17)?,
+                    interview_date: row.get(18)?,
+                    offer_date: row.get(19)?,
+                    rejected_date: row.get(20)?,
+                    joining_date: row.get(21)?,
+                    created_at: Some(row.get(22)?),
+                    updated_at: Some(row.get(23)?),
                 })
             })
             .map_err(|e| e.to_string())?;
+
 
         let mut jobs = Vec::new();
         for job in job_iter {
@@ -251,11 +279,61 @@ pub async fn update_job_status(
     state: State<'_, AppState>,
     id: String,
     status: String,
+    metadata: Option<std::collections::HashMap<String, String>>,
 ) -> Result<(), String> {
     let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
     let conn = db_guard.as_mut().ok_or("Database connection lost")?;
 
-    conn.execute("UPDATE jobs SET status = ?1 WHERE id = ?2", [&status, &id])
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+    tx.execute("UPDATE jobs SET status = ?1 WHERE id = ?2", [&status, &id])
+        .map_err(|e| format!("Database error (status): {}", e))?;
+
+    if let Some(meta) = metadata {
+        for (key, value) in meta {
+            // Validate keys to prevent SQL injection or invalid column updates
+            let column = match key.as_str() {
+                "salary" => "salary",
+                "applied_date" => "applied_date",
+                "interview_date" => "interview_date",
+                "offer_date" => "offer_date",
+                "rejected_date" => "rejected_date",
+                "joining_date" => "joining_date",
+                _ => continue,
+            };
+
+            let sql = format!("UPDATE jobs SET {} = ?1 WHERE id = ?2", column);
+            tx.execute(&sql, [&value, &id])
+                .map_err(|e| format!("Database error ({}): {}", key, e))?;
+        }
+    }
+
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn update_job_metadata(
+    state: State<'_, AppState>,
+    id: String,
+    field: String,
+    value: String,
+) -> Result<(), String> {
+    let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
+    let conn = db_guard.as_mut().ok_or("Database connection lost")?;
+
+    let column = match field.as_str() {
+        "salary" => "salary",
+        "applied_date" => "applied_date",
+        "interview_date" => "interview_date",
+        "offer_date" => "offer_date",
+        "rejected_date" => "rejected_date",
+        "joining_date" => "joining_date",
+        _ => return Err(format!("Invalid metadata field: {}", field)),
+    };
+
+    let sql = format!("UPDATE jobs SET {} = ?1 WHERE id = ?2", column);
+    conn.execute(&sql, [&value, &id])
         .map_err(|e| format!("Database error: {}", e))?;
 
     Ok(())

@@ -501,6 +501,24 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
     if !columns.contains(&"job_url".to_string()) {
         conn.execute("ALTER TABLE jobs ADD COLUMN job_url TEXT", [])?;
     }
+    if !columns.contains(&"salary".to_string()) {
+        conn.execute("ALTER TABLE jobs ADD COLUMN salary TEXT", [])?;
+    }
+    if !columns.contains(&"applied_date".to_string()) {
+        conn.execute("ALTER TABLE jobs ADD COLUMN applied_date TEXT", [])?;
+    }
+    if !columns.contains(&"interview_date".to_string()) {
+        conn.execute("ALTER TABLE jobs ADD COLUMN interview_date TEXT", [])?;
+    }
+    if !columns.contains(&"offer_date".to_string()) {
+        conn.execute("ALTER TABLE jobs ADD COLUMN offer_date TEXT", [])?;
+    }
+    if !columns.contains(&"rejected_date".to_string()) {
+        conn.execute("ALTER TABLE jobs ADD COLUMN rejected_date TEXT", [])?;
+    }
+    if !columns.contains(&"joining_date".to_string()) {
+        conn.execute("ALTER TABLE jobs ADD COLUMN joining_date TEXT", [])?;
+    }
 
     // 3. Fix potential broken foreign keys in tailored_resumes (pointing to jobs_old)
     // This can happen if a previous migration renamed 'jobs' while foreign_keys was ON.

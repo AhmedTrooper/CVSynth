@@ -54,6 +54,7 @@ pub async fn export_all_data(state: State<'_, AppState>) -> Result<AppDataExport
                 custom_instruction, reference_name, 
                 reference_email, social_link, job_url,
                 base_resume_id, base_cl_id,
+                salary, applied_date, interview_date, offer_date, rejected_date, joining_date,
                 created_at, updated_at
          FROM jobs",
         )
@@ -78,8 +79,14 @@ pub async fn export_all_data(state: State<'_, AppState>) -> Result<AppDataExport
                 job_url: row.get(13)?,
                 base_resume_id: row.get(14)?,
                 base_cl_id: row.get(15)?,
-                created_at: Some(row.get(16)?),
-                updated_at: Some(row.get(17)?),
+                salary: row.get(16)?,
+                applied_date: row.get(17)?,
+                interview_date: row.get(18)?,
+                offer_date: row.get(19)?,
+                rejected_date: row.get(20)?,
+                joining_date: row.get(21)?,
+                created_at: Some(row.get(22)?),
+                updated_at: Some(row.get(23)?),
             })
         })
         .map_err(|e| e.to_string())?
@@ -300,8 +307,9 @@ pub async fn import_data(
                 custom_instruction, reference_name, 
                 reference_email, social_link, job_url,
                 base_resume_id, base_cl_id,
+                salary, applied_date, interview_date, offer_date, rejected_date, joining_date,
                 created_at, updated_at
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24)
             ON CONFLICT(id) DO UPDATE SET 
                 company_name=excluded.company_name,
                 job_title=excluded.job_title,
@@ -318,6 +326,12 @@ pub async fn import_data(
                 job_url=excluded.job_url,
                 base_resume_id=excluded.base_resume_id,
                 base_cl_id=excluded.base_cl_id,
+                salary=excluded.salary,
+                applied_date=excluded.applied_date,
+                interview_date=excluded.interview_date,
+                offer_date=excluded.offer_date,
+                rejected_date=excluded.rejected_date,
+                joining_date=excluded.joining_date,
                 updated_at=excluded.updated_at",
             params![
                 &job.id,
@@ -336,6 +350,12 @@ pub async fn import_data(
                 &job.job_url,
                 &job.base_resume_id,
                 &job.base_cl_id,
+                &job.salary,
+                &job.applied_date,
+                &job.interview_date,
+                &job.offer_date,
+                &job.rejected_date,
+                &job.joining_date,
                 &job.created_at
                     .unwrap_or_else(|| chrono::Local::now().to_rfc3339()),
                 &job.updated_at

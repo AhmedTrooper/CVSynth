@@ -12,8 +12,7 @@ import {
   RefreshCw,
   Palette,
   Plus,
-  Trash2,
-  X
+  Trash2
 } from '@lucide/vue';
 import { Motion, AnimatePresence } from 'motion-v';
 import { invoke } from '@tauri-apps/api/core';

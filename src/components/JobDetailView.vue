@@ -457,13 +457,45 @@ const openJobUrl = async () => {
 const goBack = () => router.push('/');
 
 const updateStatus = async (newStatus: string) => {
+  if (jobDetails.value?.status === newStatus) return;
+
+  let metadata: Record<string, string> = {};
+  const today = new Date().toISOString().split('T')[0];
+
   try {
-    await jobsStore.updateJobStatus(props.id, newStatus);
-    if (jobDetails.value) {
-      jobDetails.value.status = newStatus;
+    if (newStatus === 'Applied') {
+      metadata.applied_date = today;
+    } else if (newStatus === 'Interviewing') {
+      metadata.interview_date = today;
+    } else if (newStatus === 'Offer') {
+      metadata.offer_date = today;
+      await message('Amazing! You received an offer. You can add the salary details in the job info section.', { title: 'Offer Received', kind: 'info' });
+    } else if (newStatus === 'Rejected') {
+      metadata.rejected_date = today;
+    } else if (newStatus === 'Joined') {
+      const confirmed = await ask('Congratulations on the new role! Record today as your start date?', { title: 'Welcome Aboard!', kind: 'info' });
+      metadata.joining_date = confirmed ? today : today;
     }
+
+    await jobsStore.updateJobStatus(props.id, newStatus, Object.keys(metadata).length > 0 ? metadata : undefined);
+    
+    // Refresh local data
+    jobDetails.value = await jobsStore.getJobById(props.id);
   } catch (err: any) {
     error.value = `Failed to update status: ${err.toString()}`;
+  }
+};
+
+const editSalary = async () => {
+  const result = window.prompt('Enter the salary (e.g. $120k/yr):', jobDetails.value?.salary || '');
+
+  if (result !== null) {
+    try {
+      await jobsStore.updateJobMetadata(props.id, 'salary', result);
+      jobDetails.value = await jobsStore.getJobById(props.id);
+    } catch (err: any) {
+      error.value = `Failed to update salary: ${err.toString()}`;
+    }
   }
 };
 
@@ -619,10 +651,53 @@ const deleteJob = async () => {
               @change="(e) => updateStatus((e.target as HTMLSelectElement).value)"
               class="compact-select status-select"
             >
-              <option v-for="s in ['Drafting', 'Applied', 'Interviewing', 'Offer', 'Rejected']" :key="s" :value="s">
+              <option v-for="s in ['Drafting', 'Applied', 'Interviewing', 'Offer', 'Rejected', 'Joined']" :key="s" :value="s">
                 {{ s }}
               </option>
             </select>
+          </div>
+
+          <!-- Milestones Section -->
+          <div class="milestones-section" v-if="jobDetails?.applied_date || jobDetails?.salary || jobDetails?.joining_date">
+            <div class="milestone-row" v-if="jobDetails?.applied_date">
+              <span class="milestone-label">Applied</span>
+              <span class="milestone-value">{{ jobDetails.applied_date }}</span>
+            </div>
+            <div class="milestone-row" v-if="jobDetails?.interview_date">
+              <span class="milestone-label">Interview</span>
+              <span class="milestone-value">{{ jobDetails.interview_date }}</span>
+            </div>
+            <div class="milestone-row" v-if="jobDetails?.offer_date">
+              <span class="milestone-label">Offer Recv</span>
+              <span class="milestone-value">{{ jobDetails.offer_date }}</span>
+            </div>
+            <div class="milestone-row" v-if="jobDetails?.rejected_date">
+              <span class="milestone-label">Rejected</span>
+              <span class="milestone-value">{{ jobDetails.rejected_date }}</span>
+            </div>
+            <div class="milestone-row" v-if="jobDetails?.joining_date">
+              <span class="milestone-label">Start Date</span>
+              <span class="milestone-value">{{ jobDetails.joining_date }}</span>
+            </div>
+            <div class="milestone-row">
+              <span class="milestone-label">Salary</span>
+              <button 
+                v-if="jobDetails?.salary" 
+                class="salary-badge" 
+                @click="editSalary"
+                title="Click to edit salary"
+              >
+                {{ jobDetails.salary }}
+              </button>
+              <button 
+                v-else-if="jobDetails?.status === 'Offer' || jobDetails?.status === 'Joined'"
+                class="edit-salary-btn" 
+                @click="editSalary"
+              >
+                + Add Salary
+              </button>
+              <span v-else class="milestone-value">—</span>
+            </div>
           </div>
         </div>
 
@@ -1039,6 +1114,56 @@ const deleteJob = async () => {
   background: var(--bg-accent);
   color: var(--ink);
   font-weight: normal;
+}
+
+.milestones-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.milestone-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
+}
+
+.milestone-label {
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.milestone-value {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.salary-badge {
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 800;
+}
+
+.edit-salary-btn {
+  background: none;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.edit-salary-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .compact-textarea { height: 60px; resize: none; }

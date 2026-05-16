@@ -112,6 +112,7 @@ pub fn run() {
             commands::compiler::save_compiler_state,
             commands::compiler::get_compiler_state,
             commands::pdf::compile_resume_to_pdf,
+            commands::pdf::compile_workspace_to_pdf,
             commands::pdf::fix_latex_with_ai,
             commands::pdf::refine_latex_with_ai,
             commands::data::export_all_data,
@@ -122,7 +123,11 @@ pub fn run() {
             commands::settings::save_custom_theme,
             commands::settings::delete_theme,
             commands::settings::save_active_theme,
-            commands::settings::get_active_theme
+            commands::settings::get_active_theme,
+            commands::settings::save_workspace_path,
+            commands::settings::get_workspace_path,
+            commands::settings::save_last_opened_file,
+            commands::settings::get_last_opened_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

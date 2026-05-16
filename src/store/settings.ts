@@ -65,6 +65,11 @@ export const useSettingsStore = defineStore('settings', () => {
       const parsed = JSON.parse(themeJson);
       if (!parsed.name || !parsed.colors) throw new Error("Invalid theme format. Missing 'name' or 'colors'.");
       
+      // Check if name already exists (Uniqueness Requirement)
+      if (availableThemes.value.some(t => t.name.toLowerCase() === parsed.name.toLowerCase())) {
+        throw new Error(`A theme with the name "${parsed.name}" already exists.`);
+      }
+
       // Create a unique slug: name-lowercase + random suffix
       const slugBase = parsed.name.toLowerCase().replace(/\s+/g, '-');
       const randomSuffix = Math.random().toString(36).substring(2, 6);

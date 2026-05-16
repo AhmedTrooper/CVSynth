@@ -129,15 +129,42 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
         -- 7. Themes Table
         CREATE TABLE IF NOT EXISTS themes (
             id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
+            name TEXT NOT NULL UNIQUE,
             config TEXT NOT NULL,
             is_builtin BOOLEAN DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
         "
-        )?;
+    )?;
 
-        // --- MIGRATIONS ---
+    // --- MIGRATIONS ---
+
+    // 0. Ensure 'name' is unique in themes table (for existing databases)
+    let table_info: String = conn.query_row(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='themes'",
+        [],
+        |row| row.get(0)
+    ).unwrap_or_default();
+
+    if !table_info.contains("UNIQUE") {
+        println!("Migrating 'themes' table to ensure unique names...");
+        conn.execute_batch("
+            PRAGMA foreign_keys=OFF;
+            BEGIN TRANSACTION;
+            CREATE TABLE themes_new (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                config TEXT NOT NULL,
+                is_builtin BOOLEAN DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            INSERT OR IGNORE INTO themes_new SELECT * FROM themes;
+            DROP TABLE themes;
+            ALTER TABLE themes_new RENAME TO themes;
+            COMMIT;
+            PRAGMA foreign_keys=ON;
+        ")?;
+    }
 
         // 1. Check if themes table is empty and insert default theme if so
         let theme_count: i32 = conn.query_row("SELECT COUNT(*) FROM themes", [], |row| row.get(0))?;
@@ -194,6 +221,127 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
             conn.execute(
                 "INSERT INTO themes (id, name, config, is_builtin) VALUES ('nord', 'Nord', ?1, 1)",
                 [nord],
+            )?;
+        }
+
+        // 1b. Batch ensure all built-in themes exist (Handles both initial seeding and updates)
+        let builtin_themes = vec![
+            ("surgical-neon-elite", "Surgical Neon Elite", r##" {
+                "--bg": "#050709",
+                "--bg-accent": "#0d1115",
+                "--surface": "#14191f",
+                "--surface-soft": "#1f262e",
+                "--ink": "#e8f1f2",
+                "--muted": "#7a8a99",
+                "--line": "#2a343d",
+                "--accent": "#0df0a3",
+                "--accent-soft": "rgba(13, 240, 163, 0.12)",
+                "--warning": "#ff475e"
+            } "##),
+            ("surgical-neon-stealth", "Surgical Neon Stealth", r##" {
+                "--bg": "#0d0d0e",
+                "--bg-accent": "#161617",
+                "--surface": "#1e1e20",
+                "--surface-soft": "#2c2c2e",
+                "--ink": "#f5f5f7",
+                "--muted": "#86868b",
+                "--line": "#38383a",
+                "--accent": "#14f195",
+                "--accent-soft": "rgba(20, 241, 149, 0.1)",
+                "--warning": "#ff453a"
+            } "##),
+            ("boreal-night", "Boreal Night", r##" {
+                "--bg": "#020b14",
+                "--bg-accent": "#051322",
+                "--surface": "#0b2036",
+                "--surface-soft": "#14314e",
+                "--ink": "#e2f0fd",
+                "--muted": "#6888a8",
+                "--line": "#1f3e5e",
+                "--accent": "#00e5ff",
+                "--accent-soft": "rgba(0, 229, 255, 0.12)",
+                "--warning": "#ff3366"
+            } "##),
+            ("gilded-onyx", "Gilded Onyx", r##" {
+                "--bg": "#0b0a0a",
+                "--bg-accent": "#141212",
+                "--surface": "#1f1b1a",
+                "--surface-soft": "#2e2725",
+                "--ink": "#f7f0eb",
+                "--muted": "#8a7d77",
+                "--line": "#3d3330",
+                "--accent": "#ffd13b",
+                "--accent-soft": "rgba(255, 209, 59, 0.12)",
+                "--warning": "#ff4f4f"
+            } "##),
+            ("velvet-plasma", "Velvet Plasma", r##" {
+                "--bg": "#0d0814",
+                "--bg-accent": "#150d21",
+                "--surface": "#1f1430",
+                "--surface-soft": "#2d1e45",
+                "--ink": "#f4eefc",
+                "--muted": "#8a7b9e",
+                "--line": "#412e5e",
+                "--accent": "#b538ff",
+                "--accent-soft": "rgba(181, 56, 255, 0.12)",
+                "--warning": "#ff2e7e"
+            } "##),
+            ("obsidian-magma", "Obsidian Magma", r##" {
+                "--bg": "#080605",
+                "--bg-accent": "#120d0b",
+                "--surface": "#1c1411",
+                "--surface-soft": "#2b1f1a",
+                "--ink": "#fdf4f0",
+                "--muted": "#8c776d",
+                "--line": "#3d2b24",
+                "--accent": "#ff5500",
+                "--accent-soft": "rgba(255, 85, 0, 0.12)",
+                "--warning": "#ff0044"
+            } "##),
+            ("venom-canopy", "Venom Canopy", r##" {
+                "--bg": "#040a06",
+                "--bg-accent": "#0a140d",
+                "--surface": "#122116",
+                "--surface-soft": "#1c3022",
+                "--ink": "#eaf5ec",
+                "--muted": "#7a9c82",
+                "--line": "#2b4a35",
+                "--accent": "#b8ff2e",
+                "--accent-soft": "rgba(184, 255, 46, 0.12)",
+                "--warning": "#ff4a2e"
+            } "##),
+            ("lunar-crimson", "Lunar Crimson", r##" {
+                "--bg": "#050505",
+                "--bg-accent": "#0f0f0f",
+                "--surface": "#1a1a1a",
+                "--surface-soft": "#262626",
+                "--ink": "#ffffff",
+                "--muted": "#737373",
+                "--line": "#333333",
+                "--accent": "#ff0033",
+                "--accent-soft": "rgba(255, 0, 51, 0.12)",
+                "--warning": "#ff9900"
+            } "##),
+            ("coral-abyss", "Coral Abyss", r##" {
+                "--bg": "#040d12",
+                "--bg-accent": "#0a161d",
+                "--surface": "#13252d",
+                "--surface-soft": "#1e3640",
+                "--ink": "#e6f2f5",
+                "--muted": "#7898a3",
+                "--line": "#2b4a55",
+                "--accent": "#ff7a59",
+                "--accent-soft": "rgba(255, 122, 89, 0.12)",
+                "--warning": "#ff3860"
+            } "##),
+        ];
+
+        for (id, name, config) in builtin_themes {
+            conn.execute(
+                "INSERT INTO themes (id, name, config, is_builtin) VALUES (?1, ?2, ?3, 1)
+                 ON CONFLICT(id) DO UPDATE SET name=excluded.name, config=excluded.config
+                 ON CONFLICT(name) DO UPDATE SET config=excluded.config",
+                [id, name, config],
             )?;
         }
 

@@ -82,7 +82,8 @@ jobs:
           git clone https://github.com/microsoft/vcpkg.git ${{ github.workspace }}\vcpkg
           ${{ github.workspace }}\vcpkg\bootstrap-vcpkg.bat
           # PRESERVED: Using the static-md triplet, now arch-aware via matrix
-          ${{ github.workspace }}\vcpkg\vcpkg.exe install icu:${{ matrix.vcpkg_triplet }} libpng:${{ matrix.vcpkg_triplet }} harfbuzz:${{ matrix.vcpkg_triplet }} graphite2:${{ matrix.vcpkg_triplet }} fontconfig:${{ matrix.vcpkg_triplet }}
+          # ADDED: sqlite3:${{ matrix.vcpkg_triplet }} to resolve the LNK1181 error
+          ${{ github.workspace }}\vcpkg\vcpkg.exe install icu:${{ matrix.vcpkg_triplet }} libpng:${{ matrix.vcpkg_triplet }} harfbuzz:${{ matrix.vcpkg_triplet }} graphite2:${{ matrix.vcpkg_triplet }} fontconfig:${{ matrix.vcpkg_triplet }} sqlite3:${{ matrix.vcpkg_triplet }}
 
           echo "TECTONIC_DEP_BACKEND=vcpkg" >> $env:GITHUB_ENV
           echo "VCPKG_ROOT=${{ github.workspace }}\vcpkg" >> $env:GITHUB_ENV

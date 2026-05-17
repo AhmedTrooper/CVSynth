@@ -574,10 +574,15 @@ const initializePanZoom = () => {
   }
 };
 
-// Rendering Logic
+// Auto-save & Render logic
 let renderTimeout: ReturnType<typeof setTimeout>;
 
-// Auto-save logic
+watch(() => settingsStore.isAutoCompileEnabled, (enabled) => {
+  if (!enabled) {
+    clearTimeout(renderTimeout);
+  }
+});
+
 watch(diagramCode, () => {
   isDirty.value = true;
   if (settingsStore.isAutoCompileEnabled) {
@@ -693,29 +698,30 @@ const activeFileName = computed(() => {
               :transition="{ duration: 0.15 }"
               class="floating-message tooltip-bottom-left"
             >
-              Auto Render on Blur
+              Live Render on Stop Typing
             </Motion>
           </AnimatePresence>
         </div>
         
         <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'save'" @mouseleave="activeTooltip = null">
           <button 
-            v-if="isDirty"
             class="action-btn save-btn"
             @click="saveActiveFile"
+            :disabled="!isDirty"
           >
             <Save :size="16" />
+            <span>Save</span>
           </button>
           <AnimatePresence>
             <Motion
-              v-if="activeTooltip === 'save' && isDirty"
+              v-if="activeTooltip === 'save'"
               :initial="{ opacity: 0, y: 5, scale: 0.9 }"
               :animate="{ opacity: 1, y: 0, scale: 1 }"
               :exit="{ opacity: 0, y: 5, scale: 0.9 }"
               :transition="{ duration: 0.15 }"
               class="floating-message tooltip-bottom-left"
             >
-              Save Changes
+              {{ isDirty ? 'Save Changes' : 'All Changes Saved' }}
             </Motion>
           </AnimatePresence>
         </div>
@@ -1115,14 +1121,24 @@ const activeFileName = computed(() => {
 }
 
 .save-btn {
+  width: auto;
+  padding: 0 12px;
+  gap: 8px;
   border-color: var(--accent-soft);
   background: var(--accent-soft);
   color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
-.save-btn:hover {
+.save-btn span {
+  display: inline;
+}
+
+.save-btn:hover:not(:disabled) {
   background: var(--accent);
   color: white;
+  border-color: var(--accent);
 }
 
 .ai-fix-btn {

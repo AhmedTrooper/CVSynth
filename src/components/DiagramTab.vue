@@ -109,6 +109,7 @@ const markdownHtml = ref('');
 const isRendering = ref(false);
 const renderingError = ref<string | null>(null);
 const isDirty = ref(false);
+const isInitialLoad = ref(true);
 const editorContainer = ref<HTMLElement | null>(null);
 const previewContainer = ref<HTMLElement | null>(null);
 const isLoadingWorkspace = ref(false);
@@ -194,22 +195,30 @@ onMounted(async () => {
 
       const lastFile = await invoke<string | null>('get_last_opened_diagram');
       if (lastFile && await exists(lastFile)) {
-        await selectFile({ name: lastFile.split(/[/\\]/).pop() || '', path: lastFile, isDir: false });
+        // Pass skipRender=true to prevent heavy rendering on startup
+        await selectFile({ name: lastFile.split(/[/\\]/).pop() || '', path: lastFile, isDir: false }, true);
       }
     }
     
-    await renderContent();
+    // Set initial load to false after setup
+    isInitialLoad.value = false;
+    
     // Ensure initial load doesn't mark it as dirty
-    setTimeout(() => { isDirty.value = false; }, 100);
+    setTimeout(() => { isDirty.value = false; }, 150);
   } catch (err) {
     console.error('Failed to initialize Diagram Studio:', err);
+    isInitialLoad.value = false;
   }
 });
 
 onUnmounted(async () => {
+  clearTimeout(renderTimeout);
   if (isDirty.value && settingsStore.isAutoCompileEnabled) {
     await saveActiveFile();
   }
+  // Clear preview state
+  diagramSvg.value = '';
+  markdownHtml.value = '';
 });
 
 // Sidebar methods
@@ -294,7 +303,7 @@ const toggleFolder = async (item: FileItem) => {
   }
 };
 
-const selectFile = async (item: FileItem) => {
+const selectFile = async (item: FileItem, skipRender = false) => {
   if (item.isDir) return;
   
   if (isDirty.value && activeFilePath.value) {
@@ -314,7 +323,11 @@ const selectFile = async (item: FileItem) => {
     activeFilePath.value = item.path;
     isDirty.value = false;
     await invoke('save_last_opened_diagram', { path: item.path });
-    await renderContent();
+    
+    // Only auto-render on select if enabled AND not skipped
+    if (!skipRender && settingsStore.isAutoCompileEnabled) {
+      await renderContent();
+    }
   } catch (err: any) {
     console.error('Failed to read file:', err);
     await dialog.showAlert(`Failed to open file: ${err.message || err.toString()}`, 'Read Error');
@@ -584,6 +597,9 @@ watch(() => settingsStore.isAutoCompileEnabled, (enabled) => {
 });
 
 watch(diagramCode, () => {
+  // Prevent rendering and dirty marking during initial programmatic load
+  if (isInitialLoad.value) return;
+
   isDirty.value = true;
   if (settingsStore.isAutoCompileEnabled) {
     clearTimeout(renderTimeout);
@@ -1575,11 +1591,12 @@ const activeFileName = computed(() => {
   left: 0;
   width: 100%;
   max-height: 30%;
-  background: #1e1e1e;
-  border-top: 1px solid var(--warning);
+  background: var(--surface);
+  border-top: 2px solid var(--warning);
   display: flex;
   flex-direction: column;
   z-index: 50;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.3);
 }
 
 .console-header {
@@ -1588,8 +1605,8 @@ const activeFileName = computed(() => {
   align-items: center;
   justify-content: space-between;
   padding: 0 12px;
-  background: rgba(248, 81, 73, 0.1);
-  border-bottom: 1px solid rgba(248, 81, 73, 0.2);
+  background: var(--bg-accent);
+  border-bottom: 1px solid var(--line);
 }
 
 .error-logs {
@@ -1599,7 +1616,7 @@ const activeFileName = computed(() => {
   overflow-y: auto;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.75rem;
-  color: #f85149;
+  color: var(--ink);
   line-height: 1.5;
   white-space: pre-wrap;
 }

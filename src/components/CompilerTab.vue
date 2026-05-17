@@ -1586,11 +1586,12 @@ const activeFileName = computed(() => {
   left: 0;
   width: 100%;
   max-height: 30%;
-  background: #1e1e1e;
-  border-top: 1px solid var(--warning);
+  background: var(--surface);
+  border-top: 2px solid var(--warning);
   display: flex;
   flex-direction: column;
   z-index: 50;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.3);
 }
 
 .console-header {
@@ -1599,8 +1600,8 @@ const activeFileName = computed(() => {
   align-items: center;
   justify-content: space-between;
   padding: 0 12px;
-  background: rgba(248, 81, 73, 0.1);
-  border-bottom: 1px solid rgba(248, 81, 73, 0.2);
+  background: var(--bg-accent);
+  border-bottom: 1px solid var(--line);
 }
 
 .error-logs {
@@ -1610,7 +1611,7 @@ const activeFileName = computed(() => {
   overflow-y: auto;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.75rem;
-  color: #f85149;
+  color: var(--ink);
   line-height: 1.5;
   white-space: pre-wrap;
 }

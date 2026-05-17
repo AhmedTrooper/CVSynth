@@ -84,6 +84,7 @@ const refinementInstruction = ref('');
 const isDownloading = ref(false);
 const compilationError = ref<string | null>(null);
 const isDirty = ref(false);
+const isProgrammaticChange = ref(false);
 const editorContainer = ref<HTMLElement | null>(null);
 const isLoadingWorkspace = ref(false);
 
@@ -328,6 +329,7 @@ const selectFile = async (item: FileItem) => {
     }
 
     const content = await readTextFile(item.path);
+    isProgrammaticChange.value = true;
     latexCode.value = content;
     activeFilePath.value = item.path;
     isDirty.value = false;
@@ -454,6 +456,10 @@ const closeWorkspace = async () => {
 
 // Auto-save & Compile logic
 watch(latexCode, () => {
+  if (isProgrammaticChange.value) {
+    isProgrammaticChange.value = false;
+    return;
+  }
   isDirty.value = true;
 });
 

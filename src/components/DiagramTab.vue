@@ -110,6 +110,7 @@ const isRendering = ref(false);
 const renderingError = ref<string | null>(null);
 const isDirty = ref(false);
 const isInitialLoad = ref(true);
+const isProgrammaticChange = ref(false);
 const editorContainer = ref<HTMLElement | null>(null);
 const previewContainer = ref<HTMLElement | null>(null);
 const isLoadingWorkspace = ref(false);
@@ -319,15 +320,19 @@ const selectFile = async (item: FileItem, skipRender = false) => {
     }
 
     const content = await readTextFile(item.path);
+    
+    // Set programmatic flag to prevent the watcher from triggering auto-render/dirty
+    isProgrammaticChange.value = true;
     diagramCode.value = content;
     activeFilePath.value = item.path;
     isDirty.value = false;
+    
     await invoke('save_last_opened_diagram', { path: item.path });
     
-    // Only auto-render on select if enabled AND not skipped
-    if (!skipRender && settingsStore.isAutoCompileEnabled) {
-      await renderContent();
-    }
+    // Reset preview state for the new file to remain quiet during browsing
+    diagramSvg.value = '';
+    markdownHtml.value = '';
+    renderingError.value = null;
   } catch (err: any) {
     console.error('Failed to read file:', err);
     await dialog.showAlert(`Failed to open file: ${err.message || err.toString()}`, 'Read Error');
@@ -597,8 +602,14 @@ watch(() => settingsStore.isAutoCompileEnabled, (enabled) => {
 });
 
 watch(diagramCode, () => {
-  // Prevent rendering and dirty marking during initial programmatic load
+  // 1. Skip during initial setup
   if (isInitialLoad.value) return;
+
+  // 2. Skip when the change is programmatic (from selectFile)
+  if (isProgrammaticChange.value) {
+    isProgrammaticChange.value = false;
+    return;
+  }
 
   isDirty.value = true;
   if (settingsStore.isAutoCompileEnabled) {

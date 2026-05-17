@@ -49,11 +49,24 @@ pub async fn compile_resume_to_pdf(latex_code: String) -> Result<Vec<u8>, String
 
 #[command]
 pub async fn compile_workspace_to_pdf(workspace_dir: String, main_file_name: String) -> Result<Vec<u8>, String> {
+    let workspace_path = PathBuf::from(&workspace_dir);
+    
+    // 1. Pre-flight checks on the main thread to avoid spawning a heavy thread for obvious errors
+    if !workspace_path.is_dir() {
+        return Err(format!("Workspace path '{}' is not a valid directory.", workspace_dir));
+    }
+
+    let main_file_path = workspace_path.join(&main_file_name);
+    if !main_file_path.is_file() {
+        return Err(format!("Main TeX file '{}' not found in workspace.", main_file_name));
+    }
+
     tokio::task::spawn_blocking(move || {
         let thread_handle = std::thread::Builder::new()
             .name("tectonic-workspace-compiler".into())
             .stack_size(10 * 1024 * 1024)
             .spawn(move || {
+                // Re-instantiate PathBuf inside the thread
                 let workspace_path = PathBuf::from(&workspace_dir);
                 
                 // We use Tectonic's ProcessingSession for full filesystem access
@@ -62,9 +75,7 @@ pub async fn compile_workspace_to_pdf(workspace_dir: String, main_file_name: Str
                 let config_loader = tectonic::config::PersistentConfig::default();
                 let bundle = config_loader
                     .default_bundle(false)
-                    .map_err(|e| format!("Failed to load bundle: {}", e))?;
-
-                let _format_cache_path = tectonic::io::MemoryIo::new(true); // Dummy for now
+                    .map_err(|e| format!("Failed to load Tectonic bundle: {}", e))?;
 
                 let mut sb = tectonic::driver::ProcessingSessionBuilder::default();
                 sb.bundle(bundle)
@@ -75,10 +86,10 @@ pub async fn compile_workspace_to_pdf(workspace_dir: String, main_file_name: Str
                     .build_date(std::time::SystemTime::now());
 
                 let mut sess = sb.create(&mut status)
-                    .map_err(|e| format!("Failed to create processing session: {}", e))?;
+                    .map_err(|e| format!("Failed to create Tectonic processing session: {}", e))?;
 
                 sess.run(&mut status)
-                    .map_err(|e| format!("Compilation failed: {}", e))?;
+                    .map_err(|e| format!("Tectonic compilation failed: {}", e))?;
 
                 // Find the output PDF in the workspace
                 let main_path = PathBuf::from(&main_file_name);
@@ -86,22 +97,22 @@ pub async fn compile_workspace_to_pdf(workspace_dir: String, main_file_name: Str
                     .file_stem()
                     .and_then(|s| s.to_str())
                     .map(|s| format!("{}.pdf", s))
-                    .ok_or("Failed to determine PDF name")?;
+                    .ok_or("Failed to determine generated PDF name from input file stem")?;
                 
                 let pdf_path = workspace_path.join(&pdf_file_name);
                 
                 if pdf_path.exists() {
-                    std::fs::read(&pdf_path).map_err(|e| format!("Failed to read generated PDF: {}", e))
+                    std::fs::read(&pdf_path).map_err(|e| format!("Failed to read generated PDF from disk: {}", e))
                 } else {
-                    Err(format!("PDF '{}' was not generated despite successful compilation", pdf_file_name))
+                    Err(format!("Compilation appeared successful, but the PDF file '{}' was not found in the workspace.", pdf_file_name))
                 }
             })
             .map_err(|e| format!("Failed to spawn compiler thread: {}", e))?;
 
         thread_handle
             .join()
-            .map_err(|_| "Compiler thread panicked or exited unexpectedly".to_string())?
+            .map_err(|_| "The compiler thread panicked. This usually indicates a fatal error in the TeX engine.".to_string())?
     })
     .await
-    .map_err(|e| format!("Blocking task failed: {}", e))?
+    .map_err(|e| format!("The asynchronous task failed: {}", e))?
 }

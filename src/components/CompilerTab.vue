@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { save, open as openDialog } from '@tauri-apps/plugin-dialog';
 import { join } from '@tauri-apps/api/path';
@@ -30,7 +30,8 @@ import {
   Plus,
   Trash2,
   FolderPlus,
-  Files
+  Files,
+  Save
 } from '@lucide/vue';
 
 // Codemirror imports
@@ -136,6 +137,12 @@ onMounted(async () => {
   }
 });
 
+onUnmounted(async () => {
+  if (isDirty.value) {
+    await saveActiveFile();
+  }
+});
+
 // Workspace Management
 const selectWorkspace = async () => {
   try {
@@ -207,13 +214,23 @@ const selectFile = async (item: FileItem) => {
   }
 
   try {
+    // Bulletproof: Check existence before reading
+    const fileExists = await exists(item.path);
+    if (!fileExists) {
+      await dialog.showAlert(`The file "${item.name}" no longer exists on disk.`, 'File Not Found');
+      await refreshFileTree();
+      return;
+    }
+
     const content = await readTextFile(item.path);
     latexCode.value = content;
     activeFilePath.value = item.path;
     isDirty.value = false;
     await invoke('save_last_opened_file', { path: item.path });
-  } catch (err) {
+    pdfUrl.value = null; // Reset preview for new file
+  } catch (err: any) {
     console.error('Failed to read file:', err);
+    await dialog.showAlert(`Failed to open file: ${err.message || err.toString()}`, 'Read Error');
   }
 };
 
@@ -225,10 +242,18 @@ const saveActiveFile = async () => {
   }
 
   try {
+    // Bulletproof: Check if parent directory still exists
+    const dirPath = activeFilePath.value.substring(0, activeFilePath.value.lastIndexOf(/[/\\]/));
+    if (dirPath && !(await exists(dirPath))) {
+      await dialog.showAlert("The parent directory for this file is missing.", "Save Failed");
+      return;
+    }
+
     await writeFile(activeFilePath.value, new TextEncoder().encode(latexCode.value));
     isDirty.value = false;
-  } catch (err) {
+  } catch (err: any) {
     console.error('Failed to save file:', err);
+    await dialog.showAlert(`Save failed: ${err.message || err.toString()}`, 'Write Error');
   }
 };
 
@@ -280,11 +305,21 @@ const deleteItem = async (item: FileItem) => {
 
   try {
     await remove(item.path, { recursive: item.isDir });
-    if (activeFilePath.value === item.path) {
-      activeFilePath.value = null;
-      latexCode.value = '';
+    
+    // Bulletproof: If the active file (or its parent directory) was deleted, clear the editor
+    if (activeFilePath.value) {
+      const isSelf = activeFilePath.value === item.path;
+      const isParent = activeFilePath.value.startsWith(item.path + '/') || activeFilePath.value.startsWith(item.path + '\\');
+      
+      if (isSelf || isParent) {
+        activeFilePath.value = null;
+        latexCode.value = '';
+        isDirty.value = false;
+        pdfUrl.value = null;
+      }
     }
-    await refreshFileTree(); // Simplest way to update UI
+    
+    await refreshFileTree();
   } catch (err: any) {
     await dialog.showAlert(err.toString(), 'Failed to delete item');
   }
@@ -359,11 +394,13 @@ const compilePdf = async () => {
   compilationError.value = null;
   
   try {
+    // Bulletproof: Force save before compile so the disk is in sync with the editor
+    await saveActiveFile();
+
     let pdfBytes: number[];
     
     if (workspacePath.value && activeFilePath.value) {
       // Workspace-aware compilation
-      // Extract the filename relative to the workspace root
       let relativePath = activeFilePath.value.replace(workspacePath.value, '');
       if (relativePath.startsWith('/') || relativePath.startsWith('\\')) {
         relativePath = relativePath.substring(1);
@@ -383,12 +420,14 @@ const compilePdf = async () => {
     pdfBytesBuffer.value = new Uint8Array(pdfBytes);
     const blob = new Blob([pdfBytesBuffer.value], { type: 'application/pdf' });
     
-    if (pdfUrl.value) URL.revokeObjectURL(pdfUrl.value);
+    // Clean up previous URL to prevent memory leaks
+    if (pdfUrl.value) {
+      URL.revokeObjectURL(pdfUrl.value);
+    }
     pdfUrl.value = URL.createObjectURL(blob);
-    await saveActiveFile();
   } catch (err: any) {
     console.error("Compilation Error:", err);
-    compilationError.value = err.toString();
+    compilationError.value = err.message || err.toString();
   } finally {
     isCompiling.value = false;
   }
@@ -629,9 +668,21 @@ const activeFileName = computed(() => {
         <!-- Editor Section -->
         <section class="editor-section">
           <div class="pane-header">
-            <FileCode :size="14" />
-            <span>{{ activeFileName }}</span>
-            <span v-if="isDirty" class="dirty-indicator">●</span>
+            <div class="pane-header-left">
+              <FileCode :size="14" />
+              <span>{{ activeFileName }}</span>
+              <span v-if="isDirty" class="dirty-indicator">●</span>
+            </div>
+            <div class="pane-header-actions" v-if="activeFilePath">
+              <button 
+                @click="saveActiveFile" 
+                class="save-icon-btn" 
+                :class="{ 'dirty': isDirty }" 
+                title="Save Changes"
+              >
+                <Save :size="14" />
+              </button>
+            </div>
           </div>
           <div class="editor-relative-wrapper" ref="editorContainer">
             <codemirror
@@ -1055,7 +1106,7 @@ const activeFileName = computed(() => {
   height: 32px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
   padding: 0 12px;
   background: var(--bg-accent);
   border-bottom: 1px solid var(--line);
@@ -1065,10 +1116,56 @@ const activeFileName = computed(() => {
   letter-spacing: 0.05em;
 }
 
+.pane-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pane-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.save-icon-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.save-icon-btn:hover {
+  background: var(--surface-soft);
+  color: var(--ink);
+}
+
+.save-icon-btn.dirty {
+  color: var(--accent);
+}
+
+.save-icon-btn.dirty:hover {
+  background: var(--accent-soft);
+}
+
 .dirty-indicator {
   color: var(--accent);
   font-size: 10px;
   margin-left: -4px;
+  text-shadow: 0 0 8px var(--accent);
+  animation: pulse-dirty 2s infinite;
+}
+
+@keyframes pulse-dirty {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
 }
 
 .editor-relative-wrapper {

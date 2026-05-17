@@ -43,7 +43,8 @@ import {
   Save,
   BookOpen,
   Info,
-  Wand2
+  Wand2,
+  ArrowLeftRight
 } from '@lucide/vue';
 
 // Codemirror imports
@@ -96,6 +97,7 @@ interface FileItem {
 const workspacePath = ref<string | null>(null);
 const fileTree = ref<FileItem[]>([]);
 const activeFilePath = ref<string | null>(null);
+const standaloneFileType = ref<'mmd' | 'md'>('mmd');
 const diagramCode = ref('graph TD\n    A[Start] --> B{Process}\n    B -->|Success| C[End]\n    B -->|Failure| D[Retry]');
 
 const isSidebarVisible = ref(true);
@@ -119,7 +121,23 @@ const isRefining = ref(false);
 const isFixing = ref(false);
 const refinementInstruction = ref('');
 
-const isMarkdown = computed(() => activeFilePath.value?.endsWith('.md'));
+const isMarkdown = computed(() => {
+  if (activeFilePath.value) {
+    return activeFilePath.value.toLowerCase().endsWith('.md');
+  }
+  return standaloneFileType.value === 'md';
+});
+
+const toggleStandaloneType = () => {
+  standaloneFileType.value = standaloneFileType.value === 'mmd' ? 'md' : 'mmd';
+  // Optional: Switch default code if it looks like the other type's default
+  if (standaloneFileType.value === 'md' && diagramCode.value.startsWith('graph')) {
+    diagramCode.value = '# New Document\n\nWrite your markdown here...';
+  } else if (standaloneFileType.value === 'mmd' && diagramCode.value.startsWith('#')) {
+    diagramCode.value = 'graph TD\n    A --> B';
+  }
+  renderContent();
+};
 
 const diagramTemplates = [
   {
@@ -251,7 +269,7 @@ const scanDirectory = async (dir: string): Promise<FileItem[]> => {
     const isDir = entry.isDirectory;
     
     // Support .mmd and .md
-    if (!isDir && !entry.name.endsWith('.mmd') && !entry.name.endsWith('.md')) continue;
+    if (!isDir && !entry.name.toLowerCase().endsWith('.mmd') && !entry.name.toLowerCase().endsWith('.md')) continue;
 
     items.push({
       name: entry.name,
@@ -330,10 +348,14 @@ const createNewFile = async (parent: FileItem | null = null, ext = '.mmd') => {
   const fileName = await dialog.showPrompt(`Enter name (e.g. flow${ext}):`, '', 'New File');
   if (!fileName) return;
 
-  // Add extension if missing
-  const finalName = fileName.endsWith(ext) ? fileName : `${fileName}${ext}`;
+  // Check if user already provided an extension
+  const hasExtension = fileName.toLowerCase().endsWith('.mmd') || fileName.toLowerCase().endsWith('.md');
+  const finalName = hasExtension ? fileName : `${fileName}${ext}`;
   const fullPath = await join(dir, finalName);
-  const initialContent = ext === '.md' ? '# New Document\n\n```mermaid\ngraph TD\n  A --> B\n```' : 'graph TD\n    A --> B';
+  
+  // Determine initial content based on the FINAL extension
+  const isMd = finalName.toLowerCase().endsWith('.md');
+  const initialContent = isMd ? '# New Document\n\nWrite your markdown here...' : 'graph TD\n    A --> B';
   
   try {
     await writeFile(fullPath, new TextEncoder().encode(initialContent));
@@ -569,7 +591,7 @@ const handleBlur = async () => {
 };
 
 const activeFileName = computed(() => {
-  if (!activeFilePath.value) return 'unsaved.mmd';
+  if (!activeFilePath.value) return `unsaved.${standaloneFileType.value}`;
   return activeFilePath.value.split(/[/\\]/).pop() || 'diagram.mmd';
 });
 </script>
@@ -620,6 +642,25 @@ const activeFileName = computed(() => {
               class="flying-message"
             >
               Gallery
+            </Motion>
+          </AnimatePresence>
+        </div>
+
+        <div v-if="!activeFilePath" class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'switch-type'" @mouseleave="activeTooltip = null">
+          <button class="action-btn mode-toggle" @click="toggleStandaloneType">
+            <ArrowLeftRight :size="16" />
+            <span class="mode-label">{{ standaloneFileType.toUpperCase() }}</span>
+          </button>
+          <AnimatePresence>
+            <Motion
+              v-if="activeTooltip === 'switch-type'"
+              :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+              :animate="{ opacity: 1, y: 0, scale: 1 }"
+              :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+              :transition="{ duration: 0.15 }"
+              class="flying-message"
+            >
+              Switch to {{ standaloneFileType === 'mmd' ? 'Markdown' : 'Mermaid' }}
             </Motion>
           </AnimatePresence>
         </div>
@@ -857,10 +898,6 @@ const activeFileName = computed(() => {
                 <h3>No content rendered</h3>
                 <p>Enter Mermaid or Markdown code to see the preview.</p>
              </div>
-             
-             <div v-if="isRendering" class="render-overlay">
-                <RotateCw :size="24" class="spinner" />
-             </div>
           </div>
         </section>
       </div>
@@ -1036,6 +1073,18 @@ const activeFileName = computed(() => {
 .action-btn:hover:not(:disabled) {
   border-color: var(--muted);
   background: var(--surface);
+}
+
+.mode-toggle {
+  width: auto;
+  padding: 0 10px;
+  gap: 8px;
+}
+
+.mode-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--accent);
 }
 
 .render-btn {

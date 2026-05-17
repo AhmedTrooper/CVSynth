@@ -98,23 +98,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: cvsynth-v__VERSION__
-          releaseName: "CVSynth v__VERSION__"
+          tagName: app-v__VERSION__
+          releaseName: "App v__VERSION__"
+          releaseBody: "See the assets to download this version and install."
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
-          releaseBody: |
-            ## 📥 Which file should I download?
-            Select the correct file from the **Assets** list below based on your operating system and computer architecture.
-
-            ### 🍎 macOS
-            * **Apple Silicon (M1/M2/M3/M4)**: Download the `aarch64` file (e.g., `.dmg` or `.app.tar.gz`)
-            * **Intel Mac (Older Macs)**: Download the `x64` file (e.g., `.dmg` or `.app.tar.gz`)
-
-            ### 🪟 Windows
-            * **Standard PC (Most Intel/AMD)**: Download the `x64` file (e.g., `-setup.exe` or `.msi`)
-            * **Windows on ARM (Snapdragon/Copilot+)**: Download the `arm64` or `aarch64` file (e.g., `-setup.exe`)
-
-            ### 🐧 Linux
-            * **Standard PC (Intel/AMD)**: Download the `amd64` or `x64` file (e.g., `.AppImage` or `.deb`)
-            * **ARM 64-bit (Raspberry Pi/ARM Servers)**: Download the `aarch64` file (e.g., `.AppImage` or `.deb`)

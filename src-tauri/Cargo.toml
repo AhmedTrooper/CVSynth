@@ -40,3 +40,11 @@ tauri-plugin-shell = "2"
 chrono = { version = "0.4", features = ["serde"] }
 anyhow = "1.0.102"
 
+[profile.dev.package.rust-argon2]
+opt-level = 3
+
+[profile.dev.package.argon2]
+opt-level = 3
+
+[profile.dev.package.iota-crypto]
+opt-level = 3

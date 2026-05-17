@@ -47,7 +47,7 @@ pub async fn refine_latex_with_ai(
     current_latex: String,
     instruction: String,
 ) -> Result<String, String> {
-    ai::refine_tailored_resume(&provider, &model, &api_key, &current_latex, &instruction).await
+    ai::refine_technical_content(&provider, &model, &api_key, &current_latex, &instruction, "LaTeX").await
 }
 
 #[command]
@@ -58,7 +58,31 @@ pub async fn fix_latex_with_ai(
     broken_latex: String,
     error_logs: String,
 ) -> Result<String, String> {
-    ai::fix_latex_errors(&provider, &model, &api_key, &broken_latex, &error_logs).await
+    ai::fix_technical_errors(&provider, &model, &api_key, &broken_latex, &error_logs, "LaTeX").await
+}
+
+#[command]
+pub async fn refine_diagram_with_ai(
+    provider: String,
+    model: String,
+    api_key: String,
+    current_code: String,
+    instruction: String,
+    content_type: String,
+) -> Result<String, String> {
+    ai::refine_technical_content(&provider, &model, &api_key, &current_code, &instruction, &content_type).await
+}
+
+#[command]
+pub async fn fix_diagram_with_ai(
+    provider: String,
+    model: String,
+    api_key: String,
+    broken_code: String,
+    error_logs: String,
+    content_type: String,
+) -> Result<String, String> {
+    ai::fix_technical_errors(&provider, &model, &api_key, &broken_code, &error_logs, &content_type).await
 }
 
 #[command]

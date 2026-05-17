@@ -115,6 +115,8 @@ pub fn run() {
             commands::pdf::compile_workspace_to_pdf,
             commands::pdf::fix_latex_with_ai,
             commands::pdf::refine_latex_with_ai,
+            commands::pdf::refine_diagram_with_ai,
+            commands::pdf::fix_diagram_with_ai,
             commands::data::export_all_data,
             commands::data::import_data,
             commands::downloads::record_download,

@@ -379,3 +379,139 @@ Please fix the LaTeX code so it compiles successfully. Return only the fixed LaT
         _ => Err(format!("Unsupported provider: {}", provider)),
     }
 }
+
+pub async fn refine_technical_content(
+    provider: &str,
+    model: &str,
+    api_key: &str,
+    content: &str,
+    instruction: &str,
+    content_type: &str, // "Mermaid", "Markdown", "LaTeX"
+) -> Result<String, String> {
+    let model = model.trim();
+    let system_prompt = format!(
+        r#"You are an expert technical document editor specializing in {}. Your task is to apply specific refinements or formatting changes as requested by the user.
+
+Rules:
+1. Preserve all existing logic and meaning unless specifically asked to change it.
+2. Maintain valid {} syntax at all times.
+3. Output ONLY the modified code with no markdown, no explanations, no code fences.
+4. Ensure the output is ready for rendering."#,
+        content_type, content_type
+    );
+
+    let user_prompt = format!(
+        r#"Current {} Content:
+{}
+
+Requested Refinement:
+{}
+
+Please apply the requested changes. Return only the updated code."#,
+        content_type, content, instruction
+    );
+
+    match provider {
+        "gemini" => {
+            let client = gemini::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(&system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("Gemini AI Refinement Error: {}", e))
+        }
+        "openai" => {
+            let client = openai::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(&system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("OpenAI Refinement Error: {}", e))
+        }
+        "groq" => {
+            let client = groq::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(&system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("Groq Refinement Error: {}", e))
+        }
+        "anthropic" => {
+            let client = anthropic::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(&system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("Anthropic Refinement Error: {}", e))
+        }
+        _ => Err(format!("Unsupported provider: {}", provider)),
+    }
+}
+
+pub async fn fix_technical_errors(
+    provider: &str,
+    model: &str,
+    api_key: &str,
+    broken_content: &str,
+    error_logs: &str,
+    content_type: &str,
+) -> Result<String, String> {
+    let model = model.trim();
+    let system_prompt = format!(
+        r#"You are an expert technical debugger specializing in {}. Your task is to fix syntax errors or logic issues based on provided error logs.
+
+Rules:
+1. Fix the specific errors mentioned in the logs.
+2. DO NOT change the core meaning unless necessary to fix the error.
+3. Output ONLY the corrected {} code with no markdown, no explanations, no code fences.
+4. Ensure the output is valid and renderable."#,
+        content_type, content_type
+    );
+
+    let user_prompt = format!(
+        r#"Broken {} Code:
+{}
+
+Error Logs:
+{}
+
+Please fix the code so it renders successfully. Return only the fixed code."#,
+        content_type, broken_content, error_logs
+    );
+
+    match provider {
+        "gemini" => {
+            let client = gemini::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(&system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("Gemini AI Fix Error: {}", e))
+        }
+        "openai" => {
+            let client = openai::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(&system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("OpenAI Fix Error: {}", e))
+        }
+        "groq" => {
+            let client = groq::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(&system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("Groq Fix Error: {}", e))
+        }
+        "anthropic" => {
+            let client = anthropic::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(&system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("Anthropic Fix Error: {}", e))
+        }
+        _ => Err(format!("Unsupported provider: {}", provider)),
+    }
+}

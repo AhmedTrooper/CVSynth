@@ -242,7 +242,7 @@ onMounted(async () => {
 });
 
 onUnmounted(async () => {
-  if (isDirty.value) {
+  if (isDirty.value && settingsStore.isAutoCompileEnabled) {
     await saveActiveFile();
   }
 });

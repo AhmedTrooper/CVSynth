@@ -593,14 +593,6 @@ const initializePanZoom = () => {
 };
 
 // Auto-save & Render logic
-let renderTimeout: ReturnType<typeof setTimeout>;
-
-watch(() => settingsStore.isAutoCompileEnabled, (enabled) => {
-  if (!enabled) {
-    clearTimeout(renderTimeout);
-  }
-});
-
 watch(diagramCode, () => {
   // 1. Skip during initial setup
   if (isInitialLoad.value) return;
@@ -612,13 +604,6 @@ watch(diagramCode, () => {
   }
 
   isDirty.value = true;
-  if (settingsStore.isAutoCompileEnabled) {
-    clearTimeout(renderTimeout);
-    renderTimeout = setTimeout(async () => {
-      await renderContent();
-      await saveActiveFile();
-    }, 800);
-  }
 });
 
 const handleBlur = async () => {

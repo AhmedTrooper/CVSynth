@@ -655,15 +655,76 @@ const handleSave = async () => {
           <p>Your {{ providerName }} key is stored in an encrypted vault. It is never sent to our servers.</p>
         </div>
         
-        <div class="input-group">
-          <label>{{ providerName }} Secret Key</label>
-          <input 
-            v-model="apiKeyInput" 
-            type="password" 
-            :placeholder="store.hasSecureKey ? '•••••••••••••••• (Key saved)' : 'Enter API Key...'"
-            spellcheck="false"
-            class="form-input"
-          />
+        <div class="credentials-content">
+          <div class="input-group">
+            <label>{{ providerName }} Secret Key</label>
+            <input 
+              v-model="apiKeyInput" 
+              type="password" 
+              :placeholder="store.hasSecureKey ? '•••••••••••••••• (Key saved)' : 'Enter API Key...'"
+              spellcheck="false"
+              class="form-input"
+            />
+          </div>
+
+          <div class="credentials-actions">
+            <div class="status-area-inline">
+              <span v-if="saveError" class="error-msg">{{ saveError }}</span>
+              <transition name="fade">
+                <span v-if="showSuccess" class="success-msg">
+                  <CheckCircle :size="16" /> Saved
+                </span>
+              </transition>
+            </div>
+            
+            <div class="button-group">
+              <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'discard'" @mouseleave="activeTooltip = null">
+                <button 
+                  v-if="hasChanges" 
+                  class="btn-action secondary" 
+                  @click="syncFromStore" 
+                  :disabled="isSaving"
+                >
+                  <RotateCcw :size="16" />
+                </button>
+                <AnimatePresence>
+                  <Motion
+                    v-if="activeTooltip === 'discard' && hasChanges"
+                    :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                    :animate="{ opacity: 1, y: 0, scale: 1 }"
+                    :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                    :transition="{ duration: 0.15 }"
+                    class="flying-message"
+                  >
+                    Discard Changes
+                  </Motion>
+                </AnimatePresence>
+              </div>
+              
+              <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'save'" @mouseleave="activeTooltip = null">
+                <button 
+                  class="btn-action primary" 
+                  @click="handleSave" 
+                  :disabled="isSaving || (providerInput === store.selectedAiProvider && modelInput === store.selectedAiModel && !apiKeyInput)"
+                >
+                  <Save v-if="!isSaving" :size="16" />
+                  <RotateCcw v-else :size="16" class="spinner" />
+                </button>
+                <AnimatePresence>
+                  <Motion
+                    v-if="activeTooltip === 'save'"
+                    :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                    :animate="{ opacity: 1, y: 0, scale: 1 }"
+                    :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                    :transition="{ duration: 0.15 }"
+                    class="flying-message"
+                  >
+                    Save Configuration
+                  </Motion>
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -715,70 +776,10 @@ const handleSave = async () => {
         </div>
       </div>
     </div>
-
-    <div class="actions-footer">
-      <div class="status-area">
-        <span v-if="saveError" class="error-msg">{{ saveError }}</span>
-        <transition name="fade">
-          <span v-if="showSuccess" class="success-msg">
-            <CheckCircle :size="16" /> Configuration Saved
-          </span>
-        </transition>
-      </div>
-      
-      <div class="button-group">
-        <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'discard'" @mouseleave="activeTooltip = null">
-          <button 
-            v-if="hasChanges" 
-            class="btn-secondary" 
-            @click="syncFromStore" 
-            :disabled="isSaving"
-          >
-            <RotateCcw :size="16" />
-          </button>
-          <AnimatePresence>
-            <Motion
-              v-if="activeTooltip === 'discard' && hasChanges"
-              :initial="{ opacity: 0, y: 5, scale: 0.9 }"
-              :animate="{ opacity: 1, y: 0, scale: 1 }"
-              :exit="{ opacity: 0, y: 5, scale: 0.9 }"
-              :transition="{ duration: 0.15 }"
-              class="flying-message"
-            >
-              Discard Changes
-            </Motion>
-          </AnimatePresence>
-        </div>
-        
-        <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'save'" @mouseleave="activeTooltip = null">
-          <button 
-            class="btn-primary" 
-            @click="handleSave" 
-            :disabled="isSaving || (providerInput === store.selectedAiProvider && modelInput === store.selectedAiModel && !apiKeyInput)"
-          >
-            <Save v-if="!isSaving" :size="16" />
-            <RotateCcw v-else :size="16" class="spinner" />
-          </button>
-          <AnimatePresence>
-            <Motion
-              v-if="activeTooltip === 'save'"
-              :initial="{ opacity: 0, y: 5, scale: 0.9 }"
-              :animate="{ opacity: 1, y: 0, scale: 1 }"
-              :exit="{ opacity: 0, y: 5, scale: 0.9 }"
-              :transition="{ duration: 0.15 }"
-              class="flying-message"
-            >
-              Save Configuration
-            </Motion>
-          </AnimatePresence>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <style scoped>
-/* Keeping your existing variables, adding layout improvements */
 .settings-container {
   padding: 40px;
   max-width: 900px;
@@ -789,7 +790,7 @@ const handleSave = async () => {
 .header h2 { font-size: 2rem; margin: 0; color: var(--ink); }
 .subtitle { color: var(--muted); margin: 8px 0 0; }
 
-.settings-grid { display: flex; flex-direction: column; gap: 24px; }
+.settings-grid { display: flex; flex-direction: column; gap: 24px; padding-bottom: 100px; }
 
 .settings-card {
   background: var(--surface);
@@ -797,6 +798,27 @@ const handleSave = async () => {
   border-radius: 16px;
   padding: 24px;
   box-shadow: var(--shadow);
+}
+
+.credentials-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.credentials-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.status-area-inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .title-row { display: flex; justify-content: space-between; align-items: center; }
@@ -875,10 +897,8 @@ const handleSave = async () => {
   font-weight: 700;
   white-space: nowrap;
   pointer-events: none;
-  z-index: 100;
+  z-index: 1000;
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  text-transform: none;
-  letter-spacing: normal;
 }
 
 .flying-message::after {
@@ -1132,29 +1152,25 @@ label {
   color: var(--accent);
 }
 
-.actions-footer {
-  margin-top: 40px;
-  padding-top: 24px;
-  border-top: 1px solid var(--line);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
 .button-group { display: flex; gap: 12px; }
 
-.btn-primary, .btn-secondary {
-  padding: 12px;
-  width: 48px;
-  height: 48px;
+.btn-action {
+  width: 42px;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  font-weight: 700;
   cursor: pointer;
   transition: 0.2s;
+  border: 1px solid var(--line);
 }
+
+.btn-action.primary { background: var(--accent); color: white; border-color: var(--accent); }
+.btn-action.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-action.secondary { background: none; color: var(--muted); }
+.btn-action.secondary:hover { border-color: var(--ink); color: var(--ink); }
 
 .spinner {
   animation: spin 1s linear infinite;
@@ -1165,17 +1181,12 @@ label {
   to { transform: rotate(360deg); }
 }
 
-.btn-primary { background: var(--accent); color: white; border: none; }
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.btn-secondary { background: none; border: 1px solid var(--line); color: var(--muted); }
-.btn-secondary:hover { border-color: var(--ink); color: var(--ink); }
-
-.success-msg { color: var(--accent); font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.success-msg { color: var(--accent); font-weight: 600; display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
+.error-msg { color: var(--warning); font-weight: 600; font-size: 0.8rem; }
 
 @media (max-width: 600px) {
   .input-row { flex-direction: column; }
   .typography-row { flex-direction: column; align-items: stretch; }
-  .actions-footer { flex-direction: column; gap: 20px; align-items: flex-start; }
+  .credentials-actions { flex-direction: column; gap: 20px; align-items: flex-start; }
 }
 </style>

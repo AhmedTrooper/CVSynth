@@ -115,6 +115,7 @@ const editorContainer = ref<HTMLElement | null>(null);
 const previewContainer = ref<HTMLElement | null>(null);
 const isLoadingWorkspace = ref(false);
 const panZoomInstance = ref<any>(null);
+let renderTimeout: any = null;
 
 const isTemplatesVisible = ref(false);
 const activeTooltip = ref<string | null>(null);
@@ -213,7 +214,7 @@ onMounted(async () => {
 });
 
 onUnmounted(async () => {
-  clearTimeout(renderTimeout);
+  if (renderTimeout) clearTimeout(renderTimeout);
   if (isDirty.value && settingsStore.isAutoCompileEnabled) {
     await saveActiveFile();
   }
@@ -329,10 +330,14 @@ const selectFile = async (item: FileItem, skipRender = false) => {
     
     await invoke('save_last_opened_diagram', { path: item.path });
     
-    // Reset preview state for the new file to remain quiet during browsing
-    diagramSvg.value = '';
-    markdownHtml.value = '';
-    renderingError.value = null;
+    if (!skipRender) {
+      await renderContent();
+    } else {
+      // Reset preview state for the new file to remain quiet during browsing
+      diagramSvg.value = '';
+      markdownHtml.value = '';
+      renderingError.value = null;
+    }
   } catch (err: any) {
     console.error('Failed to read file:', err);
     await dialog.showAlert(`Failed to open file: ${err.message || err.toString()}`, 'Read Error');
@@ -604,6 +609,13 @@ watch(diagramCode, () => {
   }
 
   isDirty.value = true;
+
+  if (settingsStore.isAutoCompileEnabled) {
+    if (renderTimeout) clearTimeout(renderTimeout);
+    renderTimeout = setTimeout(() => {
+      renderContent();
+    }, 1000);
+  }
 });
 
 const handleBlur = async () => {

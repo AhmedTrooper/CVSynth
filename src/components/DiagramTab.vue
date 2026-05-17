@@ -647,7 +647,7 @@ const activeFileName = computed(() => {
               :animate="{ opacity: 1, y: 0, scale: 1 }"
               :exit="{ opacity: 0, y: 5, scale: 0.9 }"
               :transition="{ duration: 0.15 }"
-              class="flying-message"
+              class="floating-message tooltip-bottom-left"
             >
               Gallery
             </Motion>
@@ -666,7 +666,7 @@ const activeFileName = computed(() => {
               :animate="{ opacity: 1, y: 0, scale: 1 }"
               :exit="{ opacity: 0, y: 5, scale: 0.9 }"
               :transition="{ duration: 0.15 }"
-              class="flying-message"
+              class="floating-message tooltip-bottom-left"
             >
               Switch to {{ standaloneFileType === 'mmd' ? 'Markdown' : 'Mermaid' }}
             </Motion>
@@ -691,7 +691,7 @@ const activeFileName = computed(() => {
               :animate="{ opacity: 1, y: 0, scale: 1 }"
               :exit="{ opacity: 0, y: 5, scale: 0.9 }"
               :transition="{ duration: 0.15 }"
-              class="flying-message"
+              class="floating-message tooltip-bottom-left"
             >
               Auto Render on Blur
             </Motion>
@@ -713,22 +713,35 @@ const activeFileName = computed(() => {
               :animate="{ opacity: 1, y: 0, scale: 1 }"
               :exit="{ opacity: 0, y: 5, scale: 0.9 }"
               :transition="{ duration: 0.15 }"
-              class="flying-message"
+              class="floating-message tooltip-bottom-left"
             >
               Save Changes
             </Motion>
           </AnimatePresence>
         </div>
 
-        <button 
-          v-if="renderingError" 
-          class="action-btn ai-fix-btn" 
-          @click="fixWithAi" 
-          :disabled="isFixing"
-        >
-          <Wand2 :size="16" />
-          <span>AI Fix</span>
-        </button>
+        <div class="btn-tooltip-wrapper" v-if="renderingError" @mouseenter="activeTooltip = 'ai-fix'" @mouseleave="activeTooltip = null">
+          <button 
+            class="action-btn ai-fix-btn" 
+            @click="fixWithAi" 
+            :disabled="isFixing"
+          >
+            <Wand2 :size="16" />
+            <span>AI Fix</span>
+          </button>
+          <AnimatePresence>
+            <Motion
+              v-if="activeTooltip === 'ai-fix'"
+              :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+              :animate="{ opacity: 1, y: 0, scale: 1 }"
+              :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+              :transition="{ duration: 0.15 }"
+              class="floating-message tooltip-bottom-left"
+            >
+              Repair Syntax Errors
+            </Motion>
+          </AnimatePresence>
+        </div>
         
         <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'render'" @mouseleave="activeTooltip = null">
           <button 
@@ -746,7 +759,7 @@ const activeFileName = computed(() => {
               :animate="{ opacity: 1, y: 0, scale: 1 }"
               :exit="{ opacity: 0, y: 5, scale: 0.9 }"
               :transition="{ duration: 0.15 }"
-              class="flying-message"
+              class="floating-message tooltip-bottom-left"
             >
               {{ isMarkdown ? 'Preview Content' : 'Render Diagram' }}
             </Motion>

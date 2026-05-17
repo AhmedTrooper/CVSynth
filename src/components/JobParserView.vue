@@ -3,7 +3,8 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useJobsStore } from '../store/jobs';
 import { Motion, AnimatePresence } from 'motion-v';
-import { ArrowLeft, Cpu, RotateCw, AlertCircle } from '@lucide/vue';
+import { ArrowLeft, Cpu, RotateCw, AlertCircle, Copy, Check } from '@lucide/vue';
+import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 
 const router = useRouter();
 const jobsStore = useJobsStore();
@@ -12,6 +13,18 @@ const jobUrl = ref('');
 
 // Tooltip State
 const activeTooltip = ref<string | null>(null);
+const isCopied = ref(false);
+
+const copyError = async () => {
+  if (!jobsStore.error) return;
+  try {
+    await writeText(jobsStore.error);
+    isCopied.value = true;
+    setTimeout(() => { isCopied.value = false; }, 2000);
+  } catch (err) {
+    console.error('Failed to copy error:', err);
+  }
+};
 
 const handleParse = async () => {
   if (!rawJobDescription.value.trim() && !jobUrl.value.trim()) return;
@@ -21,15 +34,14 @@ const handleParse = async () => {
     router.push(`/job/${slug}`);
   } catch (err: any) {
     console.error("Parsing failed:", err);
-    let errorMsg = "Extraction failed. ";
-    
+    // Error is already set in jobsStore.parseNewJob, but we can refine it here
     if (err.toString().includes("fetch")) {
-      errorMsg += "The URL could not be reached or is blocked. Please paste the job description manually.";
+      jobsStore.error = "Extraction failed. The URL could not be reached or is blocked. Please paste the job description manually.";
+    } else if (err.toString().includes("API Key")) {
+       // Keep the specialized message from the store
     } else {
-      errorMsg += "The AI couldn't identify job details from the provided content. Please ensure you've provided a valid job description.";
+      jobsStore.error = `Intelligence Error: ${err.message || err.toString()}`;
     }
-    
-    jobsStore.error = errorMsg;
   }
 };
 </script>
@@ -92,8 +104,17 @@ const handleParse = async () => {
           <p>The AI will extract structured data to automate your resume tailoring.</p>
         </div>
         
-        <div v-if="jobsStore.error" class="error-msg">
-          {{ jobsStore.error }}
+        <div v-if="jobsStore.error" class="error-container">
+          <div class="error-header">
+            <span>ERROR LOG</span>
+            <button class="copy-error-btn" @click="copyError" title="Copy Error">
+              <Check v-if="isCopied" :size="14" />
+              <Copy v-else :size="14" />
+            </button>
+          </div>
+          <div class="error-scrollable">
+            {{ jobsStore.error }}
+          </div>
         </div>
 
         <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'run-extraction'" @mouseleave="activeTooltip = null">
@@ -284,12 +305,61 @@ label {
 .info-card h3 { font-size: 0.65rem; color: var(--accent); margin: 0 0 6px 0; }
 .info-card p { font-size: 0.75rem; color: var(--muted); margin: 0; line-height: 1.4; }
 
-.error-msg {
+.error-container {
+  background: rgba(248, 81, 73, 0.05);
+  border: 1px solid rgba(248, 81, 73, 0.2);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.error-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: rgba(248, 81, 73, 0.1);
+  border-bottom: 1px solid rgba(248, 81, 73, 0.1);
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: var(--warning);
+  letter-spacing: 0.05em;
+}
+
+.copy-error-btn {
+  background: none;
+  border: none;
+  color: var(--warning);
+  cursor: pointer;
+  display: flex;
+  padding: 2px;
+  border-radius: 4px;
+  transition: 0.2s;
+}
+
+.copy-error-btn:hover {
+  background: rgba(248, 81, 73, 0.1);
+}
+
+.error-scrollable {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 10px;
   font-size: 0.75rem;
   color: var(--warning);
-  background: rgba(248, 81, 73, 0.1);
-  padding: 8px;
-  border-radius: var(--radius-sm);
+  font-family: 'JetBrains Mono', monospace;
+  white-space: pre-wrap;
+  line-height: 1.4;
+}
+
+.error-scrollable::-webkit-scrollbar {
+  width: 4px;
+}
+
+.error-scrollable::-webkit-scrollbar-thumb {
+  background: rgba(248, 81, 73, 0.2);
+  border-radius: 10px;
 }
 
 .btn-primary {

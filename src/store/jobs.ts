@@ -46,7 +46,12 @@ export const useJobsStore = defineStore('jobs', () => {
     try {
       await settingsStore.loadSettings();
       const apiKey = await settingsStore.getDecryptedKey();
-      if (!apiKey) throw new Error("API Key not found. Please set it in Settings.");
+      
+      if (!apiKey) {
+        const msg = "API Key not found. Please go to Settings and enter your AI API key first.";
+        error.value = msg;
+        throw new Error(msg);
+      }
 
       const provider = settingsStore.selectedAiProvider;
       const model = settingsStore.selectedAiModel;

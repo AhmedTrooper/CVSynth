@@ -274,7 +274,7 @@ export const useSettingsStore = defineStore('settings', () => {
       // Load Fonts
       fontFamily.value = await invoke('get_setting', { key: 'font_family', default_value: 'Inter' });
       const savedFontSize = await invoke('get_setting', { key: 'font_size', default_value: '14' });
-      fontSize.value = parseInt(savedFontSize);
+      fontSize.value = parseInt(savedFontSize as string);
       fontWeight.value = await invoke('get_setting', { key: 'font_weight', default_value: '400' });
       fontStyle.value = await invoke('get_setting', { key: 'font_style', default_value: 'normal' });
       

@@ -1,6 +1,43 @@
 use tauri::command;
 use std::path::PathBuf;
 use crate::ai;
+use tectonic::status::StatusBackend;
+use tectonic::status::MessageKind;
+use std::fmt::Arguments;
+
+pub struct CapturingStatusBackend {
+    pub logs: String,
+}
+
+impl CapturingStatusBackend {
+    pub fn new() -> Self {
+        Self { logs: String::new() }
+    }
+}
+
+impl StatusBackend for CapturingStatusBackend {
+    fn report(&mut self, kind: MessageKind, args: Arguments, err: Option<&anyhow::Error>) {
+        let prefix = match kind {
+            MessageKind::Error => "error: ",
+            MessageKind::Warning => "warning: ",
+            MessageKind::Note => "note: ",
+        };
+        self.logs.push_str(prefix);
+        self.logs.push_str(&format!("{}", args));
+        if let Some(e) = err {
+            self.logs.push_str(&format!(" (caused by: {})", e));
+        }
+        self.logs.push('\n');
+    }
+
+    fn dump_error_logs(&mut self, logs: &[u8]) {
+        if let Ok(s) = std::str::from_utf8(logs) {
+            self.logs.push_str("--- Underlying Error Logs ---\n");
+            self.logs.push_str(s);
+            self.logs.push('\n');
+        }
+    }
+}
 
 #[command]
 pub async fn refine_latex_with_ai(
@@ -26,22 +63,46 @@ pub async fn fix_latex_with_ai(
 
 #[command]
 pub async fn compile_resume_to_pdf(latex_code: String) -> Result<Vec<u8>, String> {
-    // TeX engines are notoriously stack-heavy. Segfaults are frequently caused by
-    // stack overflows in threads with default sizes. We use a dedicated thread
-    // with a 10MB stack size to ensure the heavy TeX logic has enough room to run safely.
     tokio::task::spawn_blocking(move || {
         let thread_handle = std::thread::Builder::new()
             .name("tectonic-compiler".into())
-            .stack_size(10 * 1024 * 1024) // 10MB
+            .stack_size(10 * 1024 * 1024)
             .spawn(move || {
-                tectonic::latex_to_pdf(latex_code)
-                    .map_err(|e| format!("Tectonic compilation error: {}", e))
+                let mut status = CapturingStatusBackend::new();
+                
+                let config_loader = tectonic::config::PersistentConfig::default();
+                let bundle = config_loader
+                    .default_bundle(false)
+                    .map_err(|e| format!("Failed to load Tectonic bundle: {}", e))?;
+
+                let mut sb = tectonic::driver::ProcessingSessionBuilder::default();
+                sb.bundle(bundle)
+                    .primary_input_buffer(latex_code.as_bytes())
+                    .tex_input_name("texput.tex")
+                    .filesystem_root(std::env::temp_dir()) // Use temp dir for intermediate files
+                    .format_name("latex")
+                    .output_format(tectonic::driver::OutputFormat::Pdf)
+                    .build_date(std::time::SystemTime::now());
+
+                let mut sess = sb.create(&mut status)
+                    .map_err(|e| format!("Failed to create Tectonic session: {}\n\nLogs:\n{}", e, status.logs))?;
+
+                sess.run(&mut status)
+                    .map_err(|e| format!("Compilation failed: {}\n\nLogs:\n{}", e, status.logs))?;
+
+                let out_data = sess.into_file_data();
+                
+                // For standalone, the output is in the "primary" entry of the memory filesystem
+                out_data.get("texput.pdf")
+                    .cloned()
+                    .ok_or_else(|| format!("Compilation appeared successful, but 'texput.pdf' was not generated.\n\nLogs:\n{}", status.logs))
+                    .map(|f| f.data)
             })
             .map_err(|e| format!("Failed to spawn compiler thread: {}", e))?;
 
         thread_handle
             .join()
-            .map_err(|_| "Compiler thread panicked or exited unexpectedly".to_string())?
+            .map_err(|_| "Compiler thread panicked".to_string())?
     })
     .await
     .map_err(|e| format!("Blocking task failed: {}", e))?
@@ -51,14 +112,8 @@ pub async fn compile_resume_to_pdf(latex_code: String) -> Result<Vec<u8>, String
 pub async fn compile_workspace_to_pdf(workspace_dir: String, main_file_name: String) -> Result<Vec<u8>, String> {
     let workspace_path = PathBuf::from(&workspace_dir);
     
-    // 1. Pre-flight checks on the main thread to avoid spawning a heavy thread for obvious errors
     if !workspace_path.is_dir() {
         return Err(format!("Workspace path '{}' is not a valid directory.", workspace_dir));
-    }
-
-    let main_file_path = workspace_path.join(&main_file_name);
-    if !main_file_path.is_file() {
-        return Err(format!("Main TeX file '{}' not found in workspace.", main_file_name));
     }
 
     tokio::task::spawn_blocking(move || {
@@ -66,52 +121,53 @@ pub async fn compile_workspace_to_pdf(workspace_dir: String, main_file_name: Str
             .name("tectonic-workspace-compiler".into())
             .stack_size(10 * 1024 * 1024)
             .spawn(move || {
-                // Re-instantiate PathBuf inside the thread
+                let mut status = CapturingStatusBackend::new();
                 let workspace_path = PathBuf::from(&workspace_dir);
-                
-                // We use Tectonic's ProcessingSession for full filesystem access
-                let mut status = tectonic::status::NoopStatusBackend::default();
                 
                 let config_loader = tectonic::config::PersistentConfig::default();
                 let bundle = config_loader
                     .default_bundle(false)
                     .map_err(|e| format!("Failed to load Tectonic bundle: {}", e))?;
 
+                // Determine the absolute path to the main file
+                let main_file_path = workspace_path.join(&main_file_name);
+                if !main_file_path.is_file() {
+                    return Err(format!("Main TeX file '{}' not found in workspace.", main_file_name));
+                }
+
                 let mut sb = tectonic::driver::ProcessingSessionBuilder::default();
                 sb.bundle(bundle)
-                    .primary_input_path(&workspace_path.join(&main_file_name))
+                    .primary_input_path(&main_file_path)
+                    .tex_input_name(&main_file_name)
                     .filesystem_root(&workspace_path)
                     .format_name("latex")
                     .output_format(tectonic::driver::OutputFormat::Pdf)
                     .build_date(std::time::SystemTime::now());
 
                 let mut sess = sb.create(&mut status)
-                    .map_err(|e| format!("Failed to create Tectonic processing session: {}", e))?;
+                    .map_err(|e| format!("Failed to create Tectonic session: {}\n\nLogs:\n{}", e, status.logs))?;
 
                 sess.run(&mut status)
-                    .map_err(|e| format!("Tectonic compilation failed: {}", e))?;
+                    .map_err(|e| format!("Compilation failed: {}\n\nLogs:\n{}", e, status.logs))?;
 
-                // Find the output PDF in the workspace
-                let main_path = PathBuf::from(&main_file_name);
-                let pdf_file_name = main_path
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .map(|s| format!("{}.pdf", s))
-                    .ok_or("Failed to determine generated PDF name from input file stem")?;
-                
-                let pdf_path = workspace_path.join(&pdf_file_name);
+                // Determine output PDF path. Tectonic outputs relative to the input file by default.
+                let mut pdf_path = main_file_path.clone();
+                pdf_path.set_extension("pdf");
                 
                 if pdf_path.exists() {
-                    std::fs::read(&pdf_path).map_err(|e| format!("Failed to read generated PDF from disk: {}", e))
+                    let data = std::fs::read(&pdf_path).map_err(|e| format!("Failed to read generated PDF: {}", e))?;
+                    // Optional: Clean up intermediate files (aux, log, etc. are handled by Tectonic usually, but PDF stays)
+                    // We keep it for now as it's a workspace and user might want it.
+                    Ok(data)
                 } else {
-                    Err(format!("Compilation appeared successful, but the PDF file '{}' was not found in the workspace.", pdf_file_name))
+                    Err(format!("Compilation successful, but PDF was not found at expected location: {:?}\n\nLogs:\n{}", pdf_path, status.logs))
                 }
             })
             .map_err(|e| format!("Failed to spawn compiler thread: {}", e))?;
 
         thread_handle
             .join()
-            .map_err(|_| "The compiler thread panicked. This usually indicates a fatal error in the TeX engine.".to_string())?
+            .map_err(|_| "The compiler thread panicked.".to_string())?
     })
     .await
     .map_err(|e| format!("The asynchronous task failed: {}", e))?

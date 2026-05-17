@@ -9,8 +9,7 @@ import {
   readTextFile, 
   mkdir, 
   remove, 
-  exists,
-  stat
+  exists
 } from '@tauri-apps/plugin-fs';
 import { Motion, AnimatePresence } from 'motion-v';
 import { useSettingsStore } from '../store/settings';
@@ -31,7 +30,10 @@ import {
   Trash2,
   FolderPlus,
   Files,
-  Save
+  Save,
+  Star,
+  Layout,
+  BookOpen
 } from '@lucide/vue';
 
 // Codemirror imports
@@ -63,6 +65,7 @@ interface FileItem {
 
 // State
 const workspacePath = ref<string | null>(null);
+const mainFilePath = ref<string | null>(null);
 const fileTree = ref<FileItem[]>([]);
 const activeFilePath = ref<string | null>(null);
 const latexCode = ref('');
@@ -83,15 +86,90 @@ const isDirty = ref(false);
 const editorContainer = ref<HTMLElement | null>(null);
 const isLoadingWorkspace = ref(false);
 
+const isTemplatesVisible = ref(false);
+
 // Tooltip State
-const activeTooltip = ref<string | null>(null);
+
+const resumeTemplates = [
+  {
+    name: 'Surgical Professional',
+    description: 'Clean, high-density layout optimized for ATS.',
+    content: `\\documentclass[11pt,a4paper]{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage[margin=1in]{geometry}
+\\usepackage{titlesec}
+\\usepackage{enumitem}
+\\usepackage{hyperref}
+
+\\titleformat{\\section}{\\large\\bfseries}{}{0em}{}[\\titlerule]
+\\titlespacing{\\section}{0pt}{12pt}{8pt}
+
+\\begin{document}
+\\begin{center}
+    {\\huge \\textbf{YOUR NAME}} \\\\
+    \\vspace{4pt}
+    City, Country | +1 234 567 890 | \\href{mailto:email@example.com}{email@example.com} \\\\
+    \\href{https://linkedin.com/in/username}{linkedin.com/in/username} | \\href{https://github.com/username}{github.com/username}
+\\end{center}
+
+\\section{Professional Summary}
+Expert software engineer with 5+ years of experience in building scalable web applications. Proficient in Rust, TypeScript, and cloud architecture.
+
+\\section{Experience}
+\\textbf{Senior Software Engineer} | Tech Corp \\hfill 2020 -- Present \\\\
+\\begin{itemize}[noitemsep,topsep=0pt]
+    \\item Led the development of a high-performance data processing engine using Rust.
+    \\item Reduced latency by 40% by implementing efficient caching strategies.
+\\end{itemize}
+
+\\section{Education}
+\\textbf{B.S. Computer Science} | University of Technology \\hfill 2016 -- 2020
+
+\\section{Skills}
+\\textbf{Languages:} Rust, TypeScript, Python, C++ \\\\
+\\textbf{Frameworks:} Vue.js, Node.js, Express, Tauri \\\\
+\\textbf{Tools:} Docker, Kubernetes, AWS, Git
+
+\\end{document}`
+  },
+  {
+    name: 'Modern Minimal',
+    description: 'A sleek, minimalist design with plenty of whitespace.',
+    content: `\\documentclass[10pt]{article}
+\\usepackage[margin=1.2in]{geometry}
+\\usepackage{xcolor}
+\\usepackage{sectsty}
+
+\\definecolor{accent}{HTML}{238636}
+\\sectionfont{\\color{accent}}
+
+\\begin{document}
+{\\huge \\textbf{YOUR NAME}} \\\\
+\\textit{Software Architect}
+
+\\vspace{20pt}
+
+\\section*{Contact}
+email@example.com \\\\
++1 234 567 890 \\\\
+github.com/username
+
+\\section*{Profile}
+Dedicated architect focusing on performance and user-centric design.
+
+\\section*{Core Stack}
+Rust, Go, TypeScript, PostgreSQL
+
+\\end{document}`
+  }
+];
 
 // Workspace Management
 const toggleSidebar = () => {
   isSidebarVisible.value = !isSidebarVisible.value;
 };
 
-const startResizing = (e: MouseEvent) => {
+const startResizing = (_e: MouseEvent) => {
   isResizing.value = true;
   document.addEventListener('mousemove', handleMouseMove);
   document.addEventListener('mouseup', stopResizing);
@@ -111,6 +189,32 @@ const stopResizing = () => {
   document.removeEventListener('mouseup', stopResizing);
 };
 
+const setMainFile = async (path: string) => {
+  if (!workspacePath.value) return;
+  mainFilePath.value = path;
+  await invoke('save_setting', { key: `main_file:${workspacePath.value}`, value: path });
+};
+
+const loadMainFile = async () => {
+  if (!workspacePath.value) return;
+  const saved = await invoke<string>('get_setting', { key: `main_file:${workspacePath.value}`, default_value: '' });
+  if (saved && await exists(saved)) {
+    mainFilePath.value = saved;
+  } else {
+    mainFilePath.value = null;
+  }
+};
+
+const useTemplate = async (template: typeof resumeTemplates[0]) => {
+  const confirmed = await dialog.showConfirm(`Overwrite current editor content with the "${template.name}" template?`, 'Use Template');
+  if (confirmed) {
+    latexCode.value = template.content;
+    isTemplatesVisible.value = false;
+    isDirty.value = true;
+    await saveActiveFile();
+  }
+};
+
 // Persistence & Initialization
 onMounted(async () => {
   try {
@@ -118,6 +222,7 @@ onMounted(async () => {
     if (savedWorkspace && await exists(savedWorkspace)) {
       workspacePath.value = savedWorkspace;
       await refreshFileTree();
+      await loadMainFile();
 
       const lastFile = await invoke<string | null>('get_last_opened_file');
       if (lastFile && await exists(lastFile)) {
@@ -155,6 +260,7 @@ const selectWorkspace = async () => {
       workspacePath.value = selected;
       await invoke('save_workspace_path', { path: selected });
       await refreshFileTree();
+      await loadMainFile();
     }
   } catch (err) {
     console.error('Failed to select workspace:', err);
@@ -242,7 +348,9 @@ const saveActiveFile = async () => {
 
   try {
     // Bulletproof: Check if parent directory still exists
-    const dirPath = activeFilePath.value.substring(0, activeFilePath.value.lastIndexOf(/[/\\]/));
+    const lastSlash = Math.max(activeFilePath.value.lastIndexOf('/'), activeFilePath.value.lastIndexOf('\\'));
+    const dirPath = lastSlash !== -1 ? activeFilePath.value.substring(0, lastSlash) : null;
+    
     if (dirPath && !(await exists(dirPath))) {
       await dialog.showAlert("The parent directory for this file is missing.", "Save Failed");
       return;
@@ -317,6 +425,10 @@ const deleteItem = async (item: FileItem) => {
         pdfUrl.value = null;
       }
     }
+
+    if (mainFilePath.value === item.path) {
+      mainFilePath.value = null;
+    }
     
     await refreshFileTree();
   } catch (err: any) {
@@ -331,6 +443,7 @@ const closeWorkspace = async () => {
   workspacePath.value = null;
   fileTree.value = [];
   activeFilePath.value = null;
+  mainFilePath.value = null;
   await invoke('save_workspace_path', { path: '' });
   
   const savedCode = await invoke<string | null>('get_compiler_state');
@@ -389,7 +502,7 @@ const refineWithAi = async () => {
 
 // Compile PDF
 const compilePdf = async () => {
-  if (!latexCode.value.trim()) return;
+  if (!latexCode.value.trim() && !mainFilePath.value) return;
   
   isCompiling.value = true;
   compilationError.value = null;
@@ -400,9 +513,15 @@ const compilePdf = async () => {
 
     let pdfBytes: number[];
     
-    if (workspacePath.value && activeFilePath.value) {
-      // Workspace-aware compilation
-      let relativePath = activeFilePath.value.replace(workspacePath.value, '');
+    if (workspacePath.value) {
+      // Determine what to compile: Main File (if set) or Active File
+      const compileTarget = mainFilePath.value || activeFilePath.value;
+      
+      if (!compileTarget) {
+        throw new Error("No file selected to compile in workspace.");
+      }
+
+      let relativePath = compileTarget.replace(workspacePath.value, '');
       if (relativePath.startsWith('/') || relativePath.startsWith('\\')) {
         relativePath = relativePath.substring(1);
       }
@@ -540,6 +659,13 @@ const activeFileName = computed(() => {
       </div>
       
       <div class="header-actions">
+        <button class="action-btn" @click="isTemplatesVisible = true">
+          <BookOpen :size="16" />
+          <span>Templates</span>
+        </button>
+
+        <div class="divider-v"></div>
+
         <label class="auto-compile-toggle">
           <input 
             type="checkbox" 
@@ -618,7 +744,7 @@ const activeFileName = computed(() => {
               <div v-for="item in fileTree" :key="item.path" class="tree-item-wrapper">
                 <div 
                   class="tree-item" 
-                  :class="{ active: activeFilePath === item.path }"
+                  :class="{ active: activeFilePath === item.path, 'main-file': mainFilePath === item.path }"
                   @click="item.isDir ? toggleFolder(item) : selectFile(item)"
                 >
                   <div class="item-icon">
@@ -630,6 +756,9 @@ const activeFileName = computed(() => {
                   </div>
                   <span class="item-name">{{ item.name }}</span>
                   <div class="item-actions">
+                    <button v-if="!item.isDir" @click.stop="setMainFile(item.path)" :title="mainFilePath === item.path ? 'Main File' : 'Set as Main File'">
+                      <Star :size="12" :fill="mainFilePath === item.path ? 'var(--accent)' : 'none'" :color="mainFilePath === item.path ? 'var(--accent)' : 'currentColor'" />
+                    </button>
                     <template v-if="item.isDir">
                       <button @click.stop="createNewFile(item)" title="New File"><Plus :size="12" /></button>
                       <button @click.stop="createNewFolder(item)" title="New Folder"><FolderPlus :size="12" /></button>
@@ -649,7 +778,7 @@ const activeFileName = computed(() => {
                     <div v-for="child in item.children" :key="child.path" class="tree-item-wrapper">
                       <div 
                         class="tree-item sub-item" 
-                        :class="{ active: activeFilePath === child.path }"
+                        :class="{ active: activeFilePath === child.path, 'main-file': mainFilePath === child.path }"
                         @click="child.isDir ? toggleFolder(child) : selectFile(child)"
                       >
                         <div class="item-icon">
@@ -661,6 +790,9 @@ const activeFileName = computed(() => {
                         </div>
                         <span class="item-name">{{ child.name }}</span>
                         <div class="item-actions">
+                          <button v-if="!child.isDir" @click.stop="setMainFile(child.path)" :title="mainFilePath === child.path ? 'Main File' : 'Set as Main File'">
+                            <Star :size="12" :fill="mainFilePath === child.path ? 'var(--accent)' : 'none'" :color="mainFilePath === child.path ? 'var(--accent)' : 'currentColor'" />
+                          </button>
                           <template v-if="child.isDir">
                             <button @click.stop="createNewFile(child)" title="New File"><Plus :size="12" /></button>
                             <button @click.stop="createNewFolder(child)" title="New Folder"><FolderPlus :size="12" /></button>
@@ -776,6 +908,38 @@ const activeFileName = computed(() => {
         </Motion>
       </AnimatePresence>
     </main>
+
+    <!-- Template Modal -->
+    <AnimatePresence>
+      <Motion
+        v-if="isTemplatesVisible"
+        :initial="{ opacity: 0 }"
+        :animate="{ opacity: 1 }"
+        :exit="{ opacity: 0 }"
+        class="modal-backdrop"
+        @click="isTemplatesVisible = false"
+      >
+        <Motion
+          :initial="{ scale: 0.9, opacity: 0 }"
+          :animate="{ scale: 1, opacity: 1 }"
+          :exit="{ scale: 0.9, opacity: 0 }"
+          class="template-modal"
+          @click.stop
+        >
+          <div class="modal-header">
+            <h3>Resume Templates</h3>
+            <button @click="isTemplatesVisible = false"><X :size="18" /></button>
+          </div>
+          <div class="template-grid">
+            <div v-for="temp in resumeTemplates" :key="temp.name" class="template-card" @click="useTemplate(temp)">
+              <div class="temp-icon"><FileCode :size="32" /></div>
+              <h4>{{ temp.name }}</h4>
+              <p>{{ temp.description }}</p>
+            </div>
+          </div>
+        </Motion>
+      </Motion>
+    </AnimatePresence>
   </div>
 </template>
 
@@ -846,6 +1010,13 @@ const activeFileName = computed(() => {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.divider-v {
+  width: 1px;
+  height: 20px;
+  background: var(--line);
+  margin: 0 4px;
 }
 
 .auto-compile-toggle {
@@ -1051,6 +1222,14 @@ const activeFileName = computed(() => {
 
 .tree-item.active {
   background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.tree-item.main-file {
+  font-weight: 700;
+}
+
+.tree-item.main-file .item-name {
   color: var(--accent);
 }
 
@@ -1334,6 +1513,66 @@ const activeFileName = computed(() => {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.template-modal {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  width: 90%;
+  max-width: 600px;
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.modal-header h3 { margin: 0; }
+.modal-header button { background: none; border: none; color: var(--muted); cursor: pointer; }
+
+.template-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.template-card {
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: 0.2s;
+  text-align: center;
+}
+
+.template-card:hover {
+  border-color: var(--accent);
+  background: var(--surface);
+  transform: translateY(-2px);
+}
+
+.temp-icon { color: var(--accent); margin-bottom: 12px; }
+.template-card h4 { margin: 0 0 8px; font-size: 1rem; }
+.template-card p { margin: 0; font-size: 0.75rem; color: var(--muted); }
 
 @media (max-width: 1024px) {
   .workspace-sidebar {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed, nextTick } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
-import { save, open as openDialog } from '@tauri-apps/plugin-dialog';
+import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { join } from '@tauri-apps/api/path';
 import { 
   writeFile, 
@@ -27,7 +27,6 @@ import 'highlight.js/styles/github-dark.css';
 import 'katex/dist/katex.min.css';
 
 import { 
-  Download, 
   RotateCw, 
   X,
   FileCode,
@@ -40,10 +39,7 @@ import {
   FolderPlus,
   Share2,
   Workflow,
-  Maximize2,
-  Layout,
-  Eye,
-  Type
+  Layout
 } from '@lucide/vue';
 
 // Codemirror imports
@@ -51,7 +47,6 @@ import { Codemirror } from 'vue-codemirror';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorView } from '@codemirror/view';
 
-const settingsStore = useSettingsStore();
 const dialog = useDialogStore();
 
 // Markdown Init
@@ -111,8 +106,6 @@ const editorContainer = ref<HTMLElement | null>(null);
 const previewContainer = ref<HTMLElement | null>(null);
 const isLoadingWorkspace = ref(false);
 const panZoomInstance = ref<any>(null);
-
-const activeTooltip = ref<string | null>(null);
 
 const isMarkdown = computed(() => activeFilePath.value?.endsWith('.md'));
 

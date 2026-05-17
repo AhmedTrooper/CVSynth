@@ -12,7 +12,6 @@ import {
   exists
 } from '@tauri-apps/plugin-fs';
 import { Motion, AnimatePresence } from 'motion-v';
-import { useSettingsStore } from '../store/settings';
 import { useDialogStore } from '../store/dialog';
 import mermaid from 'mermaid';
 import svgPanZoom from 'svg-pan-zoom';

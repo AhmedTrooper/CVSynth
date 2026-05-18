@@ -822,11 +822,11 @@ const activeFileName = computed(() => {
           <div class="sidebar-header">
             <span>EXPLORER</span>
             <div class="header-tools">
-              <button @click="refreshFileTree" title="Refresh"><RotateCw :size="12" /></button>
-              <button @click="createNewFile(null, '.mmd')" title="New Diagram"><Plus :size="14" /></button>
-              <button @click="createNewFile(null, '.md')" title="New Markdown"><FileCode :size="14" /></button>
-              <button @click="createNewFolder()" title="New Folder"><FolderPlus :size="14" /></button>
-              <button v-if="workspacePath" @click="closeWorkspace" title="Close Workspace" class="close-workspace-btn"><X :size="14" /></button>
+              <button class="header-tool-btn" @click="refreshFileTree" title="Refresh"><RotateCw :size="16" /></button>
+              <button class="header-tool-btn" @click="createNewFile(null, '.mmd')" title="New Diagram"><Plus :size="18" /></button>
+              <button class="header-tool-btn" @click="createNewFile(null, '.md')" title="New Markdown"><FileCode :size="18" /></button>
+              <button class="header-tool-btn" @click="createNewFolder()" title="New Folder"><FolderPlus :size="18" /></button>
+              <button v-if="workspacePath" @click="closeWorkspace" title="Close Workspace" class="header-tool-btn close-workspace-btn"><X :size="18" /></button>
             </div>
           </div>
 
@@ -1263,20 +1263,24 @@ const activeFileName = computed(() => {
 
 .header-tools {
   display: flex;
-  gap: 8px;
+  gap: 4px;
 }
 
-.header-tools button {
+.header-tool-btn {
   background: none;
   border: none;
   color: var(--muted);
   cursor: pointer;
-  padding: 2px;
+  padding: 4px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
 }
 
-.header-tools button:hover {
+.header-tool-btn:hover {
+  background: var(--surface-soft);
   color: var(--ink);
 }
 

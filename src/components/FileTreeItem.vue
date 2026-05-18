@@ -59,9 +59,10 @@ defineProps<{
           v-if="!item.isDir && onSetMain" 
           @click.stop="onSetMain(item.path)" 
           :title="mainFilePath === item.path ? 'Main File' : 'Set as Main File'"
+          class="tree-action-btn"
         >
           <Star 
-            :size="12" 
+            :size="14" 
             :fill="mainFilePath === item.path ? 'var(--accent)' : 'none'" 
             :color="mainFilePath === item.path ? 'var(--accent)' : 'currentColor'" 
           />
@@ -69,16 +70,16 @@ defineProps<{
 
         <!-- Creation Actions (Folders Only) -->
         <template v-if="item.isDir">
-          <button v-if="!isDiagram" @click.stop="onCreateFile(item)" title="New File"><Plus :size="12" /></button>
+          <button v-if="!isDiagram" @click.stop="onCreateFile(item)" title="New File" class="tree-action-btn"><Plus :size="16" /></button>
           <template v-else>
-            <button @click.stop="onCreateFile(item, '.mmd')" title="New Diagram"><Plus :size="12" /></button>
-            <button @click.stop="onCreateFile(item, '.md')" title="New Markdown"><FileCode :size="12" /></button>
+            <button @click.stop="onCreateFile(item, '.mmd')" title="New Diagram" class="tree-action-btn"><Plus :size="16" /></button>
+            <button @click.stop="onCreateFile(item, '.md')" title="New Markdown" class="tree-action-btn"><FileCode :size="16" /></button>
           </template>
-          <button @click.stop="onCreateFolder(item)" title="New Folder"><FolderPlus :size="12" /></button>
+          <button @click.stop="onCreateFolder(item)" title="New Folder" class="tree-action-btn"><FolderPlus :size="16" /></button>
         </template>
 
         <!-- Delete Action -->
-        <button class="item-delete" @click.stop="onDelete(item)" title="Delete"><Trash2 :size="12" /></button>
+        <button class="tree-action-btn item-delete" @click.stop="onDelete(item)" title="Delete"><Trash2 :size="16" /></button>
       </div>
     </div>
     
@@ -165,7 +166,7 @@ defineProps<{
 
 .item-actions {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   opacity: 0;
   flex-shrink: 0;
 }
@@ -174,21 +175,26 @@ defineProps<{
   opacity: 1;
 }
 
-.item-actions button {
+.tree-action-btn {
   background: none;
   border: none;
   color: var(--muted);
   cursor: pointer;
-  padding: 2px;
+  padding: 6px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
 }
 
-.item-actions button:hover {
+.tree-action-btn:hover {
+  background: var(--surface);
   color: var(--ink);
 }
 
-.item-actions button.item-delete:hover {
+.tree-action-btn.item-delete:hover {
+  background: rgba(248, 81, 73, 0.1);
   color: var(--warning);
 }
 

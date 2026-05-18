@@ -203,8 +203,15 @@ const stopResizing = () => {
 
 const setMainFile = async (path: string) => {
   if (!workspacePath.value) return;
-  mainFilePath.value = path;
-  await invoke('save_setting', { key: `main_file:${workspacePath.value}`, value: path });
+  
+  // Toggle logic: if clicking the current main file, unset it
+  if (mainFilePath.value === path) {
+    mainFilePath.value = null;
+    await invoke('save_setting', { key: `main_file:${workspacePath.value}`, value: '' });
+  } else {
+    mainFilePath.value = path;
+    await invoke('save_setting', { key: `main_file:${workspacePath.value}`, value: path });
+  }
 };
 
 const loadMainFile = async () => {
@@ -413,11 +420,6 @@ const createNewFile = async (parent: FileItem | null = null) => {
     // Auto-select the newly created file
     await selectFile({ name: fileName, path: fullPath, isDir: false });
 
-    // Auto-set as main if it's a tex file and no main is set
-    if (isTex && !mainFilePath.value) {
-      await setMainFile(fullPath);
-    }
-
   } catch (err: any) {
     await dialog.showAlert(err.toString(), 'Failed to create file');
   }
@@ -552,11 +554,16 @@ const compilePdf = async () => {
     let pdfBytes: number[];
     
     if (workspacePath.value) {
-      // Determine what to compile: Main File (if set) or Active File
-      const compileTarget = mainFilePath.value || activeFilePath.value;
+      // Determine what to compile: 
+      // 1. If active file is a .tex file, compile it.
+      // 2. Otherwise, fallback to the designated Main File.
+      let compileTarget = activeFilePath.value;
+      if (!compileTarget || !compileTarget.toLowerCase().endsWith('.tex')) {
+        compileTarget = mainFilePath.value;
+      }
       
       if (!compileTarget) {
-        throw new Error("No file selected to compile in workspace.");
+        throw new Error("No .tex file selected or designated as main to compile.");
       }
 
       let relativePath = compileTarget.replace(workspacePath.value, '');

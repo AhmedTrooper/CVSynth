@@ -68,6 +68,19 @@ export const useInboxStore = defineStore('inbox', () => {
     }
   };
 
+  const resetSecret = async () => {
+    try {
+      const newSecret = await invoke<string>('reset_extension_secret');
+      if (extensionConfig.value) {
+        extensionConfig.value.secret = newSecret;
+      }
+      return newSecret;
+    } catch (error) {
+      console.error('Failed to reset extension secret:', error);
+      throw error;
+    }
+  };
+
   return {
     jobs,
     isLoading,
@@ -77,5 +90,6 @@ export const useInboxStore = defineStore('inbox', () => {
     deleteAllJobs,
     markProcessed,
     loadExtensionConfig,
+    resetSecret,
   };
 });

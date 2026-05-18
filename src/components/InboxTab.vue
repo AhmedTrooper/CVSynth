@@ -104,6 +104,22 @@ const copyToClipboard = async (text: string, label: string) => {
   await dialog.showAlert(`${label} copied to clipboard!`, 'Copied');
 };
 
+const handleResetSecret = async () => {
+  const confirmed = await dialog.showConfirm(
+    'Regenerating the secret key will invalidate your current connection. You will need to update the key in your browser extension. Continue?',
+    'Reset Secret Key'
+  );
+
+  if (confirmed) {
+    try {
+      await inboxStore.resetSecret();
+      await dialog.showAlert('Secret key has been regenerated successfully.', 'Key Reset');
+    } catch (err: any) {
+      await dialog.showAlert(`Failed to reset secret: ${err.toString()}`, 'Error');
+    }
+  }
+};
+
 const processJob = async (inboxJob: InboxJob) => {
   processingJobs.value.add(inboxJob.id);
   try {
@@ -430,7 +446,10 @@ const getStatusClass = (status: string) => {
             <label>Secret Key</label>
             <div class="value-row">
               <code class="secret">{{ inboxStore.extensionConfig?.secret ? '••••••••' + inboxStore.extensionConfig.secret.slice(-4) : '...' }}</code>
-              <button class="copy-btn" @click="copyToClipboard(inboxStore.extensionConfig?.secret || '', 'Secret Key')">
+              <button class="copy-btn" @click="handleResetSecret" title="Regenerate Key">
+                <RefreshCw :size="14" />
+              </button>
+              <button class="copy-btn" @click="copyToClipboard(inboxStore.extensionConfig?.secret || '', 'Secret Key')" title="Copy Key">
                 <Key :size="14" />
               </button>
             </div>
@@ -781,10 +800,14 @@ const getStatusClass = (status: string) => {
   background: var(--surface-soft);
   border: none;
   border-left: 1px solid var(--line);
-  padding: 0 10px;
+  padding: 0 12px;
   color: var(--muted);
   cursor: pointer;
   transition: 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0; /* Let parent overflow: hidden handle corners */
 }
 
 .copy-btn:hover {

@@ -148,7 +148,8 @@ pub fn run() {
             commands::inbox::delete_inbox_job,
             commands::inbox::delete_all_inbox_jobs,
             commands::inbox::mark_inbox_job_processed,
-            commands::inbox::get_extension_config
+            commands::inbox::get_extension_config,
+            commands::inbox::reset_extension_secret
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

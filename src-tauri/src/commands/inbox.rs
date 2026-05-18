@@ -89,3 +89,19 @@ pub async fn get_extension_config(state: State<'_, AppState>) -> Result<Extensio
         Ok(ExtensionConfig { secret, port })
     }).await
 }
+
+#[tauri::command]
+pub async fn reset_extension_secret(state: State<'_, AppState>) -> Result<String, String> {
+    let new_secret = nanoid::nanoid!(32);
+    let secret_clone = new_secret.clone();
+    
+    state.with_db(move |conn| {
+        conn.execute(
+            "UPDATE app_settings SET value = ?1 WHERE key = 'extension_secret'",
+            [&secret_clone],
+        ).map_err(|e| e.to_string())?;
+        Ok(())
+    }).await?;
+
+    Ok(new_secret)
+}

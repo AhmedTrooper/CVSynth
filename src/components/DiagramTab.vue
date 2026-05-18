@@ -128,6 +128,7 @@ const previewContainer = ref<HTMLElement | null>(null);
 const isLoadingWorkspace = ref(false);
 const panZoomInstance = ref<any>(null);
 let renderTimeout: any = null;
+let currentRenderVersion = 0;
 
 const isTemplatesVisible = ref(false);
 const activeTooltip = ref<string | null>(null);
@@ -565,16 +566,32 @@ const fixWithAi = async () => {
 
 // Rendering Logic
 const renderContent = async () => {
-  if (!diagramCode.value.trim()) return;
+  const codeToRender = diagramCode.value.trim();
+  if (!codeToRender) {
+    diagramSvg.value = '';
+    markdownHtml.value = '';
+    return;
+  }
+  
+  // Increment version to track this specific render request
+  const version = ++currentRenderVersion;
   
   isRendering.value = true;
   renderingError.value = null;
+
+  // Clear previous content immediately so the user knows a new render started
+  diagramSvg.value = '';
+  markdownHtml.value = '';
   
   try {
     if (isMarkdown.value) {
-      const rawHtml = md.render(diagramCode.value);
-      markdownHtml.value = DOMPurify.sanitize(rawHtml);
-      diagramSvg.value = '';
+      const rawHtml = md.render(codeToRender);
+      const sanitized = DOMPurify.sanitize(rawHtml);
+      
+      // If a newer render has started, discard this one
+      if (version !== currentRenderVersion) return;
+      
+      markdownHtml.value = sanitized;
       
       await nextTick();
       // Render mermaid inside markdown
@@ -584,6 +601,9 @@ const renderContent = async () => {
           const code = node.textContent || '';
           const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
           const { svg } = await mermaid.render(id, code);
+          
+          if (version !== currentRenderVersion) return;
+
           const wrapper = document.createElement('div');
           wrapper.className = 'mermaid-rendered-wrapper';
           wrapper.innerHTML = svg;
@@ -592,18 +612,24 @@ const renderContent = async () => {
       }
     } else {
       const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
-      const { svg } = await mermaid.render(id, diagramCode.value);
+      const { svg } = await mermaid.render(id, codeToRender);
+      
+      // If a newer render has started, discard this one
+      if (version !== currentRenderVersion) return;
+
       diagramSvg.value = svg;
-      markdownHtml.value = '';
       
       await nextTick();
       initializePanZoom();
     }
   } catch (err: any) {
+    if (version !== currentRenderVersion) return;
     console.error("Render Error:", err);
     renderingError.value = err.message || err.toString();
   } finally {
-    isRendering.value = false;
+    if (version === currentRenderVersion) {
+      isRendering.value = false;
+    }
   }
 };
 

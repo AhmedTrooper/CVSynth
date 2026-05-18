@@ -14,6 +14,7 @@ import {
 import { Motion, AnimatePresence } from 'motion-v';
 import { useSettingsStore } from '../store/settings';
 import { useDialogStore } from '../store/dialog';
+import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { 
   Hammer, 
   Download, 
@@ -34,7 +35,9 @@ import {
   Star,
   Layout,
   BookOpen,
-  Info
+  Info,
+  Copy,
+  Check
 } from '@lucide/vue';
 
 // Codemirror imports
@@ -83,8 +86,21 @@ const isRefining = ref(false);
 const refinementInstruction = ref('');
 const isDownloading = ref(false);
 const compilationError = ref<string | null>(null);
+const isCopyingError = ref(false);
 const isDirty = ref(false);
 const isProgrammaticChange = ref(false);
+
+const handleCopyError = async () => {
+  if (!compilationError.value) return;
+  isCopyingError.value = true;
+  try {
+    await writeText(compilationError.value);
+    setTimeout(() => { isCopyingError.value = false; }, 2000);
+  } catch (err) {
+    console.error('Failed to copy error:', err);
+    isCopyingError.value = false;
+  }
+};
 const editorContainer = ref<HTMLElement | null>(null);
 const isLoadingWorkspace = ref(false);
 
@@ -370,18 +386,40 @@ const createNewFile = async (parent: FileItem | null = null) => {
   const dir = parent ? parent.path : workspacePath.value;
   if (!dir) return;
 
-  const fileName = await dialog.showPrompt('Enter file name (e.g. main.tex):', '', 'New File');
+  let fileName = await dialog.showPrompt('Enter file name (e.g. main.tex):', '', 'New File');
   if (!fileName) return;
 
+  // Auto-append .tex if no extension provided
+  if (!fileName.includes('.')) {
+    fileName += '.tex';
+  }
+
   const fullPath = await join(dir, fileName);
+  
+  // Prevent fatal format file error by providing a minimal valid TeX document
+  const isTex = fileName.endsWith('.tex');
+  const initialContent = isTex 
+    ? '\\documentclass{article}\n\\begin{document}\n\nStart writing here...\n\n\\end{document}' 
+    : '';
+
   try {
-    await writeFile(fullPath, new TextEncoder().encode(''));
+    await writeFile(fullPath, new TextEncoder().encode(initialContent));
+    
     if (parent) {
       parent.isOpen = true;
       parent.children = await scanDirectory(parent.path);
     } else {
       await refreshFileTree();
     }
+
+    // Auto-select the newly created file
+    await selectFile({ name: fileName, path: fullPath, isDir: false });
+
+    // Auto-set as main if it's a tex file and no main is set
+    if (isTex && !mainFilePath.value) {
+      await setMainFile(fullPath);
+    }
+
   } catch (err: any) {
     await dialog.showAlert(err.toString(), 'Failed to create file');
   }
@@ -985,11 +1023,19 @@ const activeFileName = computed(() => {
               <X :size="14" class="error-icon" />
               <span>COMPILATION ERROR</span>
             </div>
-            <button class="close-btn" @click="compilationError = null">
-              <X :size="14" />
-            </button>
+            <div class="console-actions">
+              <button class="action-btn-inline" @click="handleCopyError" :title="isCopyingError ? 'Copied!' : 'Copy to Clipboard'">
+                <Check v-if="isCopyingError" :size="14" class="success-icon" />
+                <Copy v-else :size="14" />
+              </button>
+              <button class="action-btn-inline close-btn" @click="compilationError = null">
+                <X :size="14" />
+              </button>
+            </div>
           </div>
-          <pre class="error-logs">{{ compilationError }}</pre>
+          <div class="error-logs-container">
+            <pre class="error-logs">{{ compilationError }}</pre>
+          </div>
         </Motion>
       </AnimatePresence>
     </main>
@@ -1591,7 +1637,7 @@ const activeFileName = computed(() => {
   bottom: 0;
   left: 0;
   width: 100%;
-  max-height: 30%;
+  max-height: 40%;
   background: var(--surface);
   border-top: 2px solid var(--warning);
   display: flex;
@@ -1601,7 +1647,7 @@ const activeFileName = computed(() => {
 }
 
 .console-header {
-  height: 32px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1610,16 +1656,52 @@ const activeFileName = computed(() => {
   border-bottom: 1px solid var(--line);
 }
 
-.error-logs {
-  flex: 1;
-  margin: 0;
-  padding: 12px;
-  overflow-y: auto;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.75rem;
+.console-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn-inline {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: 0.15s;
+}
+
+.action-btn-inline:hover {
+  background: var(--surface-soft);
   color: var(--ink);
-  line-height: 1.5;
+}
+
+.success-icon {
+  color: var(--accent);
+}
+
+.close-btn:hover {
+  color: var(--warning);
+}
+
+.error-logs-container {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.error-logs {
+  margin: 0;
+  padding: 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--ink);
+  line-height: 1.6;
   white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .loading-overlay {

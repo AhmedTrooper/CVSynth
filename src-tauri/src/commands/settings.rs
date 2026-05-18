@@ -301,3 +301,19 @@ pub async fn get_setting(state: State<'_, AppState>, key: String, default_value:
         Ok(value)
     }).await
 }
+
+#[tauri::command]
+pub async fn clear_tectonic_cache(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    let cache_dir = app.path().cache_dir()
+        .map_err(|e| format!("Failed to resolve cache directory: {}", e))?;
+    
+    let tectonic_cache = cache_dir.join("Tectonic");
+    
+    if tectonic_cache.exists() {
+        std::fs::remove_dir_all(&tectonic_cache)
+            .map_err(|e| format!("Failed to delete Tectonic cache: {}", e))?;
+    }
+    
+    Ok(())
+}

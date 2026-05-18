@@ -90,8 +90,27 @@ const apiKeyInput = ref('');
 const isSaving = ref(false);
 const isExporting = ref(false);
 const isImporting = ref(false);
+const isClearingCache = ref(false);
 const showSuccess = ref(false);
 const saveError = ref('');
+
+const handleClearCache = async () => {
+  const confirmed = await dialog.showConfirm(
+    'This will delete the entire Tectonic cache. It will be rebuilt automatically during the next compilation, which may take some time. Proceed?',
+    'Purge LaTeX Cache'
+  );
+  if (!confirmed) return;
+
+  isClearingCache.value = true;
+  try {
+    await invoke('clear_tectonic_cache');
+    await dialog.showAlert('Tectonic cache has been successfully purged.', 'Cache Cleared');
+  } catch (err: any) {
+    await dialog.showAlert(`Failed to clear cache: ${err.toString()}`, 'Error');
+  } finally {
+    isClearingCache.value = false;
+  }
+};
 
 const exportData = async () => {
   isExporting.value = true;
@@ -782,6 +801,27 @@ const handleSave = async () => {
           </button>
         </div>
       </div>
+
+      <!-- Maintenance -->
+      <div class="settings-card">
+        <div class="card-header">
+          <h3>Maintenance</h3>
+          <p>Advanced tools to repair the engine or resolve environmental issues.</p>
+        </div>
+        
+        <div class="maintenance-row">
+          <button class="btn-maintenance" @click="handleClearCache" :disabled="isClearingCache">
+            <div class="maintenance-btn-content">
+              <RotateCcw v-if="!isClearingCache" :size="18" />
+              <RefreshCw v-else :size="18" class="spinner" />
+              <div class="maintenance-text">
+                <span class="main-text">Purge LaTeX Cache</span>
+                <span class="sub-text">Resolves "fatal format file error" by forcing a fresh engine rebuild</span>
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -1141,6 +1181,42 @@ label {
 .option-desc {
   font-size: 0.65rem;
   color: var(--muted);
+}
+
+.maintenance-row {
+  margin-top: 24px;
+}
+
+.btn-maintenance {
+  width: 100%;
+  background: rgba(248, 81, 73, 0.05);
+  border: 1px solid rgba(248, 81, 73, 0.1);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--warning);
+}
+
+.btn-maintenance:hover:not(:disabled) {
+  background: rgba(248, 81, 73, 0.1);
+  border-color: var(--warning);
+  transform: translateY(-2px);
+}
+
+.maintenance-btn-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-align: left;
+}
+
+.maintenance-text {
+  display: flex;
+  flex-direction: column;
 }
 
 .btn-import-option .spinner {

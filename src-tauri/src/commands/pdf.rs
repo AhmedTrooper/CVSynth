@@ -22,11 +22,18 @@ impl StatusBackend for CapturingStatusBackend {
             MessageKind::Warning => "warning: ",
             MessageKind::Note => "note: ",
         };
+        let msg = format!("{}", args);
         self.logs.push_str(prefix);
-        self.logs.push_str(&format!("{}", args));
+        self.logs.push_str(&msg);
+        
         if let Some(e) = err {
-            self.logs.push_str(&format!(" (caused by: {})", e));
+            self.logs.push_str(&format!(" (error detail: {})", e));
+            // Also push to stdout for tauri dev logs
+            eprintln!("Tectonic Error: {} - Detail: {}", msg, e);
+        } else if kind == MessageKind::Error {
+            eprintln!("Tectonic Error: {}", msg);
         }
+        
         self.logs.push('\n');
     }
 
@@ -102,7 +109,7 @@ pub async fn compile_resume_to_pdf(latex_code: String) -> Result<Vec<u8>, String
                 let mut sb = tectonic::driver::ProcessingSessionBuilder::default();
                 sb.bundle(bundle)
                     .primary_input_buffer(latex_code.as_bytes())
-                    .tex_input_name("texput.tex")
+                    .tex_input_name("texput")
                     .filesystem_root(std::env::temp_dir()) // Use temp dir for intermediate files
                     .format_name("latex")
                     .output_format(tectonic::driver::OutputFormat::Pdf)
@@ -159,10 +166,9 @@ pub async fn compile_workspace_to_pdf(workspace_dir: String, main_file_name: Str
                     return Err(format!("Main TeX file '{}' not found in workspace.", main_file_name));
                 }
 
-                // IMPORTANT: Extract just the filename for tex_input_name.
-                // Tectonic's internal xdvipdfmx driver often fails if the job name contains path separators.
+                // Use file_stem for the logical input name (job name) to avoid .tex extension issues
                 let logical_input_name = PathBuf::from(&main_file_name)
-                    .file_name()
+                    .file_stem()
                     .and_then(|s| s.to_str())
                     .map(|s| s.to_string())
                     .ok_or_else(|| "Invalid main file name".to_string())?;
@@ -172,6 +178,7 @@ pub async fn compile_workspace_to_pdf(workspace_dir: String, main_file_name: Str
                     .primary_input_path(&main_file_path)
                     .tex_input_name(&logical_input_name)
                     .filesystem_root(&workspace_path)
+                    .output_dir(&workspace_path) // Force output to the workspace root
                     .format_name("latex")
                     .output_format(tectonic::driver::OutputFormat::Pdf)
                     .build_date(std::time::SystemTime::now());
@@ -182,17 +189,21 @@ pub async fn compile_workspace_to_pdf(workspace_dir: String, main_file_name: Str
                 sess.run(&mut status)
                     .map_err(|e| format!("Compilation failed: {}\n\nLogs:\n{}", e, status.logs))?;
 
-                // Tectonic outputs to the filesystem root by default. 
-                // The output file will be named based on the logical_input_name stem.
-                let mut pdf_file_name = PathBuf::from(&logical_input_name);
-                pdf_file_name.set_extension("pdf");
-                
-                let pdf_path = workspace_path.join(pdf_file_name);
+                // Since we forced output_dir to workspace_path, the PDF should be in the root
+                let mut pdf_path = workspace_path.join(&logical_input_name);
+                pdf_path.set_extension("pdf");
                 
                 if pdf_path.exists() {
                     std::fs::read(&pdf_path).map_err(|e| format!("Failed to read generated PDF: {}", e))
                 } else {
-                    Err(format!("Compilation successful, but PDF was not found at expected location: {:?}\n\nLogs:\n{}", pdf_path, status.logs))
+                    // Fallback: check next to the file just in case Tectonic ignored output_dir
+                    let mut fallback_path = main_file_path.clone();
+                    fallback_path.set_extension("pdf");
+                    if fallback_path.exists() {
+                        std::fs::read(&fallback_path).map_err(|e| format!("Failed to read fallback PDF: {}", e))
+                    } else {
+                        Err(format!("Compilation successful, but PDF was not found at {:?} or {:?}\n\nLogs:\n{}", pdf_path, fallback_path, status.logs))
+                    }
                 }
             })
             .map_err(|e| format!("Failed to spawn compiler thread: {}", e))?;

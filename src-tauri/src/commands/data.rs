@@ -1,5 +1,6 @@
 use crate::commands::cover_letters::CoverLetterDetail;
 use crate::commands::downloads::DownloadRecord;
+use crate::commands::inbox::InboxJob;
 use crate::commands::jobs::JobPayload;
 use crate::commands::resumes::ResumeDetail;
 use crate::AppState;
@@ -54,6 +55,7 @@ pub struct AppDataExport {
     pub downloads: Vec<DownloadRecord>,
     pub themes: Vec<ThemeExport>,
     pub app_settings: Vec<SettingExport>,
+    pub inbox_jobs: Vec<InboxJob>,
     pub compiler_state: Option<String>,
     pub exported_at: String,
 }
@@ -255,7 +257,26 @@ pub async fn export_all_data(state: State<'_, AppState>) -> Result<AppDataExport
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())?;
 
-    // 7. Fetch Compiler State
+    // 7. Fetch Inbox Jobs
+    let mut stmt = conn
+        .prepare("SELECT id, url, raw_description, status, created_at FROM inbox_jobs")
+        .map_err(|e| e.to_string())?;
+
+    let inbox_jobs = stmt
+        .query_map([], |row| {
+            Ok(InboxJob {
+                id: row.get(0)?,
+                url: row.get(1)?,
+                raw_description: row.get(2)?,
+                status: row.get(3)?,
+                created_at: row.get(4)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    // 8. Fetch Compiler State
     let compiler_state: Option<String> = conn
         .query_row(
             "SELECT latex_content FROM compiler_state WHERE id = 1",
@@ -275,6 +296,7 @@ pub async fn export_all_data(state: State<'_, AppState>) -> Result<AppDataExport
         downloads,
         themes,
         app_settings,
+        inbox_jobs,
         compiler_state,
         exported_at: chrono::Local::now().to_rfc3339(),
     })
@@ -308,6 +330,8 @@ pub async fn import_data(
         tx.execute("DELETE FROM compiler_state", [])
             .map_err(|e| e.to_string())?;
         tx.execute("DELETE FROM themes WHERE is_builtin = 0", [])
+            .map_err(|e| e.to_string())?;
+        tx.execute("DELETE FROM inbox_jobs", [])
             .map_err(|e| e.to_string())?;
         tx.execute("DELETE FROM app_settings", [])
             .map_err(|e| e.to_string())?;
@@ -522,6 +546,26 @@ pub async fn import_data(
             "INSERT INTO compiler_state (id, latex_content) VALUES (1, ?1)
              ON CONFLICT(id) DO UPDATE SET latex_content=excluded.latex_content",
             [&content],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
+    // 8. Import Inbox Jobs
+    for job in data.inbox_jobs {
+        tx.execute(
+            "INSERT INTO inbox_jobs (id, url, raw_description, status, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT(id) DO UPDATE SET 
+                url=excluded.url,
+                raw_description=excluded.raw_description,
+                status=excluded.status",
+            (
+                &job.id,
+                &job.url,
+                &job.raw_description,
+                &job.status,
+                &job.created_at,
+            ),
         )
         .map_err(|e| e.to_string())?;
     }

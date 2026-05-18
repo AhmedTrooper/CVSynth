@@ -374,18 +374,6 @@ const handleCreateResume = async () => {
   align-items: center;
 }
 
-.btn-primary, .btn-secondary, .btn-danger-outline {
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: 0.2s;
-  padding: 0 24px;
-}
-
 .btn-icon {
   width: 44px;
   height: 44px;
@@ -421,29 +409,43 @@ const handleCreateResume = async () => {
   background: var(--accent);
   color: white;
   border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
+
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(11, 123, 107, 0.2); }
 
 .btn-secondary {
   background: var(--surface-soft);
   color: var(--ink);
   border: 1px solid var(--line);
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
 }
 
-.btn-secondary.active {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent);
-}
+.btn-secondary:hover { background: var(--surface); border-color: var(--accent); }
 
 .btn-danger-outline {
   background: transparent;
   color: var(--warning);
   border: 1px solid var(--warning);
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
 }
 
 .btn-danger-outline:hover { background: var(--warning); color: white; }
-
-.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(11, 123, 107, 0.2); }
 
 .btn-tooltip-wrapper {
   position: relative;

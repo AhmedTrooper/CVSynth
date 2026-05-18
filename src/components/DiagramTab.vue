@@ -32,11 +32,7 @@ import {
   X,
   FileCode,
   FolderOpen,
-  File,
-  ChevronRight,
-  ChevronDown,
   Plus,
-  Trash2,
   FolderPlus,
   Share2,
   Workflow,
@@ -50,10 +46,10 @@ import {
   Check
 } from '@lucide/vue';
 
-// Codemirror imports
 import { Codemirror } from 'vue-codemirror';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorView } from '@codemirror/view';
+import FileTreeItem from './FileTreeItem.vue';
 
 const dialog = useDialogStore();
 const settingsStore = useSettingsStore();
@@ -275,11 +271,39 @@ const selectWorkspace = async () => {
   }
 };
 
+const refreshOpenFolders = async (items: FileItem[]) => {
+  for (const item of items) {
+    if (item.isDir && item.isOpen) {
+      item.children = await scanDirectory(item.path);
+      if (item.children) {
+        await refreshOpenFolders(item.children);
+      }
+    }
+  }
+};
+
 const refreshFileTree = async () => {
   if (!workspacePath.value) return;
   isLoadingWorkspace.value = true;
   try {
-    fileTree.value = await scanDirectory(workspacePath.value);
+    const newTree = await scanDirectory(workspacePath.value);
+    
+    // Preserve open state and recursive children for open folders
+    const syncTrees = (oldItems: FileItem[], newItems: FileItem[]) => {
+      for (const newItem of newItems) {
+        const oldItem = oldItems.find(i => i.path === newItem.path);
+        if (oldItem && oldItem.isDir) {
+          newItem.isOpen = oldItem.isOpen;
+          newItem.children = oldItem.children;
+        }
+      }
+    };
+    
+    syncTrees(fileTree.value, newTree);
+    fileTree.value = newTree;
+    
+    // Re-scan all open folders to ensure they are up to date
+    await refreshOpenFolders(fileTree.value);
   } catch (err) {
     console.error('Failed to scan workspace:', err);
   } finally {
@@ -316,7 +340,7 @@ const scanDirectory = async (dir: string): Promise<FileItem[]> => {
 
 const toggleFolder = async (item: FileItem) => {
   item.isOpen = !item.isOpen;
-  if (item.isOpen && item.children?.length === 0) {
+  if (item.isOpen && (!item.children || item.children.length === 0)) {
     item.children = await scanDirectory(item.path);
   }
 };
@@ -398,12 +422,10 @@ const createNewFile = async (parent: FileItem | null = null, ext = '.mmd') => {
   
   try {
     await writeFile(fullPath, new TextEncoder().encode(initialContent));
-    if (parent) {
-      parent.isOpen = true;
-      parent.children = await scanDirectory(parent.path);
-    } else {
-      await refreshFileTree();
-    }
+    
+    // Always refresh the full tree to ensure UI is in sync
+    await refreshFileTree();
+
     // Select the new file
     await selectFile({ name: finalName, path: fullPath, isDir: false });
   } catch (err: any) {
@@ -421,12 +443,8 @@ const createNewFolder = async (parent: FileItem | null = null) => {
   const fullPath = await join(dir, folderName);
   try {
     await mkdir(fullPath);
-    if (parent) {
-      parent.isOpen = true;
-      parent.children = await scanDirectory(parent.path);
-    } else {
-      await refreshFileTree();
-    }
+    // Always refresh the full tree
+    await refreshFileTree();
   } catch (err: any) {
     await dialog.showAlert(err.toString(), 'Failed to create folder');
   }
@@ -841,63 +859,18 @@ const activeFileName = computed(() => {
             </div>
             
             <template v-else>
-              <div v-for="item in fileTree" :key="item.path" class="tree-item-wrapper">
-                <div 
-                  class="tree-item" 
-                  :class="{ active: activeFilePath === item.path }"
-                  @click="item.isDir ? toggleFolder(item) : selectFile(item)"
-                >
-                  <div class="item-icon">
-                    <template v-if="item.isDir">
-                      <ChevronRight v-if="!item.isOpen" :size="14" />
-                      <ChevronDown v-else :size="14" />
-                    </template>
-                    <File v-else :size="14" />
-                  </div>
-                  <span class="item-name">{{ item.name }}</span>
-                  <div class="item-actions">
-                    <template v-if="item.isDir">
-                      <button @click.stop="createNewFile(item, '.mmd')" title="New Diagram"><Plus :size="12" /></button>
-                      <button @click.stop="createNewFile(item, '.md')" title="New Markdown"><FileCode :size="12" /></button>
-                    </template>
-                    <button class="item-delete" @click.stop="deleteItem(item)" title="Delete"><Trash2 :size="12" /></button>
-                  </div>
-                </div>
-                
-                <AnimatePresence>
-                  <Motion
-                    v-if="item.isDir && item.isOpen"
-                    :initial="{ height: 0, opacity: 0 }"
-                    :animate="{ height: 'auto', opacity: 1 }"
-                    :exit="{ height: 0, opacity: 0 }"
-                    class="tree-children"
-                  >
-                    <div v-for="child in item.children" :key="child.path" class="tree-item-wrapper">
-                      <div 
-                        class="tree-item sub-item" 
-                        :class="{ active: activeFilePath === child.path }"
-                        @click="child.isDir ? toggleFolder(child) : selectFile(child)"
-                      >
-                        <div class="item-icon">
-                          <template v-if="child.isDir">
-                            <ChevronRight v-if="!child.isOpen" :size="14" />
-                            <ChevronDown v-else :size="14" />
-                          </template>
-                          <File v-else :size="14" />
-                        </div>
-                        <span class="item-name">{{ child.name }}</span>
-                        <div class="item-actions">
-                          <template v-if="child.isDir">
-                            <button @click.stop="createNewFile(child, '.mmd')" title="New Diagram"><Plus :size="12" /></button>
-                            <button @click.stop="createNewFile(child, '.md')" title="New Markdown"><FileCode :size="12" /></button>
-                          </template>
-                          <button class="item-delete" @click.stop="deleteItem(child)" title="Delete"><Trash2 :size="12" /></button>
-                        </div>
-                      </div>
-                    </div>
-                  </Motion>
-                </AnimatePresence>
-              </div>
+              <FileTreeItem 
+                v-for="item in fileTree" 
+                :key="item.path"
+                :item="item"
+                :active-file-path="activeFilePath"
+                :is-diagram="true"
+                :on-toggle="toggleFolder"
+                :on-select="selectFile"
+                :on-create-file="createNewFile"
+                :on-create-folder="createNewFolder"
+                :on-delete="deleteItem"
+              />
             </template>
           </div>
         </aside>

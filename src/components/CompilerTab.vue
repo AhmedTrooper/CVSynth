@@ -24,15 +24,10 @@ import {
   FileCode,
   Terminal,
   FolderOpen,
-  File,
-  ChevronRight,
-  ChevronDown,
   Plus,
-  Trash2,
   FolderPlus,
   Files,
   Save,
-  Star,
   Layout,
   BookOpen,
   Info,
@@ -40,11 +35,11 @@ import {
   Check
 } from '@lucide/vue';
 
-// Codemirror imports
 import { Codemirror } from 'vue-codemirror';
 import { latex, latexLanguage, autoCloseTags } from 'codemirror-lang-latex';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorView } from '@codemirror/view';
+import FileTreeItem from './FileTreeItem.vue';
 
 const settingsStore = useSettingsStore();
 const dialog = useDialogStore();
@@ -288,7 +283,8 @@ const refreshFileTree = async () => {
   if (!workspacePath.value) return;
   isLoadingWorkspace.value = true;
   try {
-    fileTree.value = await scanDirectory(workspacePath.value);
+    // Recursively scan the directory while preserving open states
+    fileTree.value = await scanDirectoryRecursive(workspacePath.value, fileTree.value);
   } catch (err) {
     console.error('Failed to scan workspace:', err);
   } finally {
@@ -296,24 +292,30 @@ const refreshFileTree = async () => {
   }
 };
 
-const scanDirectory = async (dir: string): Promise<FileItem[]> => {
+const scanDirectoryRecursive = async (dir: string, oldItems: FileItem[]): Promise<FileItem[]> => {
   const entries = await readDir(dir);
   const items: FileItem[] = [];
 
   for (const entry of entries) {
     const fullPath = await join(dir, entry.name);
     const isDir = entry.isDirectory;
+    const oldItem = oldItems.find(i => i.path === fullPath);
     
-    items.push({
+    const item: FileItem = {
       name: entry.name,
       path: fullPath,
       isDir: isDir,
-      isOpen: false,
-      children: isDir ? [] : undefined
-    });
+      isOpen: oldItem ? oldItem.isOpen : false,
+      children: []
+    };
+
+    if (item.isDir && item.isOpen) {
+      item.children = await scanDirectoryRecursive(fullPath, oldItem?.children || []);
+    }
+
+    items.push(item);
   }
 
-  // Sort: Directories first, then alphabetically
   return items.sort((a, b) => {
     if (a.isDir && !b.isDir) return -1;
     if (!a.isDir && b.isDir) return 1;
@@ -323,8 +325,8 @@ const scanDirectory = async (dir: string): Promise<FileItem[]> => {
 
 const toggleFolder = async (item: FileItem) => {
   item.isOpen = !item.isOpen;
-  if (item.isOpen && item.children?.length === 0) {
-    item.children = await scanDirectory(item.path);
+  if (item.isOpen && (!item.children || item.children.length === 0)) {
+    item.children = await scanDirectoryRecursive(item.path, []);
   }
 };
 
@@ -405,12 +407,8 @@ const createNewFile = async (parent: FileItem | null = null) => {
   try {
     await writeFile(fullPath, new TextEncoder().encode(initialContent));
     
-    if (parent) {
-      parent.isOpen = true;
-      parent.children = await scanDirectory(parent.path);
-    } else {
-      await refreshFileTree();
-    }
+    // Always refresh the full tree to ensure UI is in sync
+    await refreshFileTree();
 
     // Auto-select the newly created file
     await selectFile({ name: fileName, path: fullPath, isDir: false });
@@ -435,12 +433,8 @@ const createNewFolder = async (parent: FileItem | null = null) => {
   const fullPath = await join(dir, folderName);
   try {
     await mkdir(fullPath);
-    if (parent) {
-      parent.isOpen = true;
-      parent.children = await scanDirectory(parent.path);
-    } else {
-      await refreshFileTree();
-    }
+    // Always refresh the full tree
+    await refreshFileTree();
   } catch (err: any) {
     await dialog.showAlert(err.toString(), 'Failed to create folder');
   }
@@ -864,69 +858,20 @@ const activeFileName = computed(() => {
             </div>
             
             <template v-else>
-              <div v-for="item in fileTree" :key="item.path" class="tree-item-wrapper">
-                <div 
-                  class="tree-item" 
-                  :class="{ active: activeFilePath === item.path, 'main-file': mainFilePath === item.path }"
-                  @click="item.isDir ? toggleFolder(item) : selectFile(item)"
-                >
-                  <div class="item-icon">
-                    <template v-if="item.isDir">
-                      <ChevronRight v-if="!item.isOpen" :size="14" />
-                      <ChevronDown v-else :size="14" />
-                    </template>
-                    <File v-else :size="14" />
-                  </div>
-                  <span class="item-name">{{ item.name }}</span>
-                  <div class="item-actions">
-                    <button v-if="!item.isDir" @click.stop="setMainFile(item.path)" :title="mainFilePath === item.path ? 'Main File' : 'Set as Main File'">
-                      <Star :size="12" :fill="mainFilePath === item.path ? 'var(--accent)' : 'none'" :color="mainFilePath === item.path ? 'var(--accent)' : 'currentColor'" />
-                    </button>
-                    <template v-if="item.isDir">
-                      <button @click.stop="createNewFile(item)" title="New File"><Plus :size="12" /></button>
-                      <button @click.stop="createNewFolder(item)" title="New Folder"><FolderPlus :size="12" /></button>
-                    </template>
-                    <button class="item-delete" @click.stop="deleteItem(item)" title="Delete"><Trash2 :size="12" /></button>
-                  </div>
-                </div>
-                
-                <AnimatePresence>
-                  <Motion
-                    v-if="item.isDir && item.isOpen"
-                    :initial="{ height: 0, opacity: 0 }"
-                    :animate="{ height: 'auto', opacity: 1 }"
-                    :exit="{ height: 0, opacity: 0 }"
-                    class="tree-children"
-                  >
-                    <div v-for="child in item.children" :key="child.path" class="tree-item-wrapper">
-                      <div 
-                        class="tree-item sub-item" 
-                        :class="{ active: activeFilePath === child.path, 'main-file': mainFilePath === child.path }"
-                        @click="child.isDir ? toggleFolder(child) : selectFile(child)"
-                      >
-                        <div class="item-icon">
-                          <template v-if="child.isDir">
-                            <ChevronRight v-if="!child.isOpen" :size="14" />
-                            <ChevronDown v-else :size="14" />
-                          </template>
-                          <File v-else :size="14" />
-                        </div>
-                        <span class="item-name">{{ child.name }}</span>
-                        <div class="item-actions">
-                          <button v-if="!child.isDir" @click.stop="setMainFile(child.path)" :title="mainFilePath === child.path ? 'Main File' : 'Set as Main File'">
-                            <Star :size="12" :fill="mainFilePath === child.path ? 'var(--accent)' : 'none'" :color="mainFilePath === child.path ? 'var(--accent)' : 'currentColor'" />
-                          </button>
-                          <template v-if="child.isDir">
-                            <button @click.stop="createNewFile(child)" title="New File"><Plus :size="12" /></button>
-                            <button @click.stop="createNewFolder(child)" title="New Folder"><FolderPlus :size="12" /></button>
-                          </template>
-                          <button class="item-delete" @click.stop="deleteItem(child)" title="Delete"><Trash2 :size="12" /></button>
-                        </div>
-                      </div>
-                    </div>
-                  </Motion>
-                </AnimatePresence>
-              </div>
+              <!-- Recursive File Tree -->
+              <FileTreeItem 
+                v-for="item in fileTree" 
+                :key="item.path"
+                :item="item"
+                :active-file-path="activeFilePath"
+                :main-file-path="mainFilePath"
+                :on-toggle="toggleFolder"
+                :on-select="selectFile"
+                :on-set-main="setMainFile"
+                :on-create-file="createNewFile"
+                :on-create-folder="createNewFolder"
+                :on-delete="deleteItem"
+              />
             </template>
           </div>
         </aside>

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useInboxStore, InboxJob } from '../store/inbox';
-import { useJobsStore } from '../store/jobs';
 import { useSettingsStore } from '../store/settings';
 import { useDialogStore } from '../store/dialog';
 import { Motion, AnimatePresence } from 'motion-v';
@@ -9,7 +8,6 @@ import { invoke } from '@tauri-apps/api/core';
 import { 
   Inbox, 
   Trash2, 
-  Play, 
   CheckCircle, 
   ExternalLink, 
   Key, 
@@ -21,7 +19,6 @@ import {
   Check,
   RefreshCw,
   Cpu,
-  ChevronRight,
   ClipboardList,
   Filter,
   ArrowUpDown
@@ -29,7 +26,6 @@ import {
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 
 const inboxStore = useInboxStore();
-const jobsStore = useJobsStore();
 const settingsStore = useSettingsStore();
 const dialog = useDialogStore();
 

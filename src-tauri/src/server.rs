@@ -39,6 +39,7 @@ pub async fn start_server(app_handle: AppHandle) {
         .allow_headers(Any);
 
     let app = Router::new()
+        .route("/health", axum::routing::get(health_check))
         .route("/ingest", post(ingest_job))
         .layer(cors)
         .with_state(state);
@@ -46,7 +47,7 @@ pub async fn start_server(app_handle: AppHandle) {
     let ports = [14201, 14202, 14203, 14204, 14205, 14206, 14207, 14208, 14209, 14210];
 
     for port in ports {
-        let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
+        let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
         let listener = tokio::net::TcpListener::bind(addr).await;
         
         match listener {
@@ -76,6 +77,13 @@ pub async fn start_server(app_handle: AppHandle) {
             }
         }
     }
+}
+
+async fn health_check() -> Json<ExtensionResponse> {
+    Json(ExtensionResponse {
+        status: "running".to_string(),
+        message: "RoleFlux server is healthy and active".to_string(),
+    })
 }
 
 async fn ingest_job(

@@ -48,6 +48,7 @@ TASK:
 VALIDATION:
 - Be permissive: If the text looks like a job posting (even if short or partial), set 'is_valid_job' to true.
 - ONLY set 'is_valid_job' to false if the content is clearly NOT a job (e.g., just a login page, cookie consent, or site navigation).
+- Try your best to fullfill the requirements,responsibilities fileds even if the description is brief or incomplete.
 
 Output the results in the requested structured format.";
 

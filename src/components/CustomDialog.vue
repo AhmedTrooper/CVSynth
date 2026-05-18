@@ -117,13 +117,14 @@ onUnmounted(() => {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
   z-index: 100000;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 16px;
+  overflow: hidden;
 }
 
 .backdrop {
@@ -139,7 +140,7 @@ onUnmounted(() => {
 .dialog-card {
   position: relative;
   width: 100%;
-  max-width: 420px;
+  max-width: 400px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 16px;

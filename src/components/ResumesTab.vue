@@ -2,14 +2,34 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useResumesStore } from '../store/resumes';
-import { Plus, Tag, Calendar, Hash, FileText, X, Save, RotateCw } from '@lucide/vue';
+import { useDialogStore } from '../store/dialog';
+import { 
+  Plus, 
+  Tag, 
+  Calendar, 
+  Hash, 
+  FileText, 
+  X, 
+  Save, 
+  RotateCw, 
+  CheckSquare, 
+  Square, 
+  Trash2,
+  Settings2,
+  Check
+} from '@lucide/vue';
 import { Motion, AnimatePresence } from 'motion-v';
 
 const router = useRouter();
 const resumesStore = useResumesStore();
+const dialog = useDialogStore();
 
 // Tooltip State
 const activeTooltip = ref<string | null>(null);
+
+// Selection State
+const isSelectionMode = ref(false);
+const selectedIds = ref<Set<string>>(new Set());
 
 const showNewResumeForm = ref(false);
 const newResumeName = ref('');
@@ -21,7 +41,56 @@ onMounted(async () => {
 });
 
 const navigateToResume = (resumeId: string) => {
+  if (isSelectionMode.value) {
+    toggleSelection(resumeId);
+    return;
+  }
   router.push(`/resume/${resumeId}`);
+};
+
+const toggleSelection = (id: string) => {
+  if (selectedIds.value.has(id)) {
+    selectedIds.value.delete(id);
+  } else {
+    selectedIds.value.add(id);
+  }
+};
+
+const toggleSelectAll = () => {
+  if (selectedIds.value.size === resumesStore.resumes.length) {
+    selectedIds.value.clear();
+  } else {
+    selectedIds.value = new Set(resumesStore.resumes.map(r => r.id));
+  }
+};
+
+const exitSelectionMode = () => {
+  isSelectionMode.value = false;
+  selectedIds.value.clear();
+};
+
+const handleBatchDelete = async () => {
+  if (selectedIds.value.size === 0) return;
+  
+  const confirmed = await dialog.showConfirm(
+    `Are you sure you want to delete ${selectedIds.value.size} templates? This action cannot be undone.`,
+    'Delete Templates'
+  );
+  
+  if (confirmed) {
+    try {
+      const ids = Array.from(selectedIds.value);
+      for (const id of ids) {
+        await resumesStore.deleteResume(id);
+      }
+      selectedIds.value.clear();
+      await resumesStore.loadAllResumes();
+      await dialog.showAlert('Templates deleted successfully.', 'Success');
+    } catch (err: any) {
+      console.error(err);
+      await dialog.showAlert('Failed to delete some templates.', 'Error');
+    }
+  }
 };
 
 const toggleNewForm = () => {
@@ -61,24 +130,101 @@ const handleCreateResume = async () => {
     <header class="page-header">
       <div class="title-group">
         <h1>Resume Templates</h1>
-        <p class="subtitle">Your blueprint collection for high-performance CVs.</p>
+        <p class="subtitle" v-if="!isSelectionMode">Your blueprint collection for high-performance CVs.</p>
+        <p class="subtitle selection-hint" v-else>Click items to select/deselect them.</p>
       </div>
-      <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'new-template'" @mouseleave="activeTooltip = null">
-        <button class="btn-primary" @click="toggleNewForm">
-          <Plus :size="18" />
-        </button>
-        <AnimatePresence>
-          <Motion
-            v-if="activeTooltip === 'new-template'"
-            :initial="{ opacity: 0, y: 5, scale: 0.9 }"
-            :animate="{ opacity: 1, y: 0, scale: 1 }"
-            :exit="{ opacity: 0, y: 5, scale: 0.9 }"
-            :transition="{ duration: 0.15 }"
-            class="floating-message tooltip-bottom-left"
-          >
-            New Template
-          </Motion>
-        </AnimatePresence>
+      
+      <div class="header-actions">
+        <!-- Default Actions -->
+        <template v-if="!isSelectionMode">
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'selection-mode'" @mouseleave="activeTooltip = null">
+            <button class="btn-icon" :class="{ 'active': isSelectionMode }" @click="isSelectionMode = true">
+              <Settings2 :size="16" />
+            </button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'selection-mode'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                class="floating-message tooltip-bottom-left"
+              >
+                Selection Mode
+              </Motion>
+            </AnimatePresence>
+          </div>
+          
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'new-template'" @mouseleave="activeTooltip = null">
+            <button class="btn-icon btn-icon-primary" @click="toggleNewForm">
+              <Plus :size="18" />
+            </button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'new-template'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                class="floating-message tooltip-bottom-left"
+              >
+                Add Base Template
+              </Motion>
+            </AnimatePresence>
+          </div>
+        </template>
+
+        <!-- Selection Mode Actions -->
+        <template v-else>
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'select-all'" @mouseleave="activeTooltip = null">
+            <button class="btn-icon" @click="toggleSelectAll">
+              <Check :size="16" />
+            </button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'select-all'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                class="floating-message tooltip-bottom-left"
+              >
+                {{ selectedIds.size === resumesStore.resumes.length ? 'Unselect All' : 'Select All' }}
+              </Motion>
+            </AnimatePresence>
+          </div>
+
+          <div class="btn-tooltip-wrapper" v-if="selectedIds.size > 0" @mouseenter="activeTooltip = 'delete-batch'" @mouseleave="activeTooltip = null">
+            <button class="btn-icon btn-icon-danger" @click="handleBatchDelete">
+              <Trash2 :size="16" />
+            </button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'delete-batch'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                class="floating-message tooltip-bottom-left"
+              >
+                Delete Selected ({{ selectedIds.size }})
+              </Motion>
+            </AnimatePresence>
+          </div>
+
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'exit-selection'" @mouseleave="activeTooltip = null">
+            <button class="btn-icon btn-icon-primary" @click="exitSelectionMode">
+              <X :size="16" />
+            </button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'exit-selection'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                class="floating-message tooltip-bottom-left"
+              >
+                Done
+              </Motion>
+            </AnimatePresence>
+          </div>
+        </template>
       </div>
     </header>
 
@@ -119,6 +265,7 @@ const handleCreateResume = async () => {
             <button class="btn-save" @click="handleCreateResume" :disabled="isCreating || !newResumeName || !newResumeCategory">
               <RotateCw v-if="isCreating" :size="16" class="spinner" />
               <Save v-else :size="16" />
+              <span>{{ isCreating ? 'Initializing...' : 'Initialize Template' }}</span>
             </button>
             <AnimatePresence>
               <Motion
@@ -127,9 +274,9 @@ const handleCreateResume = async () => {
                 :animate="{ opacity: 1, y: 0, scale: 1 }"
                 :exit="{ opacity: 0, y: 5, scale: 0.9 }"
                 :transition="{ duration: 0.15 }"
-                class="floating-message tooltip-top"
+                class="floating-message tooltip-top-left"
               >
-                {{ isCreating ? 'Initializing...' : 'Initialize Template' }}
+                Create and Start Editing
               </Motion>
             </AnimatePresence>
           </div>
@@ -148,6 +295,7 @@ const handleCreateResume = async () => {
       <div class="btn-tooltip-wrapper" style="margin: 0 auto;" @mouseenter="activeTooltip = 'init-first'" @mouseleave="activeTooltip = null">
         <button class="btn-primary" @click="toggleNewForm">
           <Plus :size="18" />
+          <span>Initialize First Template</span>
         </button>
         <AnimatePresence>
           <Motion
@@ -158,7 +306,7 @@ const handleCreateResume = async () => {
             :transition="{ duration: 0.15 }"
             class="floating-message tooltip-top"
           >
-            Initialize First Template
+            Start Your Collection
           </Motion>
         </AnimatePresence>
       </div>
@@ -169,24 +317,15 @@ const handleCreateResume = async () => {
         v-for="resume in resumesStore.resumes" 
         :key="resume.id"
         class="resume-card"
+        :class="{ 'selected': selectedIds.has(resume.id) }"
         @click="navigateToResume(resume.id)"
       >
         <div class="resume-card-top">
-          <div class="icon-box" @mouseenter="activeTooltip = resume.id" @mouseleave="activeTooltip = null">
-            <FileText :size="24" />
-            <AnimatePresence>
-              <Motion
-                v-if="activeTooltip === resume.id"
-                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
-                :animate="{ opacity: 1, y: 0, scale: 1 }"
-                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
-                :transition="{ duration: 0.15 }"
-                class="floating-message tooltip-top"
-              >
-                Click to Edit
-              </Motion>
-            </AnimatePresence>
+          <div class="selection-overlay" @click.stop="toggleSelection(resume.id)">
+            <CheckSquare v-if="selectedIds.has(resume.id)" :size="20" class="select-icon active" />
+            <Square v-else :size="20" class="select-icon" />
           </div>
+          
           <div class="category-badge">
             <Tag :size="12" /> {{ resume.category }}
           </div>
@@ -218,31 +357,91 @@ const handleCreateResume = async () => {
   padding: 40px;
   max-width: 1200px;
   margin: 0 auto;
+  overflow-y: auto;
+  height: 100%;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 40px;
+  margin-bottom: 32px;
 }
 
-.page-header h1 { font-size: 2.2rem; margin: 0; color: var(--ink); }
-.subtitle { color: var(--muted); margin: 8px 0 0; }
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.btn-primary, .btn-secondary, .btn-danger-outline {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
+  padding: 0 24px;
+}
+
+.btn-icon {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: 0.2s;
+  background: var(--surface-soft);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  padding: 0;
+}
+
+.btn-icon:hover { background: var(--surface); border-color: var(--accent); }
+.btn-icon.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+.btn-icon-primary {
+  background: var(--accent);
+  color: white;
+  border: none;
+}
+
+.btn-icon-danger {
+  background: transparent;
+  color: var(--warning);
+  border: 1px solid var(--warning);
+}
+.btn-icon-danger:hover { background: var(--warning); color: white; }
 
 .btn-primary {
   background: var(--accent);
   color: white;
   border: none;
-  padding: 12px 24px;
-  border-radius: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
+
+.btn-secondary {
+  background: var(--surface-soft);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.btn-secondary.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-danger-outline {
+  background: transparent;
+  color: var(--warning);
+  border: 1px solid var(--warning);
+}
+
+.btn-danger-outline:hover { background: var(--warning); color: white; }
 
 .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(11, 123, 107, 0.2); }
 
@@ -268,6 +467,7 @@ const handleCreateResume = async () => {
   padding: 32px;
   margin-bottom: 40px;
   box-shadow: var(--shadow);
+  max-width: 100%;
 }
 
 .form-header {
@@ -291,7 +491,7 @@ const handleCreateResume = async () => {
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 24px;
   margin-bottom: 32px;
 }
@@ -327,15 +527,17 @@ const handleCreateResume = async () => {
   background: var(--accent);
   color: white;
   border: none;
-  padding: 12px 24px;
-  border-radius: 10px;
+  padding: 12px 32px;
+  border-radius: 12px;
   font-weight: 700;
   cursor: pointer;
   transition: 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
+  min-width: 180px;
+  white-space: nowrap;
 }
 
 .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -353,6 +555,7 @@ const handleCreateResume = async () => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 24px;
+  padding-bottom: 40px;
 }
 
 .resume-card {
@@ -367,6 +570,12 @@ const handleCreateResume = async () => {
   box-shadow: var(--shadow);
   overflow: hidden;
   min-width: 0;
+  position: relative;
+}
+
+.resume-card.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .resume-card:hover {
@@ -382,16 +591,16 @@ const handleCreateResume = async () => {
   margin-bottom: 20px;
 }
 
-.icon-box {
-  width: 40px;
-  height: 40px;
-  background: var(--surface-soft);
-  border-radius: 10px;
+.selection-overlay {
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--muted);
+  transition: 0.2s;
+}
+
+.select-icon.active {
   color: var(--accent);
-  position: relative;
 }
 
 .category-badge {
@@ -465,7 +674,8 @@ const handleCreateResume = async () => {
 
 @media (max-width: 768px) {
   .resumes-container { padding: 20px; }
-  .page-header { flex-direction: column; gap: 20px; }
+  .page-header { flex-direction: column; gap: 20px; align-items: stretch; }
+  .header-actions { justify-content: space-between; }
   .form-grid { grid-template-columns: 1fr; }
 }
 </style>

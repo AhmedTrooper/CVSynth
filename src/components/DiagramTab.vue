@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, computed, nextTick } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
-import { open as openDialog } from '@tauri-apps/plugin-dialog';
+import { open as openDialog, save } from '@tauri-apps/plugin-dialog';
 import { join } from '@tauri-apps/api/path';
 import { 
   writeFile, 
@@ -43,7 +43,8 @@ import {
   Wand2,
   ArrowLeftRight,
   Copy,
-  Check
+  Check,
+  Download
 } from '@lucide/vue';
 
 import { Codemirror } from 'vue-codemirror';
@@ -74,7 +75,9 @@ mermaid.initialize({
   startOnLoad: false,
   theme: 'dark',
   securityLevel: 'loose',
-  flowchart: { useMaxWidth: false, htmlLabels: true }
+  flowchart: { useMaxWidth: false, htmlLabels: false }, // Use SVG text for security
+  sequence: { useMaxWidth: false, showSequenceNumbers: true },
+  er: { useMaxWidth: false }
 });
 
 // Codemirror Extensions
@@ -135,7 +138,125 @@ const activeTooltip = ref<string | null>(null);
 
 const isRefining = ref(false);
 const isFixing = ref(false);
+const isExporting = ref(false);
 const refinementInstruction = ref('');
+
+const downloadAsSvg = async () => {
+  if (isMarkdown.value || !diagramSvg.value) return;
+  
+  try {
+    const svgElement = previewContainer.value?.querySelector('svg');
+    if (!svgElement) throw new Error("Rendered diagram not found.");
+
+    const serializedSvg = new XMLSerializer().serializeToString(svgElement);
+    const bytes = new TextEncoder().encode(serializedSvg);
+
+    const fileName = activeFilePath.value 
+      ? activeFilePath.value.split(/[/\\]/).pop()?.replace(/\.[^/.]+$/, "") + ".svg"
+      : "diagram.svg";
+
+    const filePath = await save({
+      defaultPath: fileName,
+      filters: [{ name: 'SVG Image', extensions: ['svg'] }]
+    });
+
+    if (filePath) {
+      await writeFile(filePath, bytes);
+      await dialog.showAlert("Diagram exported as SVG successfully.", "Export Complete");
+    }
+  } catch (err: any) {
+    renderingError.value = `SVG EXPORT FAILED: ${err.toString()}`;
+  }
+};
+
+const downloadAsPng = async () => {
+  if (isMarkdown.value || !diagramSvg.value || isExporting.value) return;
+
+  isExporting.value = true;
+  renderingError.value = null;
+
+  try {
+    const svgElement = previewContainer.value?.querySelector('svg');
+    if (!svgElement) throw new Error("Rendered diagram not found.");
+
+    // 1. Get dimensions
+    const bbox = svgElement.getBBox();
+    const padding = 20;
+    const width = bbox.width + padding * 2;
+    const height = bbox.height + padding * 2;
+    
+    // 2. Clone and prepare SVG string
+    const clonedSvg = svgElement.cloneNode(true) as SVGElement;
+    clonedSvg.setAttribute('width', width.toString());
+    clonedSvg.setAttribute('height', height.toString());
+    clonedSvg.setAttribute('viewBox', `${bbox.x - padding} ${bbox.y - padding} ${width} ${height}`);
+
+    // Embed basic styles
+    const style = document.createElement('style');
+    style.textContent = `
+      svg { background-color: ${getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#0d1117'}; }
+      text, span, div { font-family: sans-serif !important; }
+    `;
+    clonedSvg.prepend(style);
+
+    const serializedSvg = new XMLSerializer().serializeToString(clonedSvg);
+    
+    // 3. Convert to Data URL (Bypasses many blob security issues)
+    const encodedData = window.btoa(unescape(encodeURIComponent(serializedSvg)));
+    const dataUrl = `data:image/svg+xml;base64,${encodedData}`;
+
+    // 4. Render to Canvas
+    const scale = 2; 
+    const canvas = document.createElement('canvas');
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error("Canvas context initialization failed.");
+
+    const img = new Image();
+    img.onload = async () => {
+      try {
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#0d1117';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        const pngUrl = canvas.toDataURL('image/png');
+        const base64Data = pngUrl.split(',')[1];
+        const bytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+
+        const fileName = activeFilePath.value 
+          ? activeFilePath.value.split(/[/\\]/).pop()?.replace(/\.[^/.]+$/, "") + ".png"
+          : "diagram.png";
+
+        const filePath = await save({
+          defaultPath: fileName,
+          filters: [{ name: 'PNG Image', extensions: ['png'] }]
+        });
+
+        if (filePath) {
+          await writeFile(filePath, bytes);
+          await dialog.showAlert("Diagram exported successfully.", "Export Complete");
+        }
+      } catch (err: any) {
+        console.error("PNG Conversion Error:", err);
+        renderingError.value = `PNG EXPORT ERROR: ${err.message || err.toString()}\n\nTip: If PNG export is blocked, try using 'Export as SVG' instead.`;
+      } finally {
+        isExporting.value = false;
+      }
+    };
+    
+    img.onerror = () => {
+      isExporting.value = false;
+      renderingError.value = "PNG EXPORT FAILED: The browser security policy blocked the conversion. This usually happens if the diagram uses features (like HTML labels) that 'taint' the drawing surface. Use 'Export as SVG' for a guaranteed save.";
+    };
+    
+    img.src = dataUrl;
+
+  } catch (err: any) {
+    renderingError.value = `EXPORT INITIATION FAILED: ${err.toString()}`;
+    isExporting.value = false;
+  }
+};
 
 const isMarkdown = computed(() => {
   if (activeFilePath.value) {
@@ -952,8 +1073,48 @@ const activeFileName = computed(() => {
           </AnimatePresence>
 
           <div class="pane-header">
-            <Layout :size="14" />
-            <span>{{ isMarkdown ? 'DOCUMENT PREVIEW' : 'DIAGRAM PREVIEW' }}</span>
+            <div class="pane-header-left">
+              <Layout :size="14" />
+              <span>{{ isMarkdown ? 'DOCUMENT PREVIEW' : 'DIAGRAM PREVIEW' }}</span>
+            </div>
+            <div class="pane-header-actions" v-if="!isMarkdown && diagramSvg">
+              <!-- Export as SVG (Guaranteed success) -->
+              <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'export-svg'" @mouseleave="activeTooltip = null">
+                <button class="action-btn-inline" @click="downloadAsSvg">
+                  <FileCode :size="14" />
+                </button>
+                <AnimatePresence>
+                  <Motion
+                    v-if="activeTooltip === 'export-svg'"
+                    :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                    :animate="{ opacity: 1, y: 0, scale: 1 }"
+                    :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                    class="floating-message tooltip-bottom-left"
+                  >
+                    Export as SVG
+                  </Motion>
+                </AnimatePresence>
+              </div>
+
+              <!-- Export as PNG (Canvas based) -->
+              <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'export-png'" @mouseleave="activeTooltip = null">
+                <button class="action-btn-inline" @click="downloadAsPng" :disabled="isExporting">
+                  <Download v-if="!isExporting" :size="14" />
+                  <RotateCw v-else :size="14" class="spinner" />
+                </button>
+                <AnimatePresence>
+                  <Motion
+                    v-if="activeTooltip === 'export-png'"
+                    :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                    :animate="{ opacity: 1, y: 0, scale: 1 }"
+                    :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                    class="floating-message tooltip-bottom-left"
+                  >
+                    Export as PNG
+                  </Motion>
+                </AnimatePresence>
+              </div>
+            </div>
           </div>
           <div class="preview-wrapper" ref="previewContainer" :class="{ 'markdown-view': isMarkdown }">
              <div v-if="isMarkdown" class="markdown-body" v-html="markdownHtml"></div>
@@ -1434,7 +1595,7 @@ const activeFileName = computed(() => {
   height: 32px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
   padding: 0 12px;
   background: var(--bg-accent);
   border-bottom: 1px solid var(--line);
@@ -1445,6 +1606,12 @@ const activeFileName = computed(() => {
 }
 
 .pane-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pane-header-actions {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1592,9 +1759,38 @@ const activeFileName = computed(() => {
   max-height: 100%;
 }
 
+/* svg-pan-zoom controls theming */
+:deep(#svg-pan-zoom-controls) {
+  fill: var(--muted);
+  fill-opacity: 0.8;
+}
+
+:deep(#svg-pan-zoom-controls .svg-pan-zoom-control-background) {
+  fill: var(--surface) !important;
+  fill-opacity: 0.9;
+  stroke: var(--line);
+  stroke-width: 1px;
+}
+
+:deep(#svg-pan-zoom-controls .svg-pan-zoom-control-element:hover .svg-pan-zoom-control-background) {
+  fill: var(--bg-accent) !important;
+  stroke: var(--accent);
+}
+
+:deep(#svg-pan-zoom-controls .svg-pan-zoom-control-element path),
+:deep(#svg-pan-zoom-controls .svg-pan-zoom-control-element polygon) {
+  fill: var(--ink);
+}
+
+:deep(#svg-pan-zoom-controls .svg-pan-zoom-control-element:hover path),
+:deep(#svg-pan-zoom-controls .svg-pan-zoom-control-element:hover polygon) {
+  fill: var(--accent);
+}
+
 :deep(.mermaid-rendered-wrapper) {
   margin: 20px 0;
-  background: #161b22;
+  background: var(--surface);
+  border: 1px solid var(--line);
   padding: 16px;
   border-radius: 8px;
   display: flex;

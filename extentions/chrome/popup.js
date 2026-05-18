@@ -1,13 +1,13 @@
 // Initialize UI and Load Settings
 document.addEventListener('DOMContentLoaded', () => {
-  const portInput = document.getElementById('port');
+  const hostInput = document.getElementById('host');
   const secretInput = document.getElementById('secret');
   const selectorInput = document.getElementById('selector');
   const statusDiv = document.getElementById('status');
 
   // Load saved settings
-  chrome.storage.local.get(['port', 'secret', 'selector'], (result) => {
-    if (result.port) portInput.value = result.port;
+  chrome.storage.local.get(['host', 'secret', 'selector'], (result) => {
+    if (result.host) hostInput.value = result.host;
     if (result.secret) secretInput.value = result.secret;
     if (result.selector) selectorInput.value = result.selector;
   });
@@ -23,10 +23,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Save Settings
   document.getElementById('saveSettingsBtn').addEventListener('click', () => {
-    const port = portInput.value.trim() || '14201';
+    let host = hostInput.value.trim() || 'http://127.0.0.1:14201';
+    // Remove trailing slash if present
+    if (host.endsWith('/')) {
+      host = host.slice(0, -1);
+    }
     const secret = secretInput.value.trim();
 
-    chrome.storage.local.set({ port, secret }, () => {
+    chrome.storage.local.set({ host, secret }, () => {
       showStatus("Settings saved successfully!", "success");
     });
   });

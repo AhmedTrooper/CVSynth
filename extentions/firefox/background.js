@@ -7,9 +7,9 @@ browser.runtime.onMessage.addListener((request, sender) => {
 
 async function handleExtraction(selector) {
   try {
-    // 1. Get Port and Secret from storage
-    const settings = await browser.storage.local.get(['port', 'secret']);
-    const port = settings.port || '14201';
+    // 1. Get Host and Secret from storage
+    const settings = await browser.storage.local.get(['host', 'secret']);
+    const host = settings.host || 'http://127.0.0.1:14201';
     const secret = settings.secret;
 
     if (!secret) {
@@ -35,8 +35,8 @@ async function handleExtraction(selector) {
 
     if (!domData.success) throw new Error(domData.error);
 
-    // 5. POST to RoleFlux local server
-    const serverUrl = `http://127.0.0.1:${port}/ingest`;
+    // 5. POST to RoleFlux server
+    const serverUrl = `${host}/inbox/ingest`;
     
     const serverResponse = await fetch(serverUrl, {
       method: "POST",

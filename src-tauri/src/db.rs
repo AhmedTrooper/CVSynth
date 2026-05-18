@@ -140,10 +140,34 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
             is_builtin BOOLEAN DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
+
+        -- 8. Inbox Jobs (Unlisted)
+        CREATE TABLE IF NOT EXISTS inbox_jobs (
+            id TEXT PRIMARY KEY,
+            url TEXT,
+            raw_description TEXT NOT NULL,
+            status TEXT DEFAULT 'Pending', -- Pending, Processed
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
         "
     )?;
 
     // --- MIGRATIONS ---
+
+    // Ensure secret key for extension exists
+    let has_secret: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM app_settings WHERE key = 'extension_secret'",
+        [],
+        |row| row.get(0)
+    ).unwrap_or(0);
+
+    if has_secret == 0 {
+        let secret = nanoid::nanoid!(32);
+        conn.execute(
+            "INSERT INTO app_settings (key, value) VALUES ('extension_secret', ?1)",
+            [&secret],
+        )?;
+    }
 
     // 0. Ensure 'name' is unique in themes table (for existing databases)
     let table_info: String = conn.query_row(

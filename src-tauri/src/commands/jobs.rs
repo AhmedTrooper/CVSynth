@@ -14,22 +14,39 @@ pub struct JobPayload {
     pub employment_type: String,
     pub status: String,
     pub raw_jd: String,
+    #[serde(default)]
     pub requirements: Option<String>,
+    #[serde(default)]
     pub core_responsibilities: Option<String>,
+    #[serde(default)]
     pub custom_instruction: Option<String>,
+    #[serde(default)]
     pub reference_name: Option<String>,
+    #[serde(default)]
     pub reference_email: Option<String>,
+    #[serde(default)]
     pub social_link: Option<String>,
+    #[serde(default)]
     pub job_url: Option<String>,
+    #[serde(default)]
     pub base_resume_id: Option<String>,
+    #[serde(default)]
     pub base_cl_id: Option<String>,
+    #[serde(default)]
     pub salary: Option<String>,
+    #[serde(default)]
     pub applied_date: Option<String>,
+    #[serde(default)]
     pub interview_date: Option<String>,
+    #[serde(default)]
     pub offer_date: Option<String>,
+    #[serde(default)]
     pub rejected_date: Option<String>,
+    #[serde(default)]
     pub joining_date: Option<String>,
+    #[serde(default)]
     pub created_at: Option<String>,
+    #[serde(default)]
     pub updated_at: Option<String>,
 }
 

@@ -1,6 +1,7 @@
 pub mod ai;
 pub mod commands;
 pub mod db;
+pub mod server;
 
 use rusqlite::Connection;
 use std::sync::Mutex;
@@ -75,6 +76,12 @@ pub fn run() {
                 }
             });
 
+            // 3. Start Extension Ingest Server
+            let app_handle_for_server = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                server::start_server(app_handle_for_server).await;
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -136,7 +143,12 @@ pub fn run() {
             commands::settings::get_last_opened_diagram,
             commands::settings::save_setting,
             commands::settings::get_setting,
-            commands::settings::clear_tectonic_cache
+            commands::settings::clear_tectonic_cache,
+            commands::inbox::get_all_inbox_jobs,
+            commands::inbox::delete_inbox_job,
+            commands::inbox::delete_all_inbox_jobs,
+            commands::inbox::mark_inbox_job_processed,
+            commands::inbox::get_extension_config
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

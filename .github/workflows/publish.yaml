@@ -7,7 +7,7 @@ on:
 
 jobs:
   publish-tauri:
-    # FIXED: Forces GitHub Actions (checkout and setup-bun) to use Node 24, fixing the deprecation warning
+    # Forces GitHub Actions (checkout and setup-bun) to use Node 24, fixing the deprecation warning
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     permissions:
@@ -57,38 +57,40 @@ jobs:
           # Uses the target defined in the matrix above
           targets: ${{ matrix.target }}
 
-      # --- UBUNTU SETUP (PRESERVED) ---
+      # --- UBUNTU SETUP ---
       - name: install dependencies (ubuntu only)
         if: startsWith(matrix.platform, 'ubuntu')
         run: |
           sudo apt-get update
-          # PRESERVED: Includes xdg-utils to fix the Tauri AppImage bundle error
+          # Includes xdg-utils to fix the Tauri AppImage bundle error
           sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf pkg-config libicu-dev libpng-dev libharfbuzz-dev libgraphite2-dev xdg-utils
-          # PRESERVED: Force the Rust linker to include the C++ standard library and Graphite2
+          # Force the Rust linker to include the C++ standard library and Graphite2
           echo "RUSTFLAGS=-C link-arg=-lstdc++ -C link-arg=-lgraphite2" >> $GITHUB_ENV
 
-      # --- MACOS SETUP (PRESERVED) ---
+      # --- MACOS SETUP ---
       - name: Setup Tectonic Dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
           brew install pkg-config icu4c libpng
-          # PRESERVED: Specific brew paths for tectonic
+          # Specific brew paths for tectonic
           echo "PKG_CONFIG_PATH=/opt/homebrew/opt/icu4c/lib/pkgconfig:/opt/homebrew/opt/libpng/lib/pkgconfig:/usr/local/opt/icu4c/lib/pkgconfig:/usr/local/opt/libpng/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
 
-      # --- WINDOWS SETUP (PRESERVED & EXTENDED) ---
+      # --- WINDOWS SETUP ---
       - name: Setup vcpkg and Dependencies (Windows)
         if: runner.os == 'Windows'
         run: |
           git clone https://github.com/microsoft/vcpkg.git ${{ github.workspace }}\vcpkg
           ${{ github.workspace }}\vcpkg\bootstrap-vcpkg.bat
-          # PRESERVED: Using the static-md triplet, now arch-aware via matrix
-          # ADDED: sqlite3:${{ matrix.vcpkg_triplet }} to resolve the LNK1181 error
-          ${{ github.workspace }}\vcpkg\vcpkg.exe install icu:${{ matrix.vcpkg_triplet }} libpng:${{ matrix.vcpkg_triplet }} harfbuzz:${{ matrix.vcpkg_triplet }} graphite2:${{ matrix.vcpkg_triplet }} fontconfig:${{ matrix.vcpkg_triplet }} sqlite3:${{ matrix.vcpkg_triplet }}
+
+          # Installs required C++ libraries for the Tectonic crate.
+          # Note: sqlite3 is intentionally omitted here because rusqlite handles it via the "bundled" Cargo feature.
+          ${{ github.workspace }}\vcpkg\vcpkg.exe install icu:${{ matrix.vcpkg_triplet }} libpng:${{ matrix.vcpkg_triplet }} harfbuzz:${{ matrix.vcpkg_triplet }} graphite2:${{ matrix.vcpkg_triplet }} fontconfig:${{ matrix.vcpkg_triplet }}
 
           echo "TECTONIC_DEP_BACKEND=vcpkg" >> $env:GITHUB_ENV
           echo "VCPKG_ROOT=${{ github.workspace }}\vcpkg" >> $env:GITHUB_ENV
           echo "VCPKGRS_TRIPLET=${{ matrix.vcpkg_triplet }}" >> $env:GITHUB_ENV
-          # PRESERVED: Force MSVC to use C++17 standard
+
+          # Force MSVC to use C++17 standard
           echo "CXXFLAGS=/std:c++17" >> $env:GITHUB_ENV
 
       # --- BUILD AND PUBLISH ---

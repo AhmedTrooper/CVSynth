@@ -31,6 +31,11 @@ const routes = [
     name: 'Diagrams',
     component: DiagramTab
   },
+  {
+    path: '/inbox',
+    name: 'Inbox',
+    component: () => import('../components/InboxTab.vue')
+  },
   { 
     path: '/settings', 
     name: 'Settings', 

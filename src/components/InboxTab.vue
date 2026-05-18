@@ -1,0 +1,719 @@
+<script setup lang="ts">
+import { ref, onMounted, computed } from 'vue';
+import { useInboxStore, InboxJob } from '../store/inbox';
+import { useJobsStore } from '../store/jobs';
+import { useSettingsStore } from '../store/settings';
+import { useDialogStore } from '../store/dialog';
+import { Motion, AnimatePresence } from 'motion-v';
+import { invoke } from '@tauri-apps/api/core';
+import { 
+  Inbox, 
+  Trash2, 
+  Play, 
+  CheckCircle, 
+  ExternalLink, 
+  Key, 
+  Wifi, 
+  Info,
+  Clock,
+  Settings2,
+  X,
+  Check,
+  RefreshCw,
+  Cpu,
+  ChevronRight,
+  ClipboardList
+} from '@lucide/vue';
+import { writeText } from '@tauri-apps/plugin-clipboard-manager';
+
+const inboxStore = useInboxStore();
+const jobsStore = useJobsStore();
+const settingsStore = useSettingsStore();
+const dialog = useDialogStore();
+
+const activeTooltip = ref<string | null>(null);
+const isSelectionMode = ref(false);
+const selectedJobs = ref<Set<string>>(new Set());
+const isProcessing = ref(false);
+const processingProgress = ref({ current: 0, total: 0 });
+
+onMounted(async () => {
+  await inboxStore.loadJobs();
+  await inboxStore.loadExtensionConfig();
+});
+
+const filteredJobs = computed(() => {
+  return inboxStore.jobs;
+});
+
+const handleCardClick = (job: InboxJob) => {
+  if (isSelectionMode.value) {
+    if (selectedJobs.value.has(job.id)) {
+      selectedJobs.value.delete(job.id);
+    } else {
+      selectedJobs.value.add(job.id);
+    }
+  }
+};
+
+const deleteJob = async (id: string) => {
+  const confirmed = await dialog.showConfirm('Delete this raw job data?', 'Confirm Deletion');
+  if (confirmed) {
+    await inboxStore.deleteJob(id);
+  }
+};
+
+const deleteSelected = async () => {
+  const confirmed = await dialog.showConfirm(`Delete ${selectedJobs.value.size} selected items?`, 'Batch Delete');
+  if (confirmed) {
+    for (const id of selectedJobs.value) {
+      await invoke('delete_inbox_job', { id });
+    }
+    selectedJobs.value.clear();
+    isSelectionMode.value = false;
+    await inboxStore.loadJobs();
+  }
+};
+
+const copyToClipboard = async (text: string, label: string) => {
+  await writeText(text);
+  await dialog.showAlert(`${label} copied to clipboard!`, 'Copied');
+};
+
+const processJob = async (inboxJob: InboxJob) => {
+  try {
+    const apiKey = await settingsStore.getDecryptedKey();
+    if (!apiKey) {
+      await dialog.showAlert('Please set your AI API key in Settings first.', 'API Key Missing');
+      return;
+    }
+
+    const result = await invoke<any>('parse_job', {
+      provider: settingsStore.selectedAiProvider,
+      model: settingsStore.selectedAiModel,
+      apiKey,
+      rawJd: inboxJob.raw_description,
+      jobUrl: inboxJob.url
+    });
+
+    const jobPayload = {
+      id: Math.random().toString(36).substring(2, 11),
+      company_name: result.details.company_name,
+      job_title: result.details.job_title,
+      work_model: result.details.work_model,
+      employment_type: result.details.employment_type,
+      status: 'Drafting',
+      raw_jd: inboxJob.raw_description,
+      requirements: result.details.requirements.join('\n'),
+      core_responsibilities: result.details.core_responsibilities.join('\n'),
+      job_url: inboxJob.url,
+      // other fields null
+    };
+
+    await invoke('save_job', { payload: jobPayload });
+    await inboxStore.markProcessed(inboxJob.id);
+    
+    return true;
+  } catch (error: any) {
+    console.error('Processing error:', error);
+    await dialog.showAlert(`Failed to process job: ${error.toString()}`, 'Error');
+    return false;
+  }
+};
+
+const processSelected = async () => {
+  if (selectedJobs.value.size === 0) return;
+  
+  isProcessing.value = true;
+  processingProgress.value = { current: 0, total: selectedJobs.value.size };
+
+  const jobsToProcess = inboxStore.jobs.filter(j => selectedJobs.value.has(j.id) && j.status === 'Pending');
+  
+  for (const job of jobsToProcess) {
+    processingProgress.value.current++;
+    await processJob(job);
+  }
+
+  isProcessing.value = false;
+  selectedJobs.value.clear();
+  isSelectionMode.value = false;
+  await inboxStore.loadJobs();
+  await dialog.showAlert('Batch processing complete. Processed jobs are now in your main Vault.', 'Success');
+};
+
+const getStatusClass = (status: string) => {
+  return `status-badge ${status.toLowerCase()}`;
+};
+</script>
+
+<template>
+  <div class="inbox-container">
+    <header class="page-header">
+      <div class="title-group">
+        <h1>Extension Inbox</h1>
+        <p class="subtitle">Raw jobs captured via the browser extension.</p>
+      </div>
+      
+      <div class="header-actions">
+        <template v-if="!isSelectionMode">
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'refresh'" @mouseleave="activeTooltip = null">
+            <button class="btn-secondary" @click="inboxStore.loadJobs()">
+              <RefreshCw :size="18" :class="{ 'spinner': inboxStore.isLoading }" />
+            </button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'refresh'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                class="floating-message tooltip-bottom-left"
+              >
+                Refresh
+              </Motion>
+            </AnimatePresence>
+          </div>
+          
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'selection'" @mouseleave="activeTooltip = null">
+            <button class="btn-secondary" @click="isSelectionMode = true" :disabled="inboxStore.jobs.length === 0">
+              <Settings2 :size="18" />
+            </button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'selection'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                class="floating-message tooltip-bottom-left"
+              >
+                Selection Mode
+              </Motion>
+            </AnimatePresence>
+          </div>
+        </template>
+
+        <template v-else>
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'process-batch'" @mouseleave="activeTooltip = null">
+            <button class="btn-primary" @click="processSelected" :disabled="selectedJobs.size === 0 || isProcessing">
+              <Cpu :size="18" />
+            </button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'process-batch'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                class="floating-message tooltip-bottom-left"
+              >
+                Process Selected ({{ selectedJobs.size }})
+              </Motion>
+            </AnimatePresence>
+          </div>
+
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'delete-batch'" @mouseleave="activeTooltip = null">
+            <button class="btn-danger-outline" @click="deleteSelected" :disabled="selectedJobs.size === 0">
+              <Trash2 :size="18" />
+            </button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'delete-batch'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                class="floating-message tooltip-bottom-left"
+              >
+                Delete Selected
+              </Motion>
+            </AnimatePresence>
+          </div>
+
+          <button class="btn-primary" @click="isSelectionMode = false">
+            <X :size="18" />
+          </button>
+        </template>
+      </div>
+    </header>
+
+    <div class="inbox-layout">
+      <div class="main-content">
+        <div v-if="isProcessing" class="processing-banner">
+          <div class="progress-info">
+            <Cpu :size="20" class="spinner" />
+            <span>AI Processing: {{ processingProgress.current }} / {{ processingProgress.total }}</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" :style="{ width: (processingProgress.current / processingProgress.total * 100) + '%' }"></div>
+          </div>
+        </div>
+
+        <div v-if="inboxStore.isLoading && inboxStore.jobs.length === 0" class="empty-state">
+          <RefreshCw :size="48" class="spinner" />
+          <p>Syncing inbox...</p>
+        </div>
+
+        <div v-else-if="inboxStore.jobs.length === 0" class="empty-state">
+          <Inbox :size="48" class="empty-icon" />
+          <h3>Inbox is empty</h3>
+          <p>Use the browser extension to capture job listings.</p>
+        </div>
+
+        <div v-else class="inbox-list">
+          <div 
+            v-for="job in filteredJobs" 
+            :key="job.id" 
+            class="inbox-card"
+            :class="{ 
+              'selected': selectedJobs.has(job.id), 
+              'selection-mode': isSelectionMode,
+              'processed': job.status === 'Processed'
+            }"
+            @click="handleCardClick(job)"
+          >
+            <div class="card-header">
+              <div class="left">
+                <div v-if="isSelectionMode" class="checkbox" :class="{ 'checked': selectedJobs.has(job.id) }">
+                  <Check v-if="selectedJobs.has(job.id)" :size="12" />
+                </div>
+                <span :class="getStatusClass(job.status)">{{ job.status }}</span>
+              </div>
+              <div class="right">
+                <Clock :size="12" />
+                <span>{{ job.created_at.split(' ')[0] }}</span>
+              </div>
+            </div>
+
+            <div class="card-body">
+              <div class="url-line" v-if="job.url">
+                <ExternalLink :size="14" />
+                <span class="url-text">{{ job.url }}</span>
+              </div>
+              <div class="description-preview">
+                {{ job.raw_description.substring(0, 200) }}...
+              </div>
+            </div>
+
+            <div class="card-footer" v-if="!isSelectionMode">
+              <div class="actions">
+                <button class="icon-btn danger" @click.stop="deleteJob(job.id)">
+                  <Trash2 :size="16" />
+                </button>
+                <button 
+                  v-if="job.status === 'Pending'"
+                  class="process-btn" 
+                  @click.stop="processJob(job)"
+                  :disabled="isProcessing"
+                >
+                  <Cpu :size="14" /> Process with AI
+                </button>
+                <div v-else class="done-indicator">
+                  <CheckCircle :size="14" /> Processed
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="config-sidebar">
+        <div class="config-card">
+          <div class="card-header">
+            <Wifi :size="18" />
+            <h3>Extension Link</h3>
+          </div>
+          <p class="config-desc">Configure your browser extension with these credentials to enable instant job capture.</p>
+          
+          <div class="config-item">
+            <label>Server Port</label>
+            <div class="value-row">
+              <code>{{ inboxStore.extensionConfig?.port || '...' }}</code>
+              <button class="copy-btn" @click="copyToClipboard(inboxStore.extensionConfig?.port || '', 'Port')">
+                <ClipboardList :size="14" />
+              </button>
+            </div>
+          </div>
+
+          <div class="config-item">
+            <label>Secret Key</label>
+            <div class="value-row">
+              <code class="secret">{{ inboxStore.extensionConfig?.secret ? '••••••••' + inboxStore.extensionConfig.secret.slice(-4) : '...' }}</code>
+              <button class="copy-btn" @click="copyToClipboard(inboxStore.extensionConfig?.secret || '', 'Secret Key')">
+                <Key :size="14" />
+              </button>
+            </div>
+          </div>
+
+          <div class="setup-tip">
+            <Info :size="14" />
+            <p>Paste these into the extension settings to securely link your browser.</p>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.inbox-container {
+  padding: 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+}
+
+.page-header h1 { font-size: 2.2rem; margin: 0; color: var(--ink); }
+.subtitle { color: var(--muted); margin: 8px 0 0; }
+
+.header-actions { display: flex; gap: 12px; }
+
+.inbox-layout {
+  display: flex;
+  gap: 32px;
+  flex: 1;
+  min-height: 0;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 0;
+}
+
+.processing-banner {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.progress-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+.progress-bar {
+  height: 6px;
+  background: var(--surface-soft);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.inbox-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.inbox-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.inbox-card:hover {
+  border-color: var(--accent);
+  background: var(--bg-accent);
+}
+
+.inbox-card.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.inbox-card.processed {
+  opacity: 0.7;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.card-header .left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.card-header .right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-family: monospace;
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--line);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+
+.checkbox.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.status-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.status-badge.pending { background: var(--accent-soft); color: var(--accent); }
+.status-badge.processed { background: var(--surface-soft); color: var(--muted); }
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.url-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.url-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.description-preview {
+  font-size: 0.85rem;
+  color: var(--ink);
+  line-height: 1.6;
+  opacity: 0.8;
+}
+
+.card-footer {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.process-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.done-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.config-sidebar {
+  width: 300px;
+  flex-shrink: 0;
+}
+
+.config-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px;
+  position: sticky;
+  top: 0;
+}
+
+.config-card .card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: var(--accent);
+}
+
+.config-card h3 { margin: 0; font-size: 1.1rem; color: var(--ink); }
+
+.config-desc {
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.config-item {
+  margin-bottom: 16px;
+}
+
+.config-item label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+  letter-spacing: 0.05em;
+}
+
+.value-row {
+  display: flex;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.value-row code {
+  flex: 1;
+  padding: 8px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--ink);
+}
+
+.copy-btn {
+  background: var(--surface-soft);
+  border: none;
+  border-left: 1px solid var(--line);
+  padding: 0 10px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.copy-btn:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.setup-tip {
+  margin-top: 24px;
+  display: flex;
+  gap: 10px;
+  background: var(--bg-accent);
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+.setup-tip p {
+  font-size: 0.7rem;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.setup-tip svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  text-align: center;
+  gap: 16px;
+}
+
+.empty-icon { opacity: 0.2; }
+
+.btn-primary, .btn-secondary, .btn-danger-outline {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.btn-primary { background: var(--accent); color: white; border: none; }
+.btn-secondary { background: var(--surface-soft); border: 1px solid var(--line); color: var(--ink); }
+.btn-danger-outline { background: transparent; border: 1px solid var(--warning); color: var(--warning); }
+
+.icon-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: 0.2s;
+}
+
+.icon-btn:hover { background: var(--surface-soft); color: var(--ink); }
+.icon-btn.danger:hover { color: var(--warning); background: rgba(248, 51, 73, 0.1); }
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 900px) {
+  .inbox-layout { flex-direction: column; }
+  .config-sidebar { width: 100%; }
+}
+</style>

@@ -16,12 +16,14 @@ import {
   Video,
   Cpu,
   Info,
-  Share2
+  Share2,
+  Inbox
 } from '@lucide/vue';
 
 const tabs = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/jobs', label: 'Jobs', icon: Briefcase },
+  { path: '/inbox', label: 'Inbox', icon: Inbox },
   { path: '/resumes', label: 'Resume Templates', icon: FileText },
   { path: '/cover-letters', label: 'CL Templates', icon: Mail },
   { path: '/compiler', label: 'Compiler', icon: Cpu },

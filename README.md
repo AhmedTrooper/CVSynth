@@ -1,6 +1,6 @@
-# RoleTect (CVSynth)
+# RoleTect
 
-**RoleTect** (also known as CVSynth) is a powerful, privacy-first desktop application designed to streamline the job application process. By combining a local-first architecture with cutting-edge AI, RoleTect allows you to effortlessly manage your job search, securely tailor your resumes and cover letters using LaTeX, and keep track of your application status—all without compromising your data.
+**RoleTect** is a powerful, privacy-first desktop application designed to streamline the job application process. By combining a local-first architecture with cutting-edge AI, RoleTect allows you to effortlessly manage your job search, securely tailor your resumes and cover letters using LaTeX, and keep track of your application status—all without compromising your data.
 
 ---
 
@@ -21,7 +21,7 @@ RoleTect is your personal command center for landing your next role.
 
 ### Getting Started
 
-1.  **Download the App:** Pre-compiled binaries for Windows, macOS, and Linux are available in the [Releases](https://github.com/yourusername/CVSynth/releases) section of this repository. Download the installer for your operating system.
+1.  **Download the App:** Pre-compiled binaries for Windows, macOS, and Linux are available in the [Releases](https://github.com/AhmedTrooper/RoleTect/releases) section of this repository. Download the installer for your operating system.
 2.  **Set Up AI:** Go to the **Settings** tab and enter the API key for your preferred AI provider (e.g., Google Gemini). Your key is securely encrypted locally.
 3.  **Install the Extension (Optional but Recommended):** Install the companion browser extension for Chrome or Firefox from the `extentions/` folder. This allows you to quickly import jobs into your RoleTect Inbox.
 4.  **Create Base Templates:** Navigate to the **Resumes** and **Cover Letters** tabs to set up your master LaTeX templates.
@@ -62,8 +62,8 @@ Ensure you have the following installed:
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/yourusername/CVSynth.git
-    cd CVSynth
+    git clone https://github.com/AhmedTrooper/RoleTect.git
+    cd RoleTect
     ```
 
 2.  **Install dependencies:**

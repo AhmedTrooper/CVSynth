@@ -1,16 +1,20 @@
 // Initialize UI and Load Settings
 document.addEventListener('DOMContentLoaded', () => {
-  const hostInput = document.getElementById('host');
+  const hostTypeSelect = document.getElementById('hostType');
+  const localPortInput = document.getElementById('localPort');
+  const customHostInput = document.getElementById('customHost');
+  const customPortInput = document.getElementById('customPort');
+  const remoteUrlInput = document.getElementById('remoteUrl');
+  
   const secretInput = document.getElementById('secret');
   const selectorInput = document.getElementById('selector');
   const statusDiv = document.getElementById('status');
 
-  // Load saved settings
-  chrome.storage.local.get(['host', 'secret', 'selector'], (result) => {
-    if (result.host) hostInput.value = result.host;
-    if (result.secret) secretInput.value = result.secret;
-    if (result.selector) selectorInput.value = result.selector;
-  });
+  const hostGroups = {
+    localhost: document.getElementById('localhostGroup'),
+    customLocal: document.getElementById('customLocalGroup'),
+    remote: document.getElementById('remoteGroup')
+  };
 
   // Tab Switching
   document.querySelectorAll('.tab').forEach(tab => {
@@ -18,19 +22,97 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.tab, .tab-content').forEach(el => el.classList.remove('active'));
       tab.classList.add('active');
       document.getElementById(tab.dataset.tab).classList.add('active');
+
+      // Reload settings on tab change to discard unsaved changes
+      loadSettings();
     });
   });
 
+  function loadSettings() {
+    chrome.storage.local.get([
+      'hostType', 'localPort', 'customHost', 'customPort', 'remoteUrl', 'secret', 'selector'
+    ], (result) => {
+      if (result.hostType) {
+        hostTypeSelect.value = result.hostType;
+        updateHostGroups(result.hostType);
+      }
+      if (result.localPort) localPortInput.value = result.localPort;
+      if (result.customHost) customHostInput.value = result.customHost;
+      if (result.customPort) customPortInput.value = result.customPort;
+      if (result.remoteUrl) remoteUrlInput.value = result.remoteUrl;
+      if (result.secret) secretInput.value = result.secret;
+      if (result.selector) selectorInput.value = result.selector;
+    });
+  }
+
+  // Load saved settings initially
+  loadSettings();
+
+  // Save Selector
+  document.getElementById('saveSelectorBtn').addEventListener('click', () => {
+    const selector = selectorInput.value.trim() || 'body';
+    chrome.storage.local.set({ selector }, () => {
+      showStatus("Selector saved!", "success");
+    });
+  });
+
+  // Reset Selector
+  document.getElementById('resetSelectorBtn').addEventListener('click', () => {
+    selectorInput.value = 'body';
+    chrome.storage.local.set({ selector: 'body' }, () => {
+      showStatus("Selector reset to default.", "neutral");
+    });
+  });
+
+  // Host Type Change Logic
+  hostTypeSelect.addEventListener('change', (e) => {
+    updateHostGroups(e.target.value);
+  });
+
+  function updateHostGroups(selectedType) {
+    Object.keys(hostGroups).forEach(type => {
+      hostGroups[type].style.display = (type === selectedType) ? 'block' : 'none';
+    });
+  }
+
   // Save Settings
   document.getElementById('saveSettingsBtn').addEventListener('click', () => {
-    let host = hostInput.value.trim() || 'http://127.0.0.1:14201';
-    // Remove trailing slash if present
-    if (host.endsWith('/')) {
-      host = host.slice(0, -1);
-    }
+    const hostType = hostTypeSelect.value;
+    const localPort = localPortInput.value.trim() || '14201';
+    const customHost = customHostInput.value.trim();
+    const customPort = customPortInput.value.trim() || '14201';
+    const remoteUrl = remoteUrlInput.value.trim();
     const secret = secretInput.value.trim();
 
-    chrome.storage.local.set({ host, secret }, () => {
+    let finalHost = '';
+
+    if (hostType === 'localhost') {
+      finalHost = `http://127.0.0.1:${localPort}`;
+    } else if (hostType === 'customLocal') {
+      const h = customHost || '127.0.0.1';
+      finalHost = `http://${h}:${customPort}`;
+    } else if (hostType === 'remote') {
+      finalHost = remoteUrl;
+      // Ensure it starts with http/https
+      if (finalHost && !finalHost.startsWith('http')) {
+        finalHost = 'https://' + finalHost;
+      }
+    }
+
+    // Remove trailing slash
+    if (finalHost.endsWith('/')) {
+      finalHost = finalHost.slice(0, -1);
+    }
+
+    chrome.storage.local.set({ 
+      host: finalHost, // Keep 'host' for background.js compatibility
+      hostType, 
+      localPort, 
+      customHost, 
+      customPort, 
+      remoteUrl, 
+      secret 
+    }, () => {
       showStatus("Settings saved successfully!", "success");
     });
   });
@@ -39,16 +121,13 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('extractBtn').addEventListener('click', () => {
     const selector = selectorInput.value.trim() || 'body';
     
-    // Persist selector for convenience
-    chrome.storage.local.set({ selector });
-
     showStatus("Extracting content...", "neutral");
 
     chrome.runtime.sendMessage({ action: "START_EXTRACTION", selector }, (response) => {
       if (response && response.success) {
-        showStatus("Job ingested into vault!", "success");
+        showStatus("Job ingested into Inbox vault!", "success");
       } else {
-        const errorMsg = response?.error || "Connection failed. Is RoleFlux open?";
+        const errorMsg = response?.error || "Connection failed. Is your RoleTect instance reachable?";
         showStatus("Error: " + errorMsg, "error");
       }
     });

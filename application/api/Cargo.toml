@@ -12,7 +12,7 @@ rusqlite = { version = "0.39.0", features = ["bundled"] }
 rig = { version = "0.37.0", features = ["gemini-grpc"] }
 nanoid = "0.5.0"
 tower-http = { version = "0.6.1", features = ["cors", "fs"] }
-tectonic = { version = "0.16.9", features = ["external-harfbuzz"] }
+tectonic = "0.16.9"
 chrono = { version = "0.4", features = ["serde"] }
 anyhow = "1.0"
 schemars = "1"

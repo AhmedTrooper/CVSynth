@@ -7,31 +7,27 @@ use crate::models::AiConfig;
 pub async fn get_ai_config(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<AiConfig>, (StatusCode, String)> {
-    let conn = state.db.lock().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
+    let conn = state.db.lock().await;
+
     let provider: String = conn.query_row(
-        "SELECT value FROM app_settings WHERE key = 'selected_provider'",
+        "SELECT value FROM app_settings WHERE key = 'ai_provider'",
         [],
         |row| row.get(0)
     ).unwrap_or_else(|_| "openai".to_string());
 
     let model: String = conn.query_row(
-        "SELECT value FROM app_settings WHERE key = 'selected_model'",
+        "SELECT value FROM app_settings WHERE key = 'ai_model'",
         [],
         |row| row.get(0)
     ).unwrap_or_else(|_| "gpt-4o".to_string());
 
-    let has_key: i64 = conn.query_row(
-        &format!("SELECT COUNT(*) FROM app_settings WHERE key = 'api_key_{}'", provider),
+    let has_key: bool = conn.query_row(
+        "SELECT COUNT(*) FROM app_settings WHERE key = 'ai_api_key'",
         [],
-        |row| row.get(0)
-    ).unwrap_or(0);
+        |row| row.get::<_, i64>(0)
+    ).unwrap_or(0) > 0;
 
-    Ok(Json(AiConfig {
-        provider,
-        model,
-        has_key: has_key > 0,
-    }))
+    Ok(Json(AiConfig { provider, model, has_key }))
 }
 
 pub async fn save_ai_config(
@@ -40,24 +36,25 @@ pub async fn save_ai_config(
 ) -> Result<StatusCode, (StatusCode, String)> {
     let provider = payload["provider"].as_str().ok_or((StatusCode::BAD_REQUEST, "provider missing".to_string()))?;
     let model = payload["model"].as_str().ok_or((StatusCode::BAD_REQUEST, "model missing".to_string()))?;
-    
-    let conn = state.db.lock().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
+    let api_key = payload["apiKey"].as_str();
+
+    let conn = state.db.lock().await;
+
     conn.execute(
-        "INSERT INTO app_settings (key, value) VALUES ('selected_provider', ?1) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        "INSERT OR REPLACE INTO app_settings (key, value) VALUES ('ai_provider', ?1)",
         [provider],
     ).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     conn.execute(
-        "INSERT INTO app_settings (key, value) VALUES ('selected_model', ?1) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        "INSERT OR REPLACE INTO app_settings (key, value) VALUES ('ai_model', ?1)",
         [model],
     ).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    if let Some(api_key) = payload["apiKey"].as_str() {
-        if !api_key.is_empty() {
-             conn.execute(
-                &format!("INSERT INTO app_settings (key, value) VALUES ('api_key_{}', ?1) ON CONFLICT(key) DO UPDATE SET value=excluded.value", provider),
-                [api_key],
+    if let Some(key) = api_key {
+        if !key.is_empty() {
+            conn.execute(
+                "INSERT OR REPLACE INTO app_settings (key, value) VALUES ('ai_api_key', ?1)",
+                [key],
             ).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
         }
     }
@@ -68,19 +65,16 @@ pub async fn save_ai_config(
 pub async fn get_api_key(
     State(state): State<Arc<AppState>>,
     axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
-) -> Result<Json<Option<String>>, (StatusCode, String)> {
-    let provider = params.get("provider").ok_or((StatusCode::BAD_REQUEST, "provider missing".to_string()))?;
-    let conn = state.db.lock().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+) -> Result<Json<String>, (StatusCode, String)> {
+    let _provider = params.get("provider").ok_or((StatusCode::BAD_REQUEST, "provider missing".to_string()))?;
     
-    let key: Option<String> = match conn.query_row(
-        &format!("SELECT value FROM app_settings WHERE key = 'api_key_{}'", provider),
+    let conn = state.db.lock().await;
+    
+    let key: String = conn.query_row(
+        "SELECT value FROM app_settings WHERE key = 'ai_api_key'",
         [],
         |row| row.get(0)
-    ) {
-        Ok(v) => Some(v),
-        Err(rusqlite::Error::QueryReturnedNoRows) => None,
-        Err(e) => return Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string())),
-    };
+    ).map_err(|_| (StatusCode::NOT_FOUND, "API key not found".to_string()))?;
 
     Ok(Json(key))
 }

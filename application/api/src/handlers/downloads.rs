@@ -8,31 +8,30 @@ use nanoid::nanoid;
 pub async fn get_recent_downloads(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<Vec<DownloadRecord>>, (StatusCode, String)> {
-    let conn = state.db.lock().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let conn = state.db.lock().await;
     
     let mut stmt = conn
         .prepare("SELECT id, filename, download_type, job_id, content_id, created_at FROM downloads ORDER BY created_at DESC LIMIT 50")
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let download_iter = stmt
+    let iter = stmt
         .query_map([], |row| {
             Ok(DownloadRecord {
                 id: row.get(0)?,
                 filename: row.get(1)?,
                 download_type: row.get(2)?,
-                job_id: row.get::<_, Option<String>>(3)?,
-                content_id: row.get::<_, Option<String>>(4)?,
+                job_id: row.get(3)?,
+                content_id: row.get(4)?,
                 created_at: row.get(5)?,
             })
         })
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let mut downloads = Vec::new();
-    for download in download_iter {
-        downloads.push(download.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?);
+    let mut records = Vec::new();
+    for rec in iter {
+        records.push(rec.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?);
     }
-    
-    Ok(Json(downloads))
+    Ok(Json(records))
 }
 
 pub async fn record_download(
@@ -45,13 +44,12 @@ pub async fn record_download(
     let content_id = payload["contentId"].as_str();
 
     let id = nanoid!(10);
-    let conn = state.db.lock().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let conn = state.db.lock().await;
     
     conn.execute(
         "INSERT INTO downloads (id, filename, download_type, job_id, content_id) VALUES (?1, ?2, ?3, ?4, ?5)",
         rusqlite::params![&id, filename, download_type, job_id, content_id],
-    )
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    ).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(StatusCode::CREATED)
 }

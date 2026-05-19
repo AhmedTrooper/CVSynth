@@ -9,7 +9,7 @@ use nanoid::nanoid;
 pub async fn get_all_cover_letters(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<Vec<CoverLetterItem>>, (StatusCode, String)> {
-    let conn = state.db.lock().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let conn = state.db.lock().await;
     
     let mut stmt = conn
         .prepare("SELECT id, name, category, created_at, updated_at FROM base_cover_letters ORDER BY updated_at DESC")
@@ -38,7 +38,7 @@ pub async fn get_cover_letter_by_id(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
 ) -> Result<Json<CoverLetterDetail>, (StatusCode, String)> {
-    let conn = state.db.lock().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let conn = state.db.lock().await;
     
     let mut stmt = conn
         .prepare("SELECT id, name, category, latex_content, created_at, updated_at FROM base_cover_letters WHERE id = ?1")
@@ -69,7 +69,7 @@ pub async fn create_new_cover_letter(
     let latex_content = payload["latexContent"].as_str().ok_or((StatusCode::BAD_REQUEST, "latexContent missing".to_string()))?;
 
     let id = nanoid!(10);
-    let conn = state.db.lock().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let conn = state.db.lock().await;
     
     conn.execute(
         "INSERT INTO base_cover_letters (id, name, category, latex_content) VALUES (?1, ?2, ?3, ?4)",
@@ -84,7 +84,7 @@ pub async fn update_cover_letter(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<CoverLetterDetail>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    let conn = state.db.lock().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let conn = state.db.lock().await;
     
     conn.execute(
         "UPDATE base_cover_letters SET name = ?1, category = ?2, latex_content = ?3 WHERE id = ?4",
@@ -108,10 +108,7 @@ pub async fn tailor_cover_letter(
     let custom_instruction = payload["customInstruction"].as_str();
 
     let (raw_job_content, requirements, core_responsibilities, base_latex) = {
-        let conn = state.db.lock().map_err(|e| {
-            eprintln!("DB Lock Error: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-        })?;
+        let conn = state.db.lock().await;
         
         let (raw_job, reqs, resps): (String, Option<String>, Option<String>) = conn
             .query_row(
@@ -158,36 +155,36 @@ pub async fn tailor_cover_letter(
 
     println!("AI tailoring complete (CL). Saving to DB...");
     let tailored_id = nanoid!(10);
-    let mut conn = state.db.lock().map_err(|e| {
-        eprintln!("DB Lock Error (saving CL): {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
-    let tx = conn.transaction().map_err(|e| {
-        eprintln!("Transaction Error (CL): {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
+    
+    {
+        let mut conn = state.db.lock().await;
+        let tx = conn.transaction().map_err(|e| {
+            eprintln!("Transaction Error (CL): {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+        })?;
 
-    tx.execute(
-        "INSERT INTO tailored_cover_letters (id, job_id, base_cl_id, final_latex_content, is_active)
-         VALUES (?1, ?2, ?3, ?4, 1)",
-        [&tailored_id, job_id, base_cl_id, &tailored_latex],
-    ).map_err(|e| {
-        eprintln!("Insert Tailored CL Error: {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
+        tx.execute(
+            "INSERT INTO tailored_cover_letters (id, job_id, base_cl_id, final_latex_content, is_active)
+             VALUES (?1, ?2, ?3, ?4, 1)",
+            [&tailored_id, job_id, base_cl_id, &tailored_latex],
+        ).map_err(|e| {
+            eprintln!("Insert Tailored CL Error: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+        })?;
 
-    tx.execute(
-        "UPDATE jobs SET base_cl_id = ?1 WHERE id = ?2",
-        [base_cl_id, job_id],
-    ).map_err(|e| {
-        eprintln!("Update Job Error (CL): {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
+        tx.execute(
+            "UPDATE jobs SET base_cl_id = ?1 WHERE id = ?2",
+            [base_cl_id, job_id],
+        ).map_err(|e| {
+            eprintln!("Update Job Error (CL): {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+        })?;
 
-    tx.commit().map_err(|e| {
-        eprintln!("Commit Error (CL): {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
+        tx.commit().map_err(|e| {
+            eprintln!("Commit Error (CL): {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+        })?;
+    }
     
     println!("Cover letter tailoring complete and saved.");
     Ok(Json(tailored_id))
@@ -197,7 +194,7 @@ pub async fn get_latest_tailored_cover_letter(
     State(state): State<Arc<AppState>>,
     Path(job_id): Path<String>,
 ) -> Result<Json<Option<TailoredContent>>, (StatusCode, String)> {
-    let conn = state.db.lock().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let conn = state.db.lock().await;
     
     let mut stmt = conn
         .prepare(

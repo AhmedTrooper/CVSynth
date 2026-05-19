@@ -7,7 +7,8 @@ use axum::{
     routing::{get, post, delete},
     Router,
 };
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use rusqlite::Connection;
 use tower_http::cors::{Any, CorsLayer};
 use dotenvy::dotenv;

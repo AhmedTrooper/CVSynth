@@ -24,7 +24,7 @@ pub async fn save_job(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<JobPayload>,
 ) -> Result<Json<String>, (StatusCode, String)> {
-    let conn = state.db.lock().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let conn = state.db.lock().await;
 
     conn.execute(
         "INSERT INTO jobs (
@@ -68,7 +68,7 @@ pub async fn save_job(
 pub async fn get_all_jobs(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<Vec<JobPayload>>, (StatusCode, String)> {
-    let conn = state.db.lock().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let conn = state.db.lock().await;
     
     let mut stmt = conn
         .prepare(
@@ -125,7 +125,7 @@ pub async fn get_job_by_id(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
 ) -> Result<Json<JobPayload>, (StatusCode, String)> {
-    let conn = state.db.lock().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let conn = state.db.lock().await;
     
     let mut stmt = conn
         .prepare(
@@ -178,7 +178,7 @@ pub async fn delete_job(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, (StatusCode, String)> {
-    let mut conn = state.db.lock().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let mut conn = state.db.lock().await;
     
     let tx = conn.transaction().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Transaction error: {}", e)))?;
 

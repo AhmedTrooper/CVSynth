@@ -27,7 +27,6 @@
       border-bottom: 1px solid var(--line);
     }
     .header h3 { margin: 0; font-size: 16px; letter-spacing: 0.5px; }
-    .header img { width: 24px; height: 24px; }
     
     .section-title {
       font-size: 10px;
@@ -40,7 +39,7 @@
 
     .form-group { margin-bottom: 16px; }
     label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
-    input { 
+    input, select { 
       width: 100%; 
       padding: 8px 10px; 
       background: var(--surface);
@@ -51,7 +50,75 @@
       box-sizing: border-box;
       outline: none;
     }
-    input:focus { border-color: var(--accent); }
+    input:focus, select:focus { border-color: var(--accent); }
+    select {
+      appearance: none;
+      cursor: pointer;
+    }
+    .host-group { margin-bottom: 0px; }
+
+    /* Tutorial Styling */
+    .tutorial-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .step {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .step-num {
+      background: var(--accent);
+      color: white;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: bold;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .step-text strong {
+      display: block;
+      font-size: 13px;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+    .step-text p {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .info-box {
+      margin-top: 10px;
+      padding: 12px;
+      background: rgba(139, 148, 158, 0.1);
+      border-left: 3px solid var(--accent);
+      border-radius: 4px;
+    }
+    .info-box p {
+      margin: 0;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .secondary-btn {
+      background: var(--surface) !important;
+      border: 1px solid var(--line) !important;
+      color: var(--text) !important;
+      font-size: 11px !important;
+      padding: 6px 10px !important;
+      width: auto !important;
+    }
+    .secondary-btn:hover {
+      border-color: var(--muted) !important;
+    }
 
     button { 
       width: 100%; 
@@ -73,6 +140,7 @@
       padding: 8px;
       border-radius: 4px;
       display: none;
+      text-align: center;
     }
     .status-success { display: block !important; background: rgba(35, 134, 54, 0.1); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.3); }
     .status-error { display: block !important; background: rgba(248, 51, 73, 0.1); color: #f85149; border: 1px solid rgba(248, 81, 73, 0.3); }
@@ -99,29 +167,94 @@
 </head>
 <body>
   <div class="header">
-    <h3>RoleFlux Ingest</h3>
+    <h3>RoleTect Ingest</h3>
   </div>
 
   <div class="tabs">
-    <div class="tab active" data-tab="extract">Extract</div>
+    <div class="tab active" data-tab="learn">Learn</div>
+    <div class="tab" data-tab="extract">Extract</div>
     <div class="tab" data-tab="settings">Settings</div>
   </div>
 
-  <div id="extract" class="tab-content active">
+  <div id="learn" class="tab-content active">
+    <div class="tutorial-container">
+      <span class="section-title">How it works</span>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">
+          <strong>Navigate</strong>
+          <p>Open any job listing page (LinkedIn, Indeed, etc.) in your browser.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">
+          <strong>Capture</strong>
+          <p>Switch to the <b>Extract</b> tab. Use the default selector or target a specific area.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">
+          <strong>Ingest</strong>
+          <p>Click "Send to RoleTect". Your job is saved to the <b>Inbox vault</b> for AI analysis.</p>
+        </div>
+      </div>
+      <div class="info-box">
+        <p>Ensure your <b>RoleTect</b> instance (Desktop or Cloud) is reachable and your <b>Secret Key</b> is set in the Settings tab.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="extract" class="tab-content">
     <div class="form-group">
       <span class="section-title">Capture Data</span>
       <label for="selector">CSS Selector (Target Section)</label>
       <input type="text" id="selector" value="body" placeholder="e.g. .job-description, main, body">
+      <div style="display: flex; gap: 8px; margin-top: 8px;">
+        <button id="saveSelectorBtn" class="secondary-btn">Save Selector</button>
+        <button id="resetSelectorBtn" class="secondary-btn">Reset Default</button>
+      </div>
     </div>
-    <button id="extractBtn">Send to RoleFlux</button>
+    <button id="extractBtn">Send to RoleTect</button>
   </div>
 
   <div id="settings" class="tab-content">
     <div class="form-group">
       <span class="section-title">Server Config</span>
-      <label for="host">Backend Host URL</label>
-      <input type="text" id="host" placeholder="e.g. http://127.0.0.1:14201">
+      <label for="hostType">Connection Type</label>
+      <select id="hostType">
+        <option value="localhost">Localhost (127.0.0.1)</option>
+        <option value="customLocal">Custom Local IP</option>
+        <option value="remote">Remote / Cloud</option>
+      </select>
     </div>
+
+    <div id="localhostGroup" class="host-group">
+      <div class="form-group">
+        <label for="localPort">Port</label>
+        <input type="number" id="localPort" value="14201" placeholder="14201">
+      </div>
+    </div>
+
+    <div id="customLocalGroup" class="host-group" style="display:none;">
+      <div class="form-group">
+        <label for="customHost">IP / Hostname</label>
+        <input type="text" id="customHost" placeholder="e.g. 192.168.1.5">
+      </div>
+      <div class="form-group">
+        <label for="customPort">Port</label>
+        <input type="number" id="customPort" value="14201" placeholder="14201">
+      </div>
+    </div>
+
+    <div id="remoteGroup" class="host-group" style="display:none;">
+      <div class="form-group">
+        <label for="remoteUrl">Full Backend URL</label>
+        <input type="text" id="remoteUrl" placeholder="https://api.roleflux.com">
+      </div>
+    </div>
+
     <div class="form-group">
       <label for="secret">Secret Key</label>
       <input type="password" id="secret" placeholder="Check app Inbox tab">

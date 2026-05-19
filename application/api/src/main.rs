@@ -98,6 +98,6 @@ async fn main() {
 async fn health_check() -> axum::Json<serde_json::Value> {
     axum::Json(serde_json::json!({
         "status": "running",
-        "message": "RoleFlux API is active"
+        "message": "Roletect API is active"
     }))
 }

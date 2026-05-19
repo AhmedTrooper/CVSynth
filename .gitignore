@@ -6,8 +6,8 @@ build/
 target/
 src-tauri/target/
 api/target/
-application/mobile/cvsynth/build/
-application/mobile/cvsynth/.dart_tool/
+application/mobile/roletect/build/
+application/mobile/roletect/.dart_tool/
 
 # Environment & Secrets
 *.local

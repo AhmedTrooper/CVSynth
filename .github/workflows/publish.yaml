@@ -101,8 +101,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: roleflux-v__VERSION__
-          releaseName: "RoleFlux v__VERSION__"
+          tagName: roletect-v__VERSION__
+          releaseName: "Roletect v__VERSION__"
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}

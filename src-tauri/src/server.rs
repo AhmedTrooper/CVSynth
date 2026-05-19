@@ -82,7 +82,7 @@ pub async fn start_server(app_handle: AppHandle) {
 async fn health_check() -> Json<ExtensionResponse> {
     Json(ExtensionResponse {
         status: "running".to_string(),
-        message: "RoleFlux server is healthy and active".to_string(),
+        message: "Roletect server is healthy and active".to_string(),
     })
 }
 

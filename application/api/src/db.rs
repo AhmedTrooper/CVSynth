@@ -3,7 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 
 pub fn init_db(db_path: Option<PathBuf>) -> Result<Connection> {
-    let db_path = db_path.unwrap_or_else(|| PathBuf::from("roleflux.db"));
+    let db_path = db_path.unwrap_or_else(|| PathBuf::from("roletect.db"));
     
     if let Some(parent) = db_path.parent() {
         if !parent.as_os_str().is_empty() {

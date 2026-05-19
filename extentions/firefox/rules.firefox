@@ -156,14 +156,15 @@ async function handleExtraction(selector) {
     if (!domData.success) throw new Error(domData.error);
 
     // 4. Send the extracted data to your local server on PC
-    const serverResponse = await fetch("[http://127.0.0.1:5000/api/receive](http://127.0.0.1:5000/api/receive)", {
+    const serverResponse = await fetch("http://127.0.0.1:14201/ingest", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
         url: domData.url,
-        html: domData.html
+        raw_description: domData.html,
+        secret: "YOUR_SECRET_KEY"
       })
     });
 

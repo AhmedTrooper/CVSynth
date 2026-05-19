@@ -36,7 +36,7 @@ async function handleExtraction(selector) {
     if (!domData.success) throw new Error(domData.error);
 
     // 5. POST to RoleTect server
-    const serverUrl = `${host}/inbox/ingest`;
+    const serverUrl = `${host}/ingest`;
     
     const serverResponse = await fetch(serverUrl, {
       method: "POST",

@@ -1,5 +1,4 @@
-use axum::Json;
-use axum::http::StatusCode;
+use axum::{Json, response::IntoResponse, http::{StatusCode, header}};
 use tectonic::status::StatusBackend;
 use tectonic::status::MessageKind;
 use std::fmt::Arguments;
@@ -59,11 +58,11 @@ pub async fn refine_latex_with_ai(
 
 pub async fn compile_latex(
     Json(payload): Json<serde_json::Value>,
-) -> Result<Vec<u8>, (StatusCode, String)> {
+) -> Result<impl IntoResponse, (StatusCode, String)> {
     let latex_code = payload["latexContent"].as_str().ok_or((StatusCode::BAD_REQUEST, "latexContent missing".to_string()))?;
     let latex_code_owned = latex_code.to_string();
 
-    tokio::task::spawn_blocking(move || {
+    let pdf_data = tokio::task::spawn_blocking(move || {
         let thread_handle = std::thread::Builder::new()
             .name("tectonic-compiler".into())
             .stack_size(10 * 1024 * 1024)
@@ -105,5 +104,10 @@ pub async fn compile_latex(
     })
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Blocking task failed: {}", e)))?
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    Ok((
+        [(header::CONTENT_TYPE, "application/pdf"), (header::CONTENT_DISPOSITION, "inline; filename=\"preview.pdf\"")],
+        pdf_data,
+    ))
 }

@@ -40,11 +40,11 @@ pub async fn start_server(app_handle: AppHandle) {
 
     let app = Router::new()
         .route("/health", axum::routing::get(health_check))
-        .route("/ingest", post(ingest_job))
+        .route("/inbox/ingest", post(ingest_job))
         .layer(cors)
         .with_state(state);
 
-    let ports = [14201, 14202, 14203, 14204, 14205, 14206, 14207, 14208, 14209, 14210];
+    let ports = [14207, 14213, 1420, 14229, 14235, 14266, 14247, 14298, 14259, 14280];
 
     for port in ports {
         let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));

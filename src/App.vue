@@ -60,23 +60,31 @@ onMounted(async () => {
     }
 });
 
+<script setup lang="ts">
+import { onMounted } from 'vue';
+
 onMounted(() => {
-    document.addEventListener("contextmenu", (e: MouseEvent) => {
-        const target = e.target;
+  document.addEventListener('contextmenu', (e: MouseEvent) => {
+    const target = e.target;
 
-        // Allow default right-click ONLY on inputs and textareas
-        if (
-            target.tagName === "INPUT" ||
-            target.tagName === "TEXTAREA" ||
-            target.isContentEditable
-        ) {
-            return;
-        }
+    // 1. Ensure target is not null and is an HTML element
+    if (target instanceof HTMLElement) {
+      // 2. TypeScript now safely recognizes .tagName and .isContentEditable
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+    }
 
-        // Block the browser context menu everywhere else
-        e.preventDefault();
-    });
+    // Block the browser context menu everywhere else
+    e.preventDefault();
+  });
 });
+</script>
+
 
 const handleExternalClick = (url: string) => {
     open(url).catch((err) => console.error("Failed to open URL:", err));

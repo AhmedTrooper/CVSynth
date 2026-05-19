@@ -99,6 +99,7 @@ pub async fn tailor_cover_letter(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<serde_json::Value>,
 ) -> Result<Json<String>, (StatusCode, String)> {
+    println!("Tailoring cover letter request received");
     let provider = payload["provider"].as_str().ok_or((StatusCode::BAD_REQUEST, "provider missing".to_string()))?;
     let model = payload["model"].as_str().ok_or((StatusCode::BAD_REQUEST, "model missing".to_string()))?;
     let api_key = payload["apiKey"].as_str().ok_or((StatusCode::BAD_REQUEST, "apiKey missing".to_string()))?;
@@ -107,7 +108,10 @@ pub async fn tailor_cover_letter(
     let custom_instruction = payload["customInstruction"].as_str();
 
     let (raw_job_content, requirements, core_responsibilities, base_latex) = {
-        let conn = state.db.lock().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        let conn = state.db.lock().map_err(|e| {
+            eprintln!("DB Lock Error: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+        })?;
         
         let (raw_job, reqs, resps): (String, Option<String>, Option<String>) = conn
             .query_row(
@@ -115,15 +119,22 @@ pub async fn tailor_cover_letter(
                 [&job_id],
                 |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?))
             )
-            .map_err(|_| (StatusCode::NOT_FOUND, format!("Job not found: {}", job_id)))?;
+            .map_err(|e| {
+                eprintln!("Job Query Error: {}", e);
+                (StatusCode::NOT_FOUND, format!("Job not found: {}", job_id))
+            })?;
 
         let latex: String = conn
             .query_row("SELECT latex_content FROM base_cover_letters WHERE id = ?1", [&base_cl_id], |row| row.get(0))
-            .map_err(|_| (StatusCode::NOT_FOUND, format!("Base cover letter not found: {}", base_cl_id)))?;
+            .map_err(|e| {
+                eprintln!("Cover Letter Query Error: {}", e);
+                (StatusCode::NOT_FOUND, format!("Base cover letter not found: {}", base_cl_id))
+            })?;
 
         (raw_job, reqs, resps, latex)
     };
 
+    println!("Starting AI tailoring (CL)...");
     let job_context = format!(
         "Job Description: {}\nRequirements: {}\nResponsibilities: {}",
         raw_job_content,
@@ -140,25 +151,45 @@ pub async fn tailor_cover_letter(
         custom_instruction,
     )
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    .map_err(|e| {
+        eprintln!("AI Tailoring Error (CL): {}", e);
+        (StatusCode::INTERNAL_SERVER_ERROR, e)
+    })?;
 
+    println!("AI tailoring complete (CL). Saving to DB...");
     let tailored_id = nanoid!(10);
-    let mut conn = state.db.lock().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    let tx = conn.transaction().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let mut conn = state.db.lock().map_err(|e| {
+        eprintln!("DB Lock Error (saving CL): {}", e);
+        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+    })?;
+    let tx = conn.transaction().map_err(|e| {
+        eprintln!("Transaction Error (CL): {}", e);
+        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+    })?;
 
     tx.execute(
         "INSERT INTO tailored_cover_letters (id, job_id, base_cl_id, final_latex_content, is_active)
          VALUES (?1, ?2, ?3, ?4, 1)",
         [&tailored_id, job_id, base_cl_id, &tailored_latex],
-    ).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    ).map_err(|e| {
+        eprintln!("Insert Tailored CL Error: {}", e);
+        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+    })?;
 
     tx.execute(
         "UPDATE jobs SET base_cl_id = ?1 WHERE id = ?2",
         [base_cl_id, job_id],
-    ).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    ).map_err(|e| {
+        eprintln!("Update Job Error (CL): {}", e);
+        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+    })?;
 
-    tx.commit().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    tx.commit().map_err(|e| {
+        eprintln!("Commit Error (CL): {}", e);
+        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+    })?;
     
+    println!("Cover letter tailoring complete and saved.");
     Ok(Json(tailored_id))
 }
 

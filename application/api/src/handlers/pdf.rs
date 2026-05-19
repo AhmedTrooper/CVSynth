@@ -62,7 +62,7 @@ pub async fn compile_latex(
     let latex_code = payload["latexContent"].as_str().ok_or((StatusCode::BAD_REQUEST, "latexContent missing".to_string()))?;
     let latex_code_owned = latex_code.to_string();
 
-    let pdf_data = tokio::task::spawn_blocking(move || {
+    let pdf_result = tokio::task::spawn_blocking(move || {
         let thread_handle = std::thread::Builder::new()
             .name("tectonic-compiler".into())
             .stack_size(10 * 1024 * 1024)
@@ -102,12 +102,22 @@ pub async fn compile_latex(
             .join()
             .map_err(|_| "Compiler thread panicked".to_string())?
     })
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Blocking task failed: {}", e)))?
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    .await;
 
-    Ok((
-        [(header::CONTENT_TYPE, "application/pdf"), (header::CONTENT_DISPOSITION, "inline; filename=\"preview.pdf\"")],
-        pdf_data,
-    ))
+    match pdf_result {
+        Ok(Ok(pdf_data)) => {
+            Ok((
+                [(header::CONTENT_TYPE, "application/pdf"), (header::CONTENT_DISPOSITION, "inline; filename=\"preview.pdf\"")],
+                pdf_data,
+            ))
+        }
+        Ok(Err(e)) => {
+            eprintln!("LaTeX Compilation Error:\n{}", e);
+            Err((StatusCode::BAD_REQUEST, e)) // Return 400 for LaTeX errors
+        }
+        Err(e) => {
+            eprintln!("Server Task Error: {}", e);
+            Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Internal task error: {}", e)))
+        }
+    }
 }

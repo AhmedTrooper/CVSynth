@@ -93,28 +93,55 @@ document.addEventListener('DOMContentLoaded', () => {
       finalHost = `http://${h}:${customPort}`;
     } else if (hostType === 'remote') {
       finalHost = remoteUrl;
-      // Ensure it starts with http/https
-      if (finalHost && !finalHost.startsWith('http')) {
-        finalHost = 'https://' + finalHost;
+      // Force HTTPS for remote URLs (security best practice)
+      if (finalHost) {
+        if (finalHost.startsWith('http://')) {
+          finalHost = finalHost.replace('http://', 'https://');
+        } else if (!finalHost.startsWith('https://')) {
+          finalHost = 'https://' + finalHost;
+        }
       }
     }
 
-    // Remove trailing slash
+    // Remove trailing slash for consistency
     if (finalHost.endsWith('/')) {
       finalHost = finalHost.slice(0, -1);
     }
 
-    chrome.storage.local.set({ 
-      host: finalHost, // Keep 'host' for background.js compatibility
-      hostType, 
-      localPort, 
-      customHost, 
-      customPort, 
-      remoteUrl, 
-      secret 
-    }, () => {
-      showStatus("Settings saved successfully!", "success");
-    });
+    if (!finalHost) {
+      showStatus("Please provide a valid Host or URL.", "error");
+      return;
+    }
+
+    const saveAction = () => {
+      chrome.storage.local.set({ 
+        host: finalHost, 
+        hostType, 
+        localPort, 
+        customHost, 
+        customPort, 
+        remoteUrl, 
+        secret 
+      }, () => {
+        showStatus("Settings saved successfully!", "success");
+      });
+    };
+
+    // If it's a remote URL, we must request permission dynamically
+    if (hostType === 'remote' || (hostType === 'customLocal' && customHost !== '127.0.0.1' && customHost !== 'localhost')) {
+      const origin = new URL(finalHost).origin + '/*';
+      chrome.permissions.request({
+        origins: [origin]
+      }, (granted) => {
+        if (granted) {
+          saveAction();
+        } else {
+          showStatus("Permission denied. Cannot save custom host.", "error");
+        }
+      });
+    } else {
+      saveAction();
+    }
   });
 
   // Extract and Send

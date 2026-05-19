@@ -1,5 +1,5 @@
-// Initialize UI and Load Settings (Firefox)
-document.addEventListener('DOMContentLoaded', async () => {
+// Initialize UI and Load Settings
+document.addEventListener('DOMContentLoaded', () => {
   const hostTypeSelect = document.getElementById('hostType');
   const localPortInput = document.getElementById('localPort');
   const customHostInput = document.getElementById('customHost');
@@ -28,38 +28,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  async function loadSettings() {
-    const result = await browser.storage.local.get([
+  function loadSettings() {
+    chrome.storage.local.get([
       'hostType', 'localPort', 'customHost', 'customPort', 'remoteUrl', 'secret', 'selector'
-    ]);
-
-    if (result.hostType) {
-      hostTypeSelect.value = result.hostType;
-      updateHostGroups(result.hostType);
-    }
-    if (result.localPort) localPortInput.value = result.localPort;
-    if (result.customHost) customHostInput.value = result.customHost;
-    if (result.customPort) customPortInput.value = result.customPort;
-    if (result.remoteUrl) remoteUrlInput.value = result.remoteUrl;
-    if (result.secret) secretInput.value = result.secret;
-    if (result.selector) selectorInput.value = result.selector;
+    ], (result) => {
+      if (result.hostType) {
+        hostTypeSelect.value = result.hostType;
+        updateHostGroups(result.hostType);
+      }
+      if (result.localPort) localPortInput.value = result.localPort;
+      if (result.customHost) customHostInput.value = result.customHost;
+      if (result.customPort) customPortInput.value = result.customPort;
+      if (result.remoteUrl) remoteUrlInput.value = result.remoteUrl;
+      if (result.secret) secretInput.value = result.secret;
+      if (result.selector) selectorInput.value = result.selector;
+    });
   }
 
   // Load saved settings initially
   loadSettings();
 
   // Save Selector
-  document.getElementById('saveSelectorBtn').addEventListener('click', async () => {
+  document.getElementById('saveSelectorBtn').addEventListener('click', () => {
     const selector = selectorInput.value.trim() || 'body';
-    await browser.storage.local.set({ selector });
-    showStatus("Selector saved!", "success");
+    chrome.storage.local.set({ selector }, () => {
+      showStatus("Selector saved!", "success");
+    });
   });
 
   // Reset Selector
-  document.getElementById('resetSelectorBtn').addEventListener('click', async () => {
+  document.getElementById('resetSelectorBtn').addEventListener('click', () => {
     selectorInput.value = 'body';
-    await browser.storage.local.set({ selector: 'body' });
-    showStatus("Selector reset to default.", "neutral");
+    chrome.storage.local.set({ selector: 'body' }, () => {
+      showStatus("Selector reset to default.", "neutral");
+    });
   });
 
   // Host Type Change Logic
@@ -74,7 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Save Settings
-  document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
+  document.getElementById('saveSettingsBtn').addEventListener('click', () => {
     const hostType = hostTypeSelect.value;
     const localPort = localPortInput.value.trim() || '14201';
     const customHost = customHostInput.value.trim();
@@ -91,45 +93,71 @@ document.addEventListener('DOMContentLoaded', async () => {
       finalHost = `http://${h}:${customPort}`;
     } else if (hostType === 'remote') {
       finalHost = remoteUrl;
-      // Ensure it starts with http/https
-      if (finalHost && !finalHost.startsWith('http')) {
-        finalHost = 'https://' + finalHost;
+      // Force HTTPS for remote URLs (security best practice)
+      if (finalHost) {
+        if (finalHost.startsWith('http://')) {
+          finalHost = finalHost.replace('http://', 'https://');
+        } else if (!finalHost.startsWith('https://')) {
+          finalHost = 'https://' + finalHost;
+        }
       }
     }
 
-    // Remove trailing slash
+    // Remove trailing slash for consistency
     if (finalHost.endsWith('/')) {
       finalHost = finalHost.slice(0, -1);
     }
 
-    await browser.storage.local.set({ 
-      host: finalHost, // Keep 'host' for background.js compatibility
-      hostType, 
-      localPort, 
-      customHost, 
-      customPort, 
-      remoteUrl, 
-      secret 
-    });
-    showStatus("Settings saved successfully!", "success");
+    if (!finalHost) {
+      showStatus("Please provide a valid Host or URL.", "error");
+      return;
+    }
+
+    const saveAction = () => {
+      chrome.storage.local.set({ 
+        host: finalHost, 
+        hostType, 
+        localPort, 
+        customHost, 
+        customPort, 
+        remoteUrl, 
+        secret 
+      }, () => {
+        showStatus("Settings saved successfully!", "success");
+      });
+    };
+
+    // If it's a remote URL, we must request permission dynamically
+    if (hostType === 'remote' || (hostType === 'customLocal' && customHost !== '127.0.0.1' && customHost !== 'localhost')) {
+      const origin = new URL(finalHost).origin + '/*';
+      chrome.permissions.request({
+        origins: [origin]
+      }, (granted) => {
+        if (granted) {
+          saveAction();
+        } else {
+          showStatus("Permission denied. Cannot save custom host.", "error");
+        }
+      });
+    } else {
+      saveAction();
+    }
   });
 
   // Extract and Send
-  document.getElementById('extractBtn').addEventListener('click', async () => {
+  document.getElementById('extractBtn').addEventListener('click', () => {
     const selector = selectorInput.value.trim() || 'body';
     
-    showStatus("Processing extraction...", "neutral");
+    showStatus("Extracting content...", "neutral");
 
-    try {
-      const response = await browser.runtime.sendMessage({ action: "START_EXTRACTION", selector });
+    chrome.runtime.sendMessage({ action: "START_EXTRACTION", selector }, (response) => {
       if (response && response.success) {
         showStatus("Job ingested into Inbox vault!", "success");
       } else {
-        throw new Error(response?.error || "Connection failed. Is your RoleTect instance reachable?");
+        const errorMsg = response?.error || "Connection failed. Is your RoleTect instance reachable?";
+        showStatus("Error: " + errorMsg, "error");
       }
-    } catch (err) {
-      showStatus("Error: " + err.message, "error");
-    }
+    });
   });
 
   function showStatus(msg, type) {

@@ -38,7 +38,7 @@ async fn main() {
         
         // Inbox Routes
         .route("/inbox", get(handlers::inbox::get_all_inbox_jobs))
-        .route("/inbox/ingest", post(handlers::inbox::ingest_job))
+        .route("/ingest", post(handlers::inbox::ingest_job))
         .route("/inbox/{id}", delete(handlers::inbox::delete_inbox_job))
         .route("/inbox/{id}/process", post(handlers::inbox::mark_inbox_job_processed))
         .route("/inbox/config", get(handlers::inbox::get_extension_config))

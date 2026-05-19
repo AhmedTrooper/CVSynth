@@ -78,9 +78,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Save Settings
   document.getElementById('saveSettingsBtn').addEventListener('click', () => {
     const hostType = hostTypeSelect.value;
-    const localPort = localPortInput.value.trim() || '14201';
+    const localPort = localPortInput.value.trim() || '14207';
     const customHost = customHostInput.value.trim();
-    const customPort = customPortInput.value.trim() || '14201';
+    const customPort = customPortInput.value.trim() || '14207';
     const remoteUrl = remoteUrlInput.value.trim();
     const secret = secretInput.value.trim();
 

@@ -9,7 +9,7 @@ async function handleExtraction(selector) {
   try {
     // 1. Get Host and Secret from storage
     const settings = await browser.storage.local.get(['host', 'secret']);
-    const host = settings.host || 'http://127.0.0.1:14201';
+    const host = settings.host || 'http://127.0.0.1:14207';
     const secret = settings.secret;
 
     if (!secret) {

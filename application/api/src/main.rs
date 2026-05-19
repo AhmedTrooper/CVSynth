@@ -79,6 +79,10 @@ async fn main() {
         .route("/pdf/compile", post(handlers::pdf::compile_latex))
         .route("/pdf/refine", post(handlers::pdf::refine_latex_with_ai))
 
+        // Compiler Routes
+        .route("/compiler", get(handlers::compiler::get_compiler_state))
+        .route("/compiler", post(handlers::compiler::save_compiler_state))
+
         .layer(cors)
         .with_state(shared_state);
 

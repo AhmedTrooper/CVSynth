@@ -1,6 +1,6 @@
 # RoleTect
 
-**RoleTect** is a powerful, privacy-first desktop application designed to streamline the job application process. By combining a local-first architecture with cutting-edge AI, RoleTect allows you to effortlessly manage your job search, securely tailor your resumes and cover letters using LaTeX, and keep track of your application status—all without compromising your data.
+**RoleTect** is a powerful, privacy-first web & native application designed to streamline the job application process. By combining a local-first architecture with cutting-edge AI, RoleTect allows you to effortlessly manage your job search, securely tailor your resumes and cover letters using LaTeX, and keep track of your application status—all without compromising your data.
 
 ---
 

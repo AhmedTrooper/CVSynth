@@ -26,10 +26,12 @@
     <div id="simpleInputArea">
       <div class="form-group">
         <span class="section-title">Capture Data (Simple)</span>
-        <label for="selector">CSS Selector (Target Section)</label>
-        <input type="text" id="selector" value="body" placeholder="e.g. .job-description, main, body">
+        <label for="selector">CSS Selector (Include)</label>
+        <input type="text" id="selector" value="body" placeholder="e.g. .job-description, main">
+        <label for="excludeSelector" style="margin-top: 8px;">CSS Selector (Exclude)</label>
+        <input type="text" id="excludeSelector" placeholder="e.g. .sidebar, #ads, .footer">
         <div style="display: flex; gap: 8px; margin-top: 8px;">
-          <button id="saveSelectorBtn" class="secondary-btn">Save Selector</button>
+          <button id="saveSelectorBtn" class="secondary-btn">Save Selectors</button>
           <button id="resetSelectorBtn" class="secondary-btn">Reset Default</button>
         </div>
       </div>
@@ -96,7 +98,8 @@
       <div class="form-group" style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 6px;">
         <label>Add New Site</label>
         <input type="text" id="newSiteTitle" placeholder="Site Name (e.g. LinkedIn)" style="margin-bottom: 8px;">
-        <input type="text" id="newSiteSelector" placeholder="CSS Selector (e.g. .description)">
+        <input type="text" id="newSiteSelector" placeholder="Include Selector (e.g. .description)" style="margin-bottom: 8px;">
+        <input type="text" id="newSiteExclude" placeholder="Exclude Selector (Optional)">
         <button id="addSiteBtn" class="secondary-btn" style="margin-top: 8px; width: 100% !important;">Add Site Map</button>
       </div>
 

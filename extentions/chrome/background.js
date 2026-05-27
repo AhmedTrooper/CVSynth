@@ -1,12 +1,12 @@
 // Service Worker: Handles network requests to the local RoleTect server
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "START_EXTRACTION") {
-    handleExtraction(request.selector).then(sendResponse);
+    handleExtraction(request.selector, request.excludeSelector).then(sendResponse);
     return true; // Keep the messaging channel open for the async response
   }
 });
 
-async function handleExtraction(selector) {
+async function handleExtraction(selector, excludeSelector) {
   try {
     // 1. Get Host and Secret from storage
     const settings = await chrome.storage.local.get(['host', 'secret']);
@@ -30,7 +30,8 @@ async function handleExtraction(selector) {
     // 4. Extract data from page
     const domData = await chrome.tabs.sendMessage(tab.id, {
       action: "GET_DOM",
-      selector: selector
+      selector: selector,
+      excludeSelector: excludeSelector
     });
 
     if (!domData.success) throw new Error(domData.error);

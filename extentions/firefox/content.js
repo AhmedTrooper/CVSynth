@@ -14,7 +14,7 @@ browser.runtime.onMessage.addListener((request, sender) => {
 
       // Process each element found and join their results
       const allExtractedData = Array.from(targetElements)
-        .map(el => extractStructuredData(el))
+        .map(el => extractStructuredData(el, request.excludeSelector))
         .filter(text => text.length > 0)
         .join(". ");
 
@@ -38,7 +38,7 @@ browser.runtime.onMessage.addListener((request, sender) => {
 /**
  * Cleans the DOM node and extracts a highly compressed, token-efficient string.
  */
-function extractStructuredData(element) {
+function extractStructuredData(element, userExcludeSelector) {
   // 1. Clone the element so we don't accidentally mutate the live webpage
   const clone = element.cloneNode(true);
 
@@ -47,10 +47,19 @@ function extractStructuredData(element) {
     "script, style, noscript, svg, img, iframe, nav, footer, button, .visually-hidden";
   clone.querySelectorAll(noiseSelectors).forEach((el) => el.remove());
 
-  // 3. Create an array to hold the extracted text blocks
+  // 3. Remove user-defined excluded elements if provided
+  if (userExcludeSelector) {
+    try {
+      clone.querySelectorAll(userExcludeSelector).forEach((el) => el.remove());
+    } catch (e) {
+      console.error("Invalid user exclude selector:", userExcludeSelector);
+    }
+  }
+
+  // 4. Create an array to hold the extracted text blocks
   let structuredContent = [];
 
-  // 4. Walk through the cleaned DOM and grab text from block elements
+  // 5. Walk through the cleaned DOM and grab text from block elements
   const blockElements = clone.querySelectorAll(
     "h1, h2, h3, h4, p, li, article, section",
   );

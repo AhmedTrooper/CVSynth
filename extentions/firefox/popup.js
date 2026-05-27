@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   const secretInput = document.getElementById('secret');
   const selectorInput = document.getElementById('selector');
+  const excludeSelectorInput = document.getElementById('excludeSelector');
   const statusDiv = document.getElementById('status');
 
   // Advanced Mode Elements
@@ -20,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const siteMapList = document.getElementById('siteMapList');
   const newSiteTitle = document.getElementById('newSiteTitle');
   const newSiteSelector = document.getElementById('newSiteSelector');
+  const newSiteExclude = document.getElementById('newSiteExclude');
   const addSiteBtn = document.getElementById('addSiteBtn');
 
   // Backup Elements
@@ -57,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadSettings() {
     const result = await browser.storage.local.get([
-      'hostType', 'localPort', 'customHost', 'customPort', 'remoteUrl', 'secret', 'selector',
+      'hostType', 'localPort', 'customHost', 'customPort', 'remoteUrl', 'secret', 'selector', 'excludeSelector',
       'uiMode', 'siteMaps', 'activeSiteIndex'
     ]);
 
@@ -71,6 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (result.remoteUrl) remoteUrlInput.value = result.remoteUrl;
     if (result.secret) secretInput.value = result.secret;
     if (result.selector) selectorInput.value = result.selector;
+    if (result.excludeSelector) excludeSelectorInput.value = result.excludeSelector;
 
     // Mode logic
     const isAdvanced = result.uiMode === 'advanced';
@@ -107,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Update List in Settings Tab
     let listHtml = siteMaps.map((site, index) => {
       const defaultSite = BUILT_IN_SITES.find(s => s.title === site.title);
-      const isModified = defaultSite && defaultSite.selector !== site.selector;
+      const isModified = defaultSite && (defaultSite.selector !== site.selector || defaultSite.exclude !== site.exclude);
       
       return `
         <div class="site-map-item" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
@@ -117,7 +120,8 @@ document.addEventListener('DOMContentLoaded', () => {
               ${defaultSite ? '<span style="font-size: 8px; background: var(--accent); color: white; padding: 1px 4px; border-radius: 3px;">Built-in</span>' : ''}
               ${isModified ? '<span style="font-size: 8px; background: #e3b341; color: black; padding: 1px 4px; border-radius: 3px;">Modified</span>' : ''}
             </div>
-            <code style="display: block; font-size: 9px; color: var(--muted); margin-top: 2px;">${site.selector}</code>
+            <code style="display: block; font-size: 9px; color: var(--muted); margin-top: 2px;">IN: ${site.selector}</code>
+            ${site.exclude ? `<code style="display: block; font-size: 9px; color: #f85149; margin-top: 2px;">EX: ${site.exclude}</code>` : ''}
           </div>
           <div style="display: flex; flex-direction: column; gap: 4px;">
             <button class="delete-btn" data-index="${index}">Delete</button>
@@ -199,15 +203,17 @@ document.addEventListener('DOMContentLoaded', () => {
   addSiteBtn.addEventListener('click', async () => {
     const title = newSiteTitle.value.trim();
     const selector = newSiteSelector.value.trim();
+    const exclude = newSiteExclude.value.trim();
 
     if (!title || !selector) {
       showStatus("Please enter both Title and Selector.", "error");
       return;
     }
 
-    siteMaps.push({ title, selector });
+    siteMaps.push({ title, selector, exclude });
     newSiteTitle.value = '';
     newSiteSelector.value = '';
+    newSiteExclude.value = '';
     await saveSiteMaps();
     showStatus("Site map added!", "success");
   });
@@ -292,15 +298,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // Save Selector
   document.getElementById('saveSelectorBtn').addEventListener('click', async () => {
     const selector = selectorInput.value.trim() || 'body';
-    await browser.storage.local.set({ selector });
-    showStatus("Selector saved!", "success");
+    const excludeSelector = excludeSelectorInput.value.trim();
+    await browser.storage.local.set({ selector, excludeSelector });
+    showStatus("Selectors saved!", "success");
   });
 
   // Reset Selector
   document.getElementById('resetSelectorBtn').addEventListener('click', async () => {
     selectorInput.value = 'body';
-    await browser.storage.local.set({ selector: 'body' });
-    showStatus("Selector reset to default.", "neutral");
+    excludeSelectorInput.value = '';
+    await browser.storage.local.set({ selector: 'body', excludeSelector: '' });
+    showStatus("Selectors reset to default.", "neutral");
   });
 
   // Host Type Change Logic
@@ -388,23 +396,26 @@ document.addEventListener('DOMContentLoaded', () => {
   // Extract and Send
   document.getElementById('extractBtn').addEventListener('click', async () => {
     let selector = 'body';
+    let excludeSelector = '';
 
     if (modeToggle.checked) {
       const index = siteSelector.value;
       if (index !== "" && siteMaps[index]) {
         selector = siteMaps[index].selector;
+        excludeSelector = siteMaps[index].exclude || '';
       } else {
         showStatus("No site template selected.", "error");
         return;
       }
     } else {
       selector = selectorInput.value.trim() || 'body';
+      excludeSelector = excludeSelectorInput.value.trim();
     }
     
     showStatus("Extracting content...", "neutral");
 
     try {
-      const response = await browser.runtime.sendMessage({ action: "START_EXTRACTION", selector });
+      const response = await browser.runtime.sendMessage({ action: "START_EXTRACTION", selector, excludeSelector });
       if (response && response.success) {
         showStatus("Job ingested into Inbox vault!", "success");
       } else {

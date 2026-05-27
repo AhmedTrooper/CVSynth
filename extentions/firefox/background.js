@@ -1,11 +1,11 @@
 // Background Script: Handles network requests to the local RoleTect server (Firefox)
 browser.runtime.onMessage.addListener((request, sender) => {
   if (request.action === "START_EXTRACTION") {
-    return handleExtraction(request.selector);
+    return handleExtraction(request.selector, request.excludeSelector);
   }
 });
 
-async function handleExtraction(selector) {
+async function handleExtraction(selector, excludeSelector) {
   try {
     // 1. Get Host and Secret from storage
     const settings = await browser.storage.local.get(['host', 'secret']);
@@ -30,7 +30,8 @@ async function handleExtraction(selector) {
     // 4. Extract data from page
     const domData = await browser.tabs.sendMessage(tab.id, {
       action: "GET_DOM",
-      selector: selector
+      selector: selector,
+      excludeSelector: excludeSelector
     });
 
     if (!domData.success) throw new Error(domData.error);

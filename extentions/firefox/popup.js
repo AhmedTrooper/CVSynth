@@ -32,6 +32,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let importedData = null;
   let siteMaps = [];
 
+  // Built-in Defaults
+  const BUILT_IN_SITES = [
+    { title: "LinkedIn", selector: ".jobs-search__job-details--wrapper" }
+  ];
+
   const hostGroups = {
     localhost: document.getElementById('localhostGroup'),
     customLocal: document.getElementById('customLocalGroup'),
@@ -100,17 +105,49 @@ document.addEventListener('DOMContentLoaded', () => {
       : '<option value="">-- No Sites Saved --</option>';
 
     // Update List in Settings Tab
-    siteMapList.innerHTML = siteMaps.map((site, index) => `
-      <div class="site-map-item">
-        <div style="flex-grow: 1;">
-          <strong style="font-size: 11px;">${site.title}</strong>
-          <code style="display: block; font-size: 9px; color: var(--muted);">${site.selector}</code>
+    let listHtml = siteMaps.map((site, index) => {
+      const defaultSite = BUILT_IN_SITES.find(s => s.title === site.title);
+      const isModified = defaultSite && defaultSite.selector !== site.selector;
+      
+      return `
+        <div class="site-map-item" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+          <div style="flex-grow: 1;">
+            <div style="display: flex; align-items: center; gap: 5px;">
+              <strong style="font-size: 11px;">${site.title}</strong>
+              ${defaultSite ? '<span style="font-size: 8px; background: var(--accent); color: white; padding: 1px 4px; border-radius: 3px;">Built-in</span>' : ''}
+              ${isModified ? '<span style="font-size: 8px; background: #e3b341; color: black; padding: 1px 4px; border-radius: 3px;">Modified</span>' : ''}
+            </div>
+            <code style="display: block; font-size: 9px; color: var(--muted); margin-top: 2px;">${site.selector}</code>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <button class="delete-btn" data-index="${index}">Delete</button>
+            ${defaultSite ? `<button class="reset-site-btn secondary-btn" style="font-size: 9px !important; padding: 2px 5px !important;" data-title="${site.title}" data-index="${index}">Reset</button>` : ''}
+          </div>
         </div>
-        <button class="delete-btn" data-index="${index}">Delete</button>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
-    // Attach Delete Events
+    // Add "Load Built-ins" button if missing
+    const missingBuiltIns = BUILT_IN_SITES.filter(b => !siteMaps.find(s => s.title === b.title));
+    if (missingBuiltIns.length > 0) {
+      listHtml += `
+        <button id="loadBuiltInsBtn" class="secondary-btn" style="width: 100%; margin-top: 10px; font-size: 11px;">
+          Load ${missingBuiltIns.length} Default Templates
+        </button>
+      `;
+    }
+
+    if (siteMaps.length > 0) {
+      listHtml += `
+        <button id="factoryResetBtn" class="secondary-btn" style="width: 100%; margin-top: 10px; font-size: 11px; border-color: #f8514944 !important; color: #f85149 !important;">
+          Factory Reset All Sites
+        </button>
+      `;
+    }
+
+    siteMapList.innerHTML = listHtml;
+
+    // Attach Events
     document.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         const index = parseInt(e.target.dataset.index);
@@ -118,6 +155,39 @@ document.addEventListener('DOMContentLoaded', () => {
         await saveSiteMaps();
       });
     });
+
+    document.querySelectorAll('.reset-site-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const title = e.target.dataset.title;
+        const index = parseInt(e.target.dataset.index);
+        const defaultSite = BUILT_IN_SITES.find(s => s.title === title);
+        if (defaultSite) {
+          siteMaps[index].selector = defaultSite.selector;
+          await saveSiteMaps();
+          showStatus(`${title} reset to default.`, "neutral");
+        }
+      });
+    });
+
+    const loadBtn = document.getElementById('loadBuiltInsBtn');
+    if (loadBtn) {
+      loadBtn.addEventListener('click', async () => {
+        missingBuiltIns.forEach(b => siteMaps.push({ ...b }));
+        await saveSiteMaps();
+        showStatus("Defaults loaded!", "success");
+      });
+    }
+
+    const factoryBtn = document.getElementById('factoryResetBtn');
+    if (factoryBtn) {
+      factoryBtn.addEventListener('click', async () => {
+        if (confirm("This will delete all custom sites and reset built-ins. Proceed?")) {
+          siteMaps = BUILT_IN_SITES.map(s => ({ ...s }));
+          await saveSiteMaps();
+          showStatus("Factory reset complete.", "success");
+        }
+      });
+    }
   }
 
   async function saveSiteMaps() {
@@ -206,6 +276,14 @@ document.addEventListener('DOMContentLoaded', () => {
     showStatus("Overwrite complete!", "success");
     restoreOptions.style.display = 'none';
     loadSettings();
+  });
+
+  // GitHub Button Logic
+  document.getElementById('githubIssueBtn').addEventListener('click', () => {
+    const baseUrl = "https://github.com/AhmedTrooper/RoleTect/issues/new";
+    const title = encodeURIComponent("[Site Template] Add support for [SITE NAME]");
+    const body = encodeURIComponent("### Site Name\n(e.g. Indeed, Glassdoor)\n\n### Selector\n(e.g. .job-details-container)\n\n### Sample URL\n(optional link to a job post)");
+    window.open(`${baseUrl}?title=${title}&body=${body}`, '_blank');
   });
 
   // Load saved settings initially

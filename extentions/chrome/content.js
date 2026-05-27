@@ -2,9 +2,10 @@
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "GET_DOM") {
     try {
-      const targetElement = document.querySelector(request.selector);
+      // Use querySelectorAll to catch multiple distinct sections
+      const targetElements = document.querySelectorAll(request.selector);
 
-      if (!targetElement) {
+      if (targetElements.length === 0) {
         sendResponse({
           success: false,
           error: `Selector '${request.selector}' not found on this page.`,
@@ -12,19 +13,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
       }
 
-      // Extract the data cleanly and squash it for AI token efficiency
-      const cleanData = extractStructuredData(targetElement);
+      // Process each element found and join their results
+      const allExtractedData = Array.from(targetElements)
+        .map(el => extractStructuredData(el))
+        .filter(text => text.length > 0)
+        .join(". ");
+
+      // Final pass to ensure no double periods or mess from joining
+      const finalCleanData = allExtractedData
+        .replace(/\.{2,}/g, ".")
+        .replace(/\. \./g, ".")
+        .trim();
 
       sendResponse({
         success: true,
         url: window.location.href,
-        html: cleanData,
+        html: finalCleanData,
       });
     } catch (err) {
       sendResponse({ success: false, error: err.message });
     }
   }
-  return true; // Required for Chrome to keep the message channel open asynchronously
+  return true; 
 });
 
 /**

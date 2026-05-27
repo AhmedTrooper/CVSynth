@@ -10,6 +10,28 @@ document.addEventListener('DOMContentLoaded', () => {
   const selectorInput = document.getElementById('selector');
   const statusDiv = document.getElementById('status');
 
+  // Advanced Mode Elements
+  const modeToggle = document.getElementById('modeToggle');
+  const simpleInputArea = document.getElementById('simpleInputArea');
+  const advancedInputArea = document.getElementById('advancedInputArea');
+  const siteSelector = document.getElementById('siteSelector');
+
+  // Site Management Elements
+  const siteMapList = document.getElementById('siteMapList');
+  const newSiteTitle = document.getElementById('newSiteTitle');
+  const newSiteSelector = document.getElementById('newSiteSelector');
+  const addSiteBtn = document.getElementById('addSiteBtn');
+
+  // Backup Elements
+  const exportBtn = document.getElementById('exportBtn');
+  const importFile = document.getElementById('importFile');
+  const restoreOptions = document.getElementById('restoreOptions');
+  const safeRestoreBtn = document.getElementById('safeRestoreBtn');
+  const unsafeRestoreBtn = document.getElementById('unsafeRestoreBtn');
+
+  let importedData = null;
+  let siteMaps = [];
+
   const hostGroups = {
     localhost: document.getElementById('localhostGroup'),
     customLocal: document.getElementById('customLocalGroup'),
@@ -30,7 +52,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function loadSettings() {
     chrome.storage.local.get([
-      'hostType', 'localPort', 'customHost', 'customPort', 'remoteUrl', 'secret', 'selector'
+      'hostType', 'localPort', 'customHost', 'customPort', 'remoteUrl', 'secret', 'selector',
+      'uiMode', 'siteMaps', 'activeSiteIndex'
     ], (result) => {
       if (result.hostType) {
         hostTypeSelect.value = result.hostType;
@@ -42,8 +65,154 @@ document.addEventListener('DOMContentLoaded', () => {
       if (result.remoteUrl) remoteUrlInput.value = result.remoteUrl;
       if (result.secret) secretInput.value = result.secret;
       if (result.selector) selectorInput.value = result.selector;
+
+      // Mode logic
+      const isAdvanced = result.uiMode === 'advanced';
+      modeToggle.checked = isAdvanced;
+      updateModeUI(isAdvanced);
+
+      // Site Maps logic
+      siteMaps = result.siteMaps || [];
+      renderSiteMaps();
+      
+      if (result.activeSiteIndex !== undefined) {
+        siteSelector.value = result.activeSiteIndex;
+      }
     });
   }
+
+  // Mode Toggle Logic
+  modeToggle.addEventListener('change', () => {
+    const isAdvanced = modeToggle.checked;
+    updateModeUI(isAdvanced);
+    chrome.storage.local.set({ uiMode: isAdvanced ? 'advanced' : 'simple' });
+  });
+
+  function updateModeUI(isAdvanced) {
+    simpleInputArea.style.display = isAdvanced ? 'none' : 'block';
+    advancedInputArea.style.display = isAdvanced ? 'block' : 'none';
+  }
+
+  function renderSiteMaps() {
+    // Update Select Dropdown in Extract Tab
+    siteSelector.innerHTML = siteMaps.length > 0 
+      ? siteMaps.map((site, index) => `<option value="${index}">${site.title}</option>`).join('')
+      : '<option value="">-- No Sites Saved --</option>';
+
+    // Update List in Settings Tab
+    siteMapList.innerHTML = siteMaps.map((site, index) => `
+      <div class="site-map-item">
+        <div style="flex-grow: 1;">
+          <strong style="font-size: 11px;">${site.title}</strong>
+          <code style="display: block; font-size: 9px; color: var(--muted);">${site.selector}</code>
+        </div>
+        <button class="delete-btn" data-index="${index}">Delete</button>
+      </div>
+    `).join('');
+
+    // Attach Delete Events
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const index = parseInt(e.target.dataset.index);
+        siteMaps.splice(index, 1);
+        saveSiteMaps();
+      });
+    });
+  }
+
+  function saveSiteMaps() {
+    chrome.storage.local.set({ siteMaps }, () => {
+      renderSiteMaps();
+    });
+  }
+
+  // Add Site Map
+  addSiteBtn.addEventListener('click', () => {
+    const title = newSiteTitle.value.trim();
+    const selector = newSiteSelector.value.trim();
+
+    if (!title || !selector) {
+      showStatus("Please enter both Title and Selector.", "error");
+      return;
+    }
+
+    siteMaps.push({ title, selector });
+    newSiteTitle.value = '';
+    newSiteSelector.value = '';
+    saveSiteMaps();
+    showStatus("Site map added!", "success");
+  });
+
+  // Site Selector Change
+  siteSelector.addEventListener('change', () => {
+    chrome.storage.local.set({ activeSiteIndex: siteSelector.value });
+  });
+
+  // Export Logic
+  exportBtn.addEventListener('click', () => {
+    chrome.storage.local.get(null, (allData) => {
+      const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `roletect_backup_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showStatus("Backup exported!", "success");
+    });
+  });
+
+  // Import Logic
+  importFile.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        importedData = JSON.parse(event.target.result);
+        restoreOptions.style.display = 'block';
+        showStatus("JSON valid. Choose Restore method.", "neutral");
+      } catch (err) {
+        showStatus("Invalid JSON file.", "error");
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  safeRestoreBtn.addEventListener('click', () => {
+    if (!importedData) return;
+    
+    chrome.storage.local.get(['siteMaps'], (result) => {
+      const currentMaps = result.siteMaps || [];
+      const incomingMaps = importedData.siteMaps || [];
+      
+      // Merge unique by title
+      const mergedMaps = [...currentMaps];
+      incomingMaps.forEach(inMap => {
+        if (!mergedMaps.find(m => m.title === inMap.title)) {
+          mergedMaps.push(inMap);
+        }
+      });
+
+      chrome.storage.local.set({ ...importedData, siteMaps: mergedMaps }, () => {
+        showStatus("Safe Merge complete!", "success");
+        restoreOptions.style.display = 'none';
+        loadSettings();
+      });
+    });
+  });
+
+  unsafeRestoreBtn.addEventListener('click', () => {
+    if (!importedData) return;
+    chrome.storage.local.clear(() => {
+      chrome.storage.local.set(importedData, () => {
+        showStatus("Overwrite complete!", "success");
+        restoreOptions.style.display = 'none';
+        loadSettings();
+      });
+    });
+  });
 
   // Load saved settings initially
   loadSettings();
@@ -129,16 +298,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // If it's a remote URL, we must request permission dynamically
     if (hostType === 'remote' || (hostType === 'customLocal' && customHost !== '127.0.0.1' && customHost !== 'localhost')) {
-      const origin = new URL(finalHost).origin + '/*';
-      chrome.permissions.request({
-        origins: [origin]
-      }, (granted) => {
-        if (granted) {
-          saveAction();
-        } else {
-          showStatus("Permission denied. Cannot save custom host.", "error");
-        }
-      });
+      try {
+        const origin = new URL(finalHost).origin + '/*';
+        chrome.permissions.request({
+          origins: [origin]
+        }, (granted) => {
+          if (granted) {
+            saveAction();
+          } else {
+            showStatus("Permission denied. Cannot save custom host.", "error");
+          }
+        });
+      } catch (e) {
+        showStatus("Invalid URL format.", "error");
+      }
     } else {
       saveAction();
     }
@@ -146,7 +319,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Extract and Send
   document.getElementById('extractBtn').addEventListener('click', () => {
-    const selector = selectorInput.value.trim() || 'body';
+    let selector = 'body';
+
+    if (modeToggle.checked) {
+      const index = siteSelector.value;
+      if (index !== "" && siteMaps[index]) {
+        selector = siteMaps[index].selector;
+      } else {
+        showStatus("No site template selected.", "error");
+        return;
+      }
+    } else {
+      selector = selectorInput.value.trim() || 'body';
+    }
     
     showStatus("Extracting content...", "neutral");
 

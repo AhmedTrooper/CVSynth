@@ -1,169 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <style>
-    :root {
-      --bg: #0d1117;
-      --surface: #161b22;
-      --accent: #238636;
-      --text: #c9d1d9;
-      --muted: #8b949e;
-      --line: #30363d;
-    }
-    body { 
-      width: 300px; 
-      padding: 16px; 
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; 
-      background: var(--bg);
-      color: var(--text);
-      margin: 0;
-    }
-    .header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 20px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid var(--line);
-    }
-    .header h3 { margin: 0; font-size: 16px; letter-spacing: 0.5px; }
-    
-    .section-title {
-      font-size: 10px;
-      font-weight: 800;
-      color: var(--accent);
-      text-transform: uppercase;
-      margin-bottom: 8px;
-      display: block;
-    }
-
-    .form-group { margin-bottom: 16px; }
-    label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
-    input, select { 
-      width: 100%; 
-      padding: 8px 10px; 
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      color: var(--text);
-      font-size: 13px;
-      box-sizing: border-box;
-      outline: none;
-    }
-    input:focus, select:focus { border-color: var(--accent); }
-    select {
-      appearance: none;
-      cursor: pointer;
-    }
-    .host-group { margin-bottom: 0px; }
-
-    /* Tutorial Styling */
-    .tutorial-container {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-    .step {
-      display: flex;
-      gap: 12px;
-      align-items: flex-start;
-    }
-    .step-num {
-      background: var(--accent);
-      color: white;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      font-weight: bold;
-      flex-shrink: 0;
-      margin-top: 2px;
-    }
-    .step-text strong {
-      display: block;
-      font-size: 13px;
-      color: var(--text);
-      margin-bottom: 2px;
-    }
-    .step-text p {
-      margin: 0;
-      font-size: 12px;
-      color: var(--muted);
-      line-height: 1.4;
-    }
-    .info-box {
-      margin-top: 10px;
-      padding: 12px;
-      background: rgba(139, 148, 158, 0.1);
-      border-left: 3px solid var(--accent);
-      border-radius: 4px;
-    }
-    .info-box p {
-      margin: 0;
-      font-size: 11px;
-      color: var(--muted);
-      line-height: 1.4;
-    }
-
-    .secondary-btn {
-      background: var(--surface) !important;
-      border: 1px solid var(--line) !important;
-      color: var(--text) !important;
-      font-size: 11px !important;
-      padding: 6px 10px !important;
-      width: auto !important;
-    }
-    .secondary-btn:hover {
-      border-color: var(--muted) !important;
-    }
-
-    button { 
-      width: 100%; 
-      padding: 10px; 
-      background: var(--accent);
-      border: none;
-      border-radius: 6px;
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    button:hover { opacity: 0.9; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    #status { 
-      margin-top: 12px; 
-      font-size: 12px; 
-      padding: 8px;
-      border-radius: 4px;
-      display: none;
-      text-align: center;
-    }
-    .status-success { display: block !important; background: rgba(35, 134, 54, 0.1); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.3); }
-    .status-error { display: block !important; background: rgba(248, 51, 73, 0.1); color: #f85149; border: 1px solid rgba(248, 81, 73, 0.3); }
-
-    .tabs {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-    .tab {
-      font-size: 12px;
-      color: var(--muted);
-      cursor: pointer;
-      padding-bottom: 4px;
-      border-bottom: 2px solid transparent;
-    }
-    .tab.active {
-      color: var(--text);
-      border-color: var(--accent);
-    }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-  </style>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <div class="header">
@@ -177,15 +16,36 @@
   </div>
 
   <div id="extract" class="tab-content active">
-    <div class="form-group">
-      <span class="section-title">Capture Data</span>
-      <label for="selector">CSS Selector (Target Section)</label>
-      <input type="text" id="selector" value="body" placeholder="e.g. .job-description, main, body">
-      <div style="display: flex; gap: 8px; margin-top: 8px;">
-        <button id="saveSelectorBtn" class="secondary-btn">Save Selector</button>
-        <button id="resetSelectorBtn" class="secondary-btn">Reset Default</button>
+    <div class="mode-toggle-container">
+      <span style="font-size: 12px; font-weight: 600;">Advanced Mode</span>
+      <label class="switch">
+        <input type="checkbox" id="modeToggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div id="simpleInputArea">
+      <div class="form-group">
+        <span class="section-title">Capture Data (Simple)</span>
+        <label for="selector">CSS Selector (Target Section)</label>
+        <input type="text" id="selector" value="body" placeholder="e.g. .job-description, main, body">
+        <div style="display: flex; gap: 8px; margin-top: 8px;">
+          <button id="saveSelectorBtn" class="secondary-btn">Save Selector</button>
+          <button id="resetSelectorBtn" class="secondary-btn">Reset Default</button>
+        </div>
       </div>
     </div>
+
+    <div id="advancedInputArea" style="display:none;">
+      <div class="form-group">
+        <span class="section-title">Capture Data (Mapped)</span>
+        <label for="siteSelector">Select Site Template</label>
+        <select id="siteSelector">
+          <option value="">-- No Sites Saved --</option>
+        </select>
+      </div>
+    </div>
+
     <button id="extractBtn">Send to RoleTect</button>
   </div>
 
@@ -230,44 +90,76 @@
       <input type="password" id="secret" placeholder="Check app Inbox tab">
     </div>
     <button id="saveSettingsBtn">Save Configuration</button>
+
+    <div class="backup-zone">
+      <span class="section-title">Manage Site Maps</span>
+      <div id="siteMapList" style="margin-bottom: 12px;"></div>
+      <div class="form-group" style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 6px;">
+        <label>Add New Site</label>
+        <input type="text" id="newSiteTitle" placeholder="Site Name (e.g. LinkedIn)" style="margin-bottom: 8px;">
+        <input type="text" id="newSiteSelector" placeholder="CSS Selector (e.g. .description)">
+        <button id="addSiteBtn" class="secondary-btn" style="margin-top: 8px; width: 100% !important;">Add Site Map</button>
+      </div>
+
+      <span class="section-title">Backup & Restore</span>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <button id="exportBtn" class="secondary-btn">Export JSON</button>
+        <div class="file-input-wrapper">
+          <button class="secondary-btn" style="width: 100%;">Import JSON</button>
+          <input type="file" id="importFile" accept=".json">
+        </div>
+      </div>
+      <div id="restoreOptions" style="display:none; margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 6px;">
+        <p style="font-size: 10px; margin-top: 0;">JSON Loaded. Choose restore type:</p>
+        <div style="display: flex; gap: 8px;">
+          <button id="safeRestoreBtn" class="secondary-btn" style="font-size: 9px !important;">Safe (Merge)</button>
+          <button id="unsafeRestoreBtn" class="secondary-btn" style="font-size: 9px !important; border-color: #f85149 !important;">Unsafe (Overwrite)</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div id="learn" class="tab-content">
     <div class="tutorial-container">
-      <div style="margin-bottom: 20px;">
-        <span class="section-title">Step 1: Setup Connection</span>
-        <div class="info-box" style="border-left-color: var(--accent); margin-top: 5px;">
-          <p style="font-size: 12px; color: var(--text);">Go to <b>Settings</b> and choose how you connect to RoleTect:</p>
-          
-          <div style="margin-top: 10px;">
-            <strong style="font-size: 11px; color: var(--accent);">Option A: Localhost</strong>
-            <p style="margin: 2px 0 8px 0; font-size: 11px;">If RoleTect is running on <b>this</b> computer.</p>
-            <code style="background: #000; padding: 2px 4px; border-radius: 3px; font-size: 10px; color: #3fb950;">Port: 14207</code>
-          </div>
+      <div>
+        <span class="section-title">🔍 How to Find Tags (DevTools)</span>
+        <div class="info-box">
+          <p style="color: var(--text); margin-bottom: 8px;"><b>1. Open Inspector:</b> Right-click any part of a webpage and select <b>"Inspect"</b> (or press <code>F12</code>).</p>
+          <p style="color: var(--text); margin-bottom: 8px;"><b>2. Find the Code:</b> Hover over the elements in the inspector. The part of the page they belong to will highlight in blue.</p>
+          <p style="color: var(--text);"><b>3. Copy ID or Class:</b> Look for <code>id="..."</code> (use <code>#</code>) or <code>class="..."</code> (use <code>.</code>).</p>
+        </div>
+      </div>
 
-          <div style="margin-top: 10px;">
-            <strong style="font-size: 11px; color: var(--accent);">Option B: Custom Local IP</strong>
-            <p style="margin: 2px 0 8px 0; font-size: 11px;">If RoleTect is on a <b>different</b> PC in your house.</p>
-            <code style="background: #000; padding: 2px 4px; border-radius: 3px; font-size: 10px; color: #3fb950;">IP: 192.168.1.5 | Port: 14207</code>
+      <div>
+        <span class="section-title">⌨️ Selector Cheatsheet</span>
+        <div class="info-box" style="background: rgba(35, 134, 54, 0.05);">
+          <div style="margin-bottom: 10px;">
+            <code style="color: #3fb950;">#main-content</code>
+            <p style="font-size: 11px; margin: 2px 0;">Targets a unique <b>ID</b>. Best for stability.</p>
           </div>
-
-          <div style="margin-top: 10px;">
-            <strong style="font-size: 11px; color: var(--accent);">Option C: Remote / Cloud</strong>
-            <p style="margin: 2px 0 8px 0; font-size: 11px;">If using a <b>website/server</b> URL.</p>
-            <code style="background: #000; padding: 2px 4px; border-radius: 3px; font-size: 10px; color: #3fb950;">URL: https://my-backend.com</code>
-            <p style="margin: 4px 0 0 0; font-size: 10px; color: var(--muted); font-style: italic;">* Do not include "/inbox/ingest" in the URL.</p>
+          <div style="margin-bottom: 10px;">
+            <code style="color: #3fb950;">.job-description</code>
+            <p style="font-size: 11px; margin: 2px 0;">Targets a <b>Class</b>. Great for content blocks.</p>
+          </div>
+          <div style="margin-bottom: 10px;">
+            <code style="color: #3fb950;">.text.px-3.pt-2</code>
+            <p style="font-size: 11px; margin: 2px 0;">Targets <b>Multiple Classes</b> on one tag (join with dots).</p>
+          </div>
+          <div>
+            <code style="color: #3fb950;">#title, #desc</code>
+            <p style="font-size: 11px; margin: 2px 0;">Targets <b>Multiple Elements</b> at once (join with comma).</p>
           </div>
         </div>
       </div>
 
       <div style="margin-bottom: 20px;">
-        <span class="section-title">Step 2: Authenticate</span>
-        <p style="font-size: 12px; margin: 4px 0;">Paste your <b>Secret Key</b> from the RoleTect App (found in the Inbox tab or Settings) into the Secret Key field and click <b>Save</b>.</p>
+        <span class="section-title">🚀 Advanced Mode Setup</span>
+        <p style="font-size: 12px; margin: 4px 0;">Go to <b>Settings</b> and add your favorite sites. For example, add "LinkedIn" with selector <code>.jobs-description</code>. Now you can just select LinkedIn from the dropdown in the Extract tab!</p>
       </div>
 
-      <div>
-        <span class="section-title">Step 3: Ingest Data</span>
-        <p style="font-size: 12px; margin: 4px 0;">Navigate to a job post, go to the <b>Extract</b> tab, and click <b>Send to RoleTect</b>. The <b>Selector</b> tells the extension which part of the page to copy (default is everything).</p>
+      <div style="margin-bottom: 20px;">
+        <span class="section-title">💾 Backup & Safety</span>
+        <p style="font-size: 12px; margin: 4px 0;">Always <b>Export JSON</b> after setting up your sites. Use <b>Safe Restore</b> to add sites from a backup without losing your current ones.</p>
       </div>
     </div>
   </div>

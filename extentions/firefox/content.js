@@ -187,10 +187,15 @@ function extractStructuredData(element, userExcludeSelector) {
     }
   }
 
-  // 4. Extract the remaining text using innerText
-  let finalString = clone.innerText || "";
+  // 4. Ensure blocks don't get smashed together by adding newlines before block elements
+  clone.querySelectorAll("div, p, br, h1, h2, h3, h4, h5, h6, li, article, section, main, header, tr, td").forEach(el => {
+    el.prepend(document.createTextNode("\n"));
+  });
 
-  // 5. The Ultimate Token-Squashing RegEx Pipeline
+  // 5. Extract the remaining text using innerText or textContent as fallback
+  let finalString = clone.innerText || clone.textContent || "";
+
+  // 6. The Ultimate Token-Squashing RegEx Pipeline
   return finalString
     .replace(/[\n\r]+/g, ". ") // Turns ANY newline or carriage return into a period
     .replace(/\s+/g, " ") // Squashes massive horizontal gaps into 1 single space

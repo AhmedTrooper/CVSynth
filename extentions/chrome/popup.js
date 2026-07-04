@@ -495,11 +495,24 @@ document.addEventListener('DOMContentLoaded', () => {
   function showStatus(msg, type) {
     statusDiv.textContent = msg;
     statusDiv.className = "";
-    if (type === "success") statusDiv.classList.add('status-success');
-    if (type === "error") statusDiv.classList.add('status-error');
-    if (type === "neutral") {
-      statusDiv.style.display = "block";
-      statusDiv.style.color = "var(--text)";
+    statusDiv.style.display = "block";
+    
+    // Apply highly visible toast colors
+    if (type === "success") {
+      statusDiv.style.background = "#238636";
+      statusDiv.style.color = "#ffffff";
+    } else if (type === "error") {
+      statusDiv.style.background = "#da3633";
+      statusDiv.style.color = "#ffffff";
+    } else {
+      statusDiv.style.background = "#30363d";
+      statusDiv.style.color = "#ffffff";
     }
+
+    // Auto-hide the toast after 3 seconds
+    clearTimeout(window.statusTimeout);
+    window.statusTimeout = setTimeout(() => {
+      statusDiv.style.display = "none";
+    }, 3000);
   }
 });

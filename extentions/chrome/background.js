@@ -5,7 +5,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // Keep the messaging channel open for the async response
   }
   if (request.action === "START_INTERACTIVE") {
-    handleInteractiveStart().then(sendResponse);
+    handleInteractiveStart(request.excludeSelector).then(sendResponse);
     return true;
   }
   if (request.action === "PROCESS_INTERACTIVE_SELECTION") {
@@ -14,7 +14,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-async function handleInteractiveStart() {
+async function handleInteractiveStart(excludeSelector) {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab || !tab.id) throw new Error("No active tab found.");
@@ -24,7 +24,7 @@ async function handleInteractiveStart() {
       files: ["content.js"]
     });
 
-    const res = await chrome.tabs.sendMessage(tab.id, { action: "ENABLE_INTERACTIVE" });
+    const res = await chrome.tabs.sendMessage(tab.id, { action: "ENABLE_INTERACTIVE", excludeSelector });
     if (!res || !res.success) throw new Error(res?.error || "Failed to start interactive mode");
 
     return { success: true };

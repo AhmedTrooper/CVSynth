@@ -4,14 +4,14 @@ browser.runtime.onMessage.addListener((request, sender) => {
     return handleExtraction(request.selector, request.excludeSelector);
   }
   if (request.action === "START_INTERACTIVE") {
-    return handleInteractiveStart();
+    return handleInteractiveStart(request.excludeSelector);
   }
   if (request.action === "PROCESS_INTERACTIVE_SELECTION") {
     return handleInteractiveProcess(request);
   }
 });
 
-async function handleInteractiveStart() {
+async function handleInteractiveStart(excludeSelector) {
   try {
     const tabs = await browser.tabs.query({ active: true, currentWindow: true });
     const tab = tabs[0];
@@ -22,7 +22,7 @@ async function handleInteractiveStart() {
       files: ["content.js"]
     });
 
-    const res = await browser.tabs.sendMessage(tab.id, { action: "ENABLE_INTERACTIVE" });
+    const res = await browser.tabs.sendMessage(tab.id, { action: "ENABLE_INTERACTIVE", excludeSelector });
     if (!res || !res.success) throw new Error(res?.error || "Failed to start interactive mode");
 
     return { success: true };

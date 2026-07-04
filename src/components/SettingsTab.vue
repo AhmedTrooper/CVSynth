@@ -180,7 +180,8 @@ const providers = [
   { id: 'groq', name: 'Groq (Ultra-Fast)' },
   { id: 'bedrock', name: 'AWS Bedrock' },
   { id: 'ollama', name: 'Ollama (Local LLM)' },
-  { id: 'openrouter', name: 'OpenRouter' }
+  { id: 'openrouter', name: 'OpenRouter' },
+  { id: 'deepseek', name: 'DeepSeek' }
 ];
 
 const modelsByProvider: Record<string, {id: string, name: string}[]> = {
@@ -456,6 +457,12 @@ const modelsByProvider: Record<string, {id: string, name: string}[]> = {
     { id: 'deepseek-r1:7b', name: 'DeepSeek R1 (7B)' },
     { id: 'deepseek-r1:8b', name: 'DeepSeek R1 (8B)' },
     { id: 'deepseek-r1:1.5b', name: 'DeepSeek R1 (1.5B)' }
+  ],
+  deepseek: [
+    { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro' },
+    { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash' },
+    { id: 'deepseek-chat', name: 'DeepSeek V3 (Chat)' },
+    { id: 'deepseek-reasoner', name: 'DeepSeek R1' }
   ]
 };
 

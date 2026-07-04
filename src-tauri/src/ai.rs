@@ -1,6 +1,6 @@
 use rig::client::CompletionClient;
 use rig::completion::Prompt;
-use rig::providers::{anthropic, gemini, groq, openai, ollama, openrouter};
+use rig::providers::{anthropic, gemini, groq, openai, ollama, openrouter, deepseek};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -172,6 +172,14 @@ Output the results in the requested structured format.";
                 .await
                 .map_err(|e| format!("Ollama Parsing Error: {}", e))?
         }
+        "deepseek" => {
+            let client = deepseek::Client::new(api_key).map_err(|e| e.to_string())?;
+            let extractor = client.extractor::<JobDetails>(model).preamble(system_prompt).build();
+            extractor
+                .extract(&user_prompt)
+                .await
+                .map_err(|e| format!("DeepSeek Parsing Error: {}", e))?
+        }
         _ => return Err(format!("Unsupported provider: {}", provider)),
     };
 
@@ -316,6 +324,14 @@ Please tailor the resume to match the job description. Return only the modified 
                 .await
                 .map_err(|e| format!("Ollama Tailoring Error: {}", e))
         }
+        "deepseek" => {
+            let client = deepseek::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("DeepSeek Tailoring Error: {}", e))
+        }
         _ => Err(format!("Unsupported provider: {}", provider)),
     }
 }
@@ -452,6 +468,14 @@ Please tailor the cover letter to match the job description. Return only the mod
                 .await
                 .map_err(|e| format!("Ollama Tailoring Error: {}", e))
         }
+        "deepseek" => {
+            let client = deepseek::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("DeepSeek Tailoring Error: {}", e))
+        }
         _ => Err(format!("Unsupported provider: {}", provider)),
     }
 }
@@ -577,6 +601,14 @@ Please apply the requested changes. Return only the updated LaTeX code."#,
                 .await
                 .map_err(|e| format!("Ollama Refinement Error: {}", e))
         }
+        "deepseek" => {
+            let client = deepseek::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("DeepSeek Refinement Error: {}", e))
+        }
         _ => Err(format!("Unsupported provider: {}", provider)),
     }
 }
@@ -701,6 +733,14 @@ Please fix the LaTeX code so it compiles successfully. Return only the fixed LaT
                 .prompt(&user_prompt)
                 .await
                 .map_err(|e| format!("Ollama Fix Error: {}", e))
+        }
+        "deepseek" => {
+            let client = deepseek::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("DeepSeek Fix Error: {}", e))
         }
         _ => Err(format!("Unsupported provider: {}", provider)),
     }
@@ -831,6 +871,14 @@ Please apply the requested changes. Return only the updated code."#,
                 .await
                 .map_err(|e| format!("Ollama Refinement Error: {}", e))
         }
+        "deepseek" => {
+            let client = deepseek::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(&system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("DeepSeek Refinement Error: {}", e))
+        }
         _ => Err(format!("Unsupported provider: {}", provider)),
     }
 }
@@ -960,6 +1008,14 @@ Please fix the code so it renders successfully. Return only the fixed code."#,
                 .await
                 .map_err(|e| format!("Ollama Fix Error: {}", e))
         }
+        "deepseek" => {
+            let client = deepseek::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(&system_prompt).build();
+            agent
+                .prompt(&user_prompt)
+                .await
+                .map_err(|e| format!("DeepSeek Fix Error: {}", e))
+        }
         _ => Err(format!("Unsupported provider: {}", provider)),
     }
 }
@@ -1036,6 +1092,11 @@ pub async fn test_ai(
             };
             let agent = client.agent(model).preamble(system_prompt).build();
             agent.prompt(user_prompt).await.map_err(|e| format!("Ollama Error: {}", e))
+        }
+        "deepseek" => {
+            let client = deepseek::Client::new(api_key).map_err(|e| e.to_string())?;
+            let agent = client.agent(model).preamble(system_prompt).build();
+            agent.prompt(user_prompt).await.map_err(|e| format!("DeepSeek Error: {}", e))
         }
         _ => Err(format!("Unsupported provider: {}", provider)),
     }

@@ -166,9 +166,9 @@ function extractStructuredData(element, userExcludeSelector) {
   // 1. Clone the element so we don't accidentally mutate the live webpage
   const clone = element.cloneNode(true);
 
-  // 2. Remove noisy tags that confuse AI and bloat the payload
+  // 2. Remove noisy and non-text tags that confuse AI and bloat the payload
   const noiseSelectors =
-    "script, style, noscript, svg, img, iframe, nav, footer, button, .visually-hidden";
+    "script, style, noscript, svg, img, iframe, nav, footer, button, .visually-hidden, audio, video, picture, source, track, embed, object, param, canvas, math, map, area, progress, meter, datalist, output";
   clone.querySelectorAll(noiseSelectors).forEach((el) => el.remove());
 
   // 3. Remove user-defined excluded elements if provided
@@ -185,32 +185,10 @@ function extractStructuredData(element, userExcludeSelector) {
     }
   }
 
-  // 4. Create an array to hold the extracted text blocks
-  let structuredContent = [];
+  // 4. Extract the remaining text using innerText
+  let finalString = clone.innerText || "";
 
-  // 5. Walk through the cleaned DOM and grab text from block elements
-  const blockElements = clone.querySelectorAll(
-    "h1, h2, h3, h4, p, li, article, section",
-  );
-
-  if (blockElements.length > 0) {
-    blockElements.forEach((el) => {
-      // Get text and skip empty blocks
-      let text = el.innerText.trim();
-      if (!text) return;
-
-      // Push raw text
-      structuredContent.push(text);
-    });
-  } else {
-    // Fallback if the site uses non-semantic formatting (no p, h1, li tags)
-    structuredContent.push(clone.innerText.trim());
-  }
-
-  // 5. Join all extracted sections with a period and space
-  let finalString = structuredContent.join(". ");
-
-  // 6. The Ultimate Token-Squashing RegEx Pipeline
+  // 5. The Ultimate Token-Squashing RegEx Pipeline
   return finalString
     .replace(/[\n\r]+/g, ". ") // Turns ANY newline or carriage return into a period
     .replace(/\s+/g, " ") // Squashes massive horizontal gaps into 1 single space

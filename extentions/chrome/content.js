@@ -1,4 +1,7 @@
 // content.js: Runs inside the webpage context to read the DOM safely (Chrome)
+if (typeof window.roletectInjected === 'undefined') {
+  window.roletectInjected = true;
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "GET_DOM") {
     try {
@@ -203,3 +206,5 @@ function extractStructuredData(element, userExcludeSelector) {
     .replace(/\. \./g, ".") // Cleans up messy period-space-period gaps
     .trim(); // Chops off any spaces at the very beginning or end
 }
+
+} // End of injection guard

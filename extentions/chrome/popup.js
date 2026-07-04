@@ -185,8 +185,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const defaultSite = BUILT_IN_SITES.find(s => s.title === title);
         if (defaultSite) {
           siteMaps[index].selector = defaultSite.selector;
+          delete siteMaps[index].exclude;
           saveSiteMaps();
-          showStatus(`${title} reset to default.`, "neutral");
+          showStatus(`${title} reset to default.`, "success");
         }
       });
     });
@@ -310,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    await chrome.storage.local.set({ ...importedData, siteMaps: mergedMaps });
+    await chrome.storage.local.set({ siteMaps: mergedMaps });
     showStatus("Safe Merge complete!", "success");
     restoreOptions.style.display = 'none';
     loadSettings();

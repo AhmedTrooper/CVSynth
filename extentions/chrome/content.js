@@ -36,12 +36,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; 
   }
   if (request.action === "ENABLE_INTERACTIVE") {
+    currentExcludeSelector = request.excludeSelector || null;
     enableInteractiveMode();
     sendResponse({ success: true });
     return true;
   }
 });
 
+let currentExcludeSelector = null;
 let interactiveActive = false;
 let hoveredElement = null;
 let originalOutline = '';
@@ -131,7 +133,7 @@ function handleClick(e) {
   const target = e.target;
   disableInteractiveMode();
 
-  const extracted = extractStructuredData(target, null);
+  const extracted = extractStructuredData(target, currentExcludeSelector);
   
   if (!extracted || extracted.length < 5) {
     alert("RoleTect: No valid text could be extracted from this element.");

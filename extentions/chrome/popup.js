@@ -469,8 +469,18 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('interactiveBtn').addEventListener('click', async () => {
+    let excludeSelector = '';
+    if (modeToggle.checked) {
+      const index = siteSelector.value;
+      if (index !== "" && siteMaps[index]) {
+        excludeSelector = siteMaps[index].exclude || '';
+      }
+    } else {
+      excludeSelector = excludeSelectorInput.value.trim();
+    }
+    
     try {
-      const response = await chrome.runtime.sendMessage({ action: "START_INTERACTIVE" });
+      const response = await chrome.runtime.sendMessage({ action: "START_INTERACTIVE", excludeSelector });
       if (response && response.success) {
         window.close();
       } else {

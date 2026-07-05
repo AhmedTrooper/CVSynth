@@ -78,9 +78,20 @@ onMounted(async () => {
                 return;
             }
             
-            // Check if S3 is setup correctly
+            // Check if user wants auto local backup
+            const autoLocal = await invoke<string>('get_setting', { key: 'auto_local_backup', default_value: 'true' });
+            if (autoLocal === 'true') {
+                try {
+                    await invoke('auto_local_backup');
+                } catch (e) {
+                    console.error("Local backup failed:", e);
+                }
+            }
+            
+            // Check if S3 is setup correctly AND auto cloud backup is enabled
             const isSetupOk = await invoke<string>('get_setting', { key: 's3_setup_ok', default_value: 'false' });
-            if (isSetupOk !== 'true') {
+            const autoCloud = await invoke<string>('get_setting', { key: 'auto_cloud_backup', default_value: 'true' });
+            if (isSetupOk !== 'true' || autoCloud !== 'true') {
                 await exit(0);
                 return;
             }

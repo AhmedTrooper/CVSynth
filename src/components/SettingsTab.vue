@@ -189,6 +189,9 @@ const isSavingS3 = ref(false);
 const s3SetupOk = ref(false);
 const s3LastUpload = ref('Never');
 
+const autoCloudBackup = ref(true);
+const autoLocalBackup = ref(true);
+
 const handleTestS3 = async (silent = false) => {
   if (!silent) {
     isTestingS3.value = true;
@@ -695,9 +698,20 @@ const syncFromStore = async () => {
   const s3Sk = await store.getSecret('s3_secret_key');
   hasS3AccessKey.value = !!s3Ak;
   hasS3SecretKey.value = !!s3Sk;
+  
+  autoCloudBackup.value = (await invoke<string>('get_setting', { key: 'auto_cloud_backup', default_value: 'true' })) === 'true';
+  autoLocalBackup.value = (await invoke<string>('get_setting', { key: 'auto_local_backup', default_value: 'true' })) === 'true';
 };
 
 onMounted(syncFromStore);
+
+watch(autoCloudBackup, (val) => {
+  invoke('save_setting', { key: 'auto_cloud_backup', value: val ? 'true' : 'false' });
+});
+
+watch(autoLocalBackup, (val) => {
+  invoke('save_setting', { key: 'auto_local_backup', value: val ? 'true' : 'false' });
+});
 
 // When provider changes, adjust the model but DON'T wipe the Store state yet
 watch(providerInput, async (newProvider) => {
@@ -1369,6 +1383,34 @@ const handleSave = async () => {
             <RefreshCw v-else :size="16" class="spinner" />
             {{ isRestoringBackup ? 'Restoring & Reloading...' : 'Restore Selected Backup' }}
           </button>
+        </div>
+      </div>
+
+      <!-- Backup Automation Configuration -->
+      <div class="settings-card">
+        <div class="card-header">
+          <h3>Backup Automation</h3>
+          <p>Control what happens automatically when you close RoleTect.</p>
+        </div>
+        
+        <div class="input-row" style="margin-top: 16px;">
+          <div class="input-group">
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="autoLocalBackup" class="custom-checkbox" />
+              Auto Local Backup on Exit
+            </label>
+            <p style="font-size: 0.75rem; color: var(--muted); margin-top: 4px; margin-left: 24px;">Automatically exports an unencrypted snapshot to your <strong>Documents/RoleTect-Backups</strong> folder.</p>
+          </div>
+        </div>
+
+        <div class="input-row">
+          <div class="input-group">
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="autoCloudBackup" class="custom-checkbox" :disabled="!s3SetupOk" />
+              Auto Cloud Backup on Exit
+            </label>
+            <p style="font-size: 0.75rem; color: var(--muted); margin-top: 4px; margin-left: 24px;">Automatically uploads an encrypted snapshot to your configured S3 bucket. Requires active S3 setup.</p>
+          </div>
         </div>
       </div>
 

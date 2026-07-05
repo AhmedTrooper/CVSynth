@@ -141,6 +141,7 @@ pub fn run() {
             commands::pdf::fix_diagram_with_ai,
             commands::data::export_all_data,
             commands::data::import_data,
+            commands::data::auto_local_backup,
             commands::downloads::record_download,
             commands::downloads::get_downloads,
             commands::settings::get_all_themes,

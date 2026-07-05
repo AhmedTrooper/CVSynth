@@ -112,7 +112,7 @@ pub async fn compile_resume_to_pdf(app_handle: AppHandle, latex_code: String) ->
     tokio::task::spawn_blocking(move || {
         let thread_handle = std::thread::Builder::new()
             .name("tectonic-compiler".into())
-            .stack_size(10 * 1024 * 1024)
+            .stack_size(100 * 1024 * 1024)
             .spawn(move || {
                 let mut status = CapturingStatusBackend::new();
                 
@@ -189,7 +189,7 @@ pub async fn compile_workspace_to_pdf(app_handle: AppHandle, workspace_dir: Stri
     tokio::task::spawn_blocking(move || {
         let thread_handle = std::thread::Builder::new()
             .name("tectonic-workspace-compiler".into())
-            .stack_size(10 * 1024 * 1024)
+            .stack_size(100 * 1024 * 1024)
             .spawn(move || {
                 let mut status = CapturingStatusBackend::new();
                 let workspace_path = PathBuf::from(&workspace_dir);
@@ -260,4 +260,57 @@ pub async fn compile_workspace_to_pdf(app_handle: AppHandle, workspace_dir: Stri
     })
     .await
     .map_err(|e| format!("The asynchronous task failed: {}", e))?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tectonic::status::{MessageKind, StatusBackend};
+
+    const EXPECTED_STACK_SIZE: usize = 100 * 1024 * 1024; // 100 MB
+
+    #[test]
+    fn capturing_backend_records_errors() {
+        let mut backend = CapturingStatusBackend::new();
+        backend.report(MessageKind::Error, format_args!("missing \\begin{{document}}"), None);
+        assert!(backend.logs.contains("error: missing \\begin{document}"));
+    }
+
+    #[test]
+    fn capturing_backend_records_warnings() {
+        let mut backend = CapturingStatusBackend::new();
+        backend.report(MessageKind::Warning, format_args!("overfull hbox"), None);
+        assert!(backend.logs.contains("warning: overfull hbox"));
+    }
+
+    #[test]
+    fn capturing_backend_records_notes() {
+        let mut backend = CapturingStatusBackend::new();
+        backend.report(MessageKind::Note, format_args!("output written"), None);
+        assert!(backend.logs.contains("note: output written"));
+    }
+
+    #[test]
+    fn capturing_backend_dumps_error_logs() {
+        let mut backend = CapturingStatusBackend::new();
+        backend.dump_error_logs(b"! LaTeX Error: File not found.\n");
+        assert!(backend.logs.contains("--- Underlying Error Logs ---"));
+        assert!(backend.logs.contains("! LaTeX Error: File not found."));
+    }
+
+    #[test]
+    fn compiler_thread_can_spawn_with_100mb_stack() {
+        let handle = std::thread::Builder::new()
+            .name("stack-size-test".into())
+            .stack_size(EXPECTED_STACK_SIZE)
+            .spawn(|| {
+                // Allocate a modest chunk on the stack to prove the space is available
+                let _buf = [0u8; 1024 * 1024]; // 1 MB on stack
+                42
+            })
+            .expect("Failed to spawn thread with 100MB stack");
+
+        let result = handle.join().expect("Thread panicked");
+        assert_eq!(result, 42);
+    }
 }

@@ -125,7 +125,7 @@ If you wish to build from source or install the appication manually:
 
 ## 🎬 Tutorial & Quick Start
 
-[▶️ Watch the Complete Software Usage Video](./assets/Complete_Software_Usage.mp4)
+[▶️ Watch the Complete Software Usage Video & Project Assets](https://drive.google.com/drive/folders/1HPm-OfIUxNmZBD-hPUmnSqStH3QZJt60?usp=sharing)
 
 ### What You Can Instantly Do
 Once you've installed the desktop app and browser extension, you can instantly:

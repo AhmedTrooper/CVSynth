@@ -1185,7 +1185,7 @@ const handleSave = async () => {
           </div>
         </div>
         
-        <div class="credentials-actions">
+        <div class="credentials-actions" style="margin-top: 24px;">
           <div class="button-group">
             <button class="btn-test-connection" @click="handleTestS3" :disabled="isTestingS3 || isSavingS3">
               <RefreshCw v-if="isTestingS3" :size="14" class="spinner" />

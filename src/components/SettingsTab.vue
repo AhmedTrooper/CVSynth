@@ -15,7 +15,8 @@ import {
   Trash2,
   Type,
   Italic,
-  Play
+  Play,
+  DownloadCloud
 } from '@lucide/vue';
 import { Motion, AnimatePresence } from 'motion-v';
 import { invoke } from '@tauri-apps/api/core';
@@ -258,6 +259,81 @@ const handleSaveS3 = async () => {
     isSavingS3.value = false;
   }
 };
+
+interface BackupEntry {
+  key: string;
+  size: number;
+  last_modified: string;
+}
+
+const isFetchingBackups = ref(false);
+const fetchBackupsError = ref('');
+const availableBackups = ref<BackupEntry[]>([]);
+const selectedBackup = ref('');
+const restoreMode = ref('overwrite');
+const isRestoringBackup = ref(false);
+
+const handleFetchBackups = async () => {
+  isFetchingBackups.value = true;
+  fetchBackupsError.value = '';
+  availableBackups.value = [];
+  selectedBackup.value = '';
+  
+  try {
+    let ak = await store.getSecret('s3_access_key') || '';
+    let sk = await store.getSecret('s3_secret_key') || '';
+    
+    const backups = await invoke<BackupEntry[]>('list_s3_backups', {
+      accessKeyId: ak,
+      secretAccessKey: sk
+    });
+    
+    // Sort descending by last_modified
+    availableBackups.value = backups.sort((a, b) => b.last_modified.localeCompare(a.last_modified));
+    if (availableBackups.value.length > 0) {
+      selectedBackup.value = availableBackups.value[0].key;
+    } else {
+      fetchBackupsError.value = 'No backups found in the bucket.';
+    }
+  } catch (err: any) {
+    fetchBackupsError.value = err.toString();
+  } finally {
+    isFetchingBackups.value = false;
+  }
+};
+
+const handleRestoreBackup = async () => {
+  if (!selectedBackup.value) return;
+  
+  const modeText = restoreMode.value === 'overwrite' ? 'overwrite your current local database' : 'merge cloud data with your local database';
+  const confirmed = await dialog.showConfirm(
+    'Restore from Cloud Backup?',
+    `Are you sure you want to restore "${selectedBackup.value}"?\n\nWARNING: This will ${modeText}. The application will reload upon success.`
+  );
+  if (!confirmed) return;
+  
+  isRestoringBackup.value = true;
+  try {
+    let ak = await store.getSecret('s3_access_key') || '';
+    let sk = await store.getSecret('s3_secret_key') || '';
+    
+    await invoke('restore_from_s3', {
+      accessKeyId: ak,
+      secretAccessKey: sk,
+      key: selectedBackup.value,
+      mode: restoreMode.value
+    });
+    
+    await dialog.showAlert('Restore successful! The application will now reload to apply the restored data.', 'Restore Complete');
+    window.location.reload();
+  } catch (err: any) {
+    await dialog.showAlert(err.toString(), 'Restore Failed');
+  } finally {
+    isRestoringBackup.value = false;
+  }
+};
+
+// removed duplicate clearDataDialog
 
 // --- 2. Configuration Data ---
 const providers = [
@@ -1225,6 +1301,52 @@ const handleSave = async () => {
               <span>Last Upload: {{ s3LastUpload }}</span>
             </span>
           </div>
+        </div>
+      </div>
+
+      <!-- Cloud Restore Configuration -->
+      <div class="settings-card">
+        <div class="card-header">
+          <h3>Restore from Cloud</h3>
+          <p>Fetch and restore your data from your S3 backup vault. <strong>Warning:</strong> Restoring will modify local data.</p>
+        </div>
+        
+        <div class="credentials-actions" style="margin-top: 16px; border-top: none; padding-top: 0;">
+          <div class="button-group">
+            <button class="btn-action secondary" @click="handleFetchBackups" :disabled="isFetchingBackups || !s3SetupOk">
+              <DownloadCloud v-if="!isFetchingBackups" :size="14" />
+              <RefreshCw v-else :size="14" class="spinner" />
+              Fetch Available Backups
+            </button>
+          </div>
+          <div class="status-message">
+            <span v-if="fetchBackupsError" class="error-msg">{{ fetchBackupsError }}</span>
+            <span v-if="!s3SetupOk" class="warning-msg" style="color: var(--warning); font-size: 0.85rem;">S3 not active.</span>
+          </div>
+        </div>
+
+        <div v-if="availableBackups.length > 0" class="input-row">
+          <div class="input-group">
+            <label>Select Backup to Restore</label>
+            <select v-model="selectedBackup" class="custom-select">
+              <option v-for="b in availableBackups" :key="b.key" :value="b.key">{{ b.key }} ({{ Math.round(b.size / 1024) }} KB)</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>Restore Mode</label>
+            <select v-model="restoreMode" class="custom-select">
+              <option value="overwrite">Overwrite All Local Data (Default)</option>
+              <option value="merge">Merge (Keep Existing Local Data)</option>
+            </select>
+          </div>
+        </div>
+        
+        <div v-if="availableBackups.length > 0" class="credentials-actions" style="margin-top: 24px;">
+          <button class="btn-action primary" style="width: 100%; justify-content: center; background: var(--warning); color: white; border: none; font-weight: 700; gap: 8px;" @click="handleRestoreBackup" :disabled="isRestoringBackup || !selectedBackup">
+            <RotateCcw v-if="!isRestoringBackup" :size="16" />
+            <RefreshCw v-else :size="16" class="spinner" />
+            {{ isRestoringBackup ? 'Restoring & Reloading...' : 'Restore Selected Backup' }}
+          </button>
         </div>
       </div>
 

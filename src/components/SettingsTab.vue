@@ -1313,7 +1313,7 @@ const handleSave = async () => {
         
         <div class="credentials-actions" style="margin-top: 16px; border-top: none; padding-top: 0;">
           <div class="button-group">
-            <button class="btn-action secondary" @click="handleFetchBackups" :disabled="isFetchingBackups || !s3SetupOk">
+            <button class="btn-test-connection" @click="handleFetchBackups" :disabled="isFetchingBackups || !s3SetupOk">
               <DownloadCloud v-if="!isFetchingBackups" :size="14" />
               <RefreshCw v-else :size="14" class="spinner" />
               Fetch Available Backups

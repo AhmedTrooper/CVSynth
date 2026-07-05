@@ -1099,11 +1099,11 @@ const deleteJob = async () => {
           
           <!-- Base PDF Viewer (Compare Mode) -->
           <div v-if="isComparing" class="pdf-viewer base-pdf-viewer" style="flex: 1; border-right: 1px solid var(--line); display: flex; flex-direction: column; overflow-y: auto;">
-            <div class="compare-header" style="padding: 8px; text-align: center; font-size: 0.8rem; font-weight: 800; background: var(--surface-soft); border-bottom: 1px solid var(--line);">BASE TEMPLATE</div>
-            <div v-if="!basePdfUrl && isCompilingBase" class="loader-content" style="height: 100%; display: flex; align-items: center; justify-content: center;">
-              <RotateCw :size="32" class="spinner" />
+            <div class="compare-header" style="padding: 8px; text-align: center; font-size: 0.8rem; font-weight: 800; background: var(--surface-soft); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: center; gap: 8px;">
+              BASE TEMPLATE
+              <RotateCw v-if="!basePdfUrl && isCompilingBase" :size="14" class="spinner" />
             </div>
-            <VuePdfEmbed v-else-if="basePdfUrl" :source="basePdfUrl" class="pdf-embed-component" />
+            <VuePdfEmbed v-if="basePdfUrl" :source="basePdfUrl" class="pdf-embed-component" />
           </div>
 
           <!-- Code Editor -->
@@ -1165,7 +1165,8 @@ const deleteJob = async () => {
                 @keyup.enter="refineWithAi"
               />
               <button @click="refineWithAi" :disabled="isRefining">
-                {{ isRefining ? '...' : '→' }}
+                <RotateCw v-if="isRefining" :size="14" class="spinner" />
+                <span v-else>→</span>
               </button>
             </Motion>
           </AnimatePresence>

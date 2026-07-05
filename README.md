@@ -1,3 +1,5 @@
+[📐 Project Architecture](https://drive.google.com/drive/folders/1HPm-OfIUxNmZBD-hPUmnSqStH3QZJt60?usp=sharing)
+
 # RoleTect
 
 [![Firefox Add-on](https://img.shields.io/badge/Firefox-Add--on-FF7139?logo=firefox-browser&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/roletect-ingest/)

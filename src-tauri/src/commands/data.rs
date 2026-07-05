@@ -133,7 +133,7 @@ pub struct AppDataExport {
 }
 
 #[tauri::command]
-pub async fn export_all_data(state: State<'_, AppState>) -> Result<AppDataExport, String> {
+pub fn export_all_data_core(state: &AppState) -> Result<AppDataExport, String> {
     let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
     let conn = db_guard.as_mut().ok_or("Database connection lost")?;
 
@@ -376,11 +376,11 @@ pub async fn export_all_data(state: State<'_, AppState>) -> Result<AppDataExport
 }
 
 #[tauri::command]
-pub async fn import_data(
-    state: State<'_, AppState>,
-    data: AppDataExport,
-    mode: String, // "merge" or "overwrite"
-) -> Result<(), String> {
+pub async fn export_all_data(state: State<'_, AppState>) -> Result<AppDataExport, String> {
+    export_all_data_core(&state)
+}
+
+pub fn import_data_core(state: &AppState, data: AppDataExport, mode: String) -> Result<(), String> {
     let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
     let conn = db_guard.as_mut().ok_or("Database connection lost")?;
 
@@ -654,7 +654,18 @@ pub async fn import_data(
     restore_sensitive_settings(&tx, &sensitive_snapshot);
 
     tx.commit().map_err(|e| e.to_string())?;
+    
+    state.mark_dirty();
     Ok(())
+}
+
+#[tauri::command]
+pub async fn import_data(
+    state: State<'_, AppState>,
+    data: AppDataExport,
+    mode: String,
+) -> Result<(), String> {
+    import_data_core(&state, data, mode)
 }
 
 #[cfg(test)]

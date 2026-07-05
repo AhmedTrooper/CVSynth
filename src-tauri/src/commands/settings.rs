@@ -37,7 +37,9 @@ pub async fn save_model_pref(
         ).map_err(|e| e.to_string())?;
 
         Ok(())
-    }).await
+    }).await?;
+    state.mark_dirty();
+    Ok(())
 }
 
 #[tauri::command]
@@ -105,7 +107,9 @@ pub async fn save_custom_theme(
             [&id, &name, &config],
         ).map_err(|e| e.to_string())?;
         Ok(())
-    }).await
+    }).await?;
+    state.mark_dirty();
+    Ok(())
 }
 
 #[tauri::command]
@@ -125,7 +129,9 @@ pub async fn delete_theme(state: State<'_, AppState>, id: String) -> Result<(), 
         conn.execute("DELETE FROM themes WHERE id = ?1", [&id])
             .map_err(|e| e.to_string())?;
         Ok(())
-    }).await
+    }).await?;
+    state.mark_dirty();
+    Ok(())
 }
 
 #[tauri::command]
@@ -136,7 +142,9 @@ pub async fn save_active_theme(state: State<'_, AppState>, theme_id: String) -> 
             [&theme_id],
         ).map_err(|e| e.to_string())?;
         Ok(())
-    }).await
+    }).await?;
+    state.mark_dirty();
+    Ok(())
 }
 
 #[tauri::command]
@@ -185,7 +193,9 @@ pub async fn save_workspace_path(state: State<'_, AppState>, path: String) -> Re
             [&path],
         ).map_err(|e| e.to_string())?;
         Ok(())
-    }).await
+    }).await?;
+    state.mark_dirty();
+    Ok(())
 }
 
 #[tauri::command]
@@ -210,7 +220,9 @@ pub async fn save_last_opened_file(state: State<'_, AppState>, path: String) -> 
             [&path],
         ).map_err(|e| e.to_string())?;
         Ok(())
-    }).await
+    }).await?;
+    state.mark_dirty();
+    Ok(())
 }
 
 #[tauri::command]
@@ -235,7 +247,9 @@ pub async fn save_diagram_workspace_path(state: State<'_, AppState>, path: Strin
             [&path],
         ).map_err(|e| e.to_string())?;
         Ok(())
-    }).await
+    }).await?;
+    state.mark_dirty();
+    Ok(())
 }
 
 #[tauri::command]
@@ -260,7 +274,9 @@ pub async fn save_last_opened_diagram(state: State<'_, AppState>, path: String) 
             [&path],
         ).map_err(|e| e.to_string())?;
         Ok(())
-    }).await
+    }).await?;
+    state.mark_dirty();
+    Ok(())
 }
 
 #[tauri::command]
@@ -285,7 +301,9 @@ pub async fn save_setting(state: State<'_, AppState>, key: String, value: String
             [&key, &value],
         ).map_err(|e| e.to_string())?;
         Ok(())
-    }).await
+    }).await?;
+    state.mark_dirty();
+    Ok(())
 }
 
 #[tauri::command]

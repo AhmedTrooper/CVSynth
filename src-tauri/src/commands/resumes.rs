@@ -163,6 +163,7 @@ pub fn create_new_resume(
         )
         .map_err(|e| format!("Database error: {}", e))?;
 
+        state.mark_dirty();
         Ok(resume_id)
     } else {
         Err("Database connection lost".to_string())
@@ -179,6 +180,7 @@ pub fn update_resume(state: State<'_, AppState>, args: UpdateResumeArgs) -> Resu
             [&args.name, &args.category, &args.latex_content, &args.resume_id],
         ).map_err(|e| format!("Database error: {}", e))?;
 
+        state.mark_dirty();
         Ok(())
     } else {
         Err("Database connection lost".to_string())
@@ -205,6 +207,7 @@ pub fn delete_resume(state: State<'_, AppState>, args: DeleteResumeArgs) -> Resu
 
         tx.commit().map_err(|e| format!("Commit error: {}", e))?;
 
+        state.mark_dirty();
         Ok(())
     } else {
         Err("Database connection lost".to_string())

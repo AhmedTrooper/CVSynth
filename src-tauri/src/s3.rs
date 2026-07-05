@@ -23,7 +23,7 @@ pub async fn build_s3_client(config: &S3Config) -> Result<s3::Client, String> {
         .region(s3::config::Region::new(config.region.clone()))
         .credentials_provider(credentials)
         .force_path_style(config.force_path_style)
-        // .behavior_version_latest() // Needs behavior-version-latest feature, which we might not have enabled by default in v1
+        .behavior_version(s3::config::BehaviorVersion::latest())
         .build();
 
     Ok(s3::Client::from_conf(s3_config))

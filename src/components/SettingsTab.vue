@@ -172,6 +172,75 @@ const handleImport = async (mode: 'merge' | 'overwrite') => {
   }
 };
 
+// --- S3 Backup State ---
+const s3Endpoint = ref('');
+const s3Bucket = ref('');
+const s3Region = ref('us-east-1');
+const s3AccessKey = ref('');
+const s3SecretKey = ref('');
+const s3ForcePathStyle = ref(true);
+const isTestingS3 = ref(false);
+const s3TestError = ref('');
+const s3TestSuccess = ref(false);
+const isSavingS3 = ref(false);
+
+const handleTestS3 = async () => {
+  isTestingS3.value = true;
+  s3TestError.value = '';
+  s3TestSuccess.value = false;
+  
+  try {
+    let ak = s3AccessKey.value.trim();
+    if (!ak) ak = await store.getSecret('s3_access_key') || '';
+    
+    let sk = s3SecretKey.value.trim();
+    if (!sk) sk = await store.getSecret('s3_secret_key') || '';
+    
+    const res = await invoke<string>('test_s3_connection', {
+      endpointUrl: s3Endpoint.value.trim(),
+      bucketName: s3Bucket.value.trim(),
+      region: s3Region.value.trim(),
+      accessKeyId: ak,
+      secretAccessKey: sk,
+      forcePathStyle: s3ForcePathStyle.value
+    });
+    
+    s3TestSuccess.value = true;
+    await dialog.showAlert(res, 'S3 Connection Succeeded');
+  } catch (err: any) {
+    s3TestError.value = err.toString();
+  } finally {
+    isTestingS3.value = false;
+  }
+};
+
+const handleSaveS3 = async () => {
+  isSavingS3.value = true;
+  s3TestError.value = '';
+  s3TestSuccess.value = false;
+  
+  try {
+    await invoke('save_setting', { key: 's3_endpoint_url', value: s3Endpoint.value.trim() });
+    await invoke('save_setting', { key: 's3_bucket_name', value: s3Bucket.value.trim() });
+    await invoke('save_setting', { key: 's3_region', value: s3Region.value.trim() });
+    await invoke('save_setting', { key: 's3_force_path_style', value: s3ForcePathStyle.value ? 'true' : 'false' });
+    
+    if (s3AccessKey.value.trim()) {
+      await store.saveSecret('s3_access_key', s3AccessKey.value.trim());
+    }
+    if (s3SecretKey.value.trim()) {
+      await store.saveSecret('s3_secret_key', s3SecretKey.value.trim());
+    }
+    
+    s3TestSuccess.value = true;
+    setTimeout(() => { s3TestSuccess.value = false; }, 3000);
+  } catch (err: any) {
+    s3TestError.value = err.toString();
+  } finally {
+    isSavingS3.value = false;
+  }
+};
+
 // --- 2. Configuration Data ---
 const providers = [
   { id: 'openai', name: 'OpenAI' },
@@ -503,6 +572,14 @@ const syncFromStore = async () => {
   savedCustomModel.value = customModel;
 
   await store.loadProviderKeyStatus(providerInput.value);
+
+  // Load S3 settings
+  s3Endpoint.value = await invoke('get_setting', { key: 's3_endpoint_url', default_value: '' }) as string;
+  s3Bucket.value = await invoke('get_setting', { key: 's3_bucket_name', default_value: '' }) as string;
+  s3Region.value = await invoke('get_setting', { key: 's3_region', default_value: 'us-east-1' }) as string;
+  s3ForcePathStyle.value = await invoke('get_setting', { key: 's3_force_path_style', default_value: 'true' }) === 'true';
+  s3AccessKey.value = '';
+  s3SecretKey.value = '';
 };
 
 onMounted(syncFromStore);
@@ -1062,6 +1139,68 @@ const handleSave = async () => {
               <span class="option-desc">Replace all current data with the backup file</span>
             </div>
           </button>
+        </div>
+      </div>
+
+      <!-- Cloud Backup Configuration -->
+      <div class="settings-card">
+        <div class="card-header">
+          <h3>S3 Cloud Backup</h3>
+          <p>Configure automated cloud backups to any S3-compatible storage.</p>
+        </div>
+        
+        <div class="input-row">
+          <div class="input-group">
+            <label>Endpoint URL</label>
+            <input type="text" v-model="s3Endpoint" placeholder="e.g. https://s3.us-east-1.amazonaws.com" />
+          </div>
+          <div class="input-group">
+            <label>Bucket Name</label>
+            <input type="text" v-model="s3Bucket" placeholder="my-roletect-backup-bucket" />
+          </div>
+        </div>
+
+        <div class="input-row" style="margin-top: 16px;">
+          <div class="input-group">
+            <label>Region</label>
+            <input type="text" v-model="s3Region" placeholder="us-east-1" />
+          </div>
+          <div class="input-group">
+            <label>Path Style Access</label>
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; margin-top: 10px; cursor: pointer;">
+              <input type="checkbox" v-model="s3ForcePathStyle" />
+              <span>Enable (Required for MinIO/R2)</span>
+            </label>
+          </div>
+        </div>
+        
+        <div class="input-row" style="margin-top: 16px;">
+          <div class="input-group">
+            <label>Access Key ID</label>
+            <input type="password" v-model="s3AccessKey" placeholder="Leave empty to keep saved key" />
+          </div>
+          <div class="input-group">
+            <label>Secret Access Key</label>
+            <input type="password" v-model="s3SecretKey" placeholder="Leave empty to keep saved key" />
+          </div>
+        </div>
+        
+        <div class="credentials-actions" style="margin-top: 24px;">
+          <div class="button-group">
+            <button class="btn-test-connection" @click="handleTestS3" :disabled="isTestingS3 || isSavingS3">
+              <RefreshCw v-if="isTestingS3" :size="14" class="spinner" />
+              <Play v-else :size="14" />
+              Test Connection
+            </button>
+            <button class="btn-action primary" style="width: auto; padding: 0 16px; font-weight: 700; gap: 8px;" @click="handleSaveS3" :disabled="isSavingS3">
+              <Save :size="14" />
+              Save S3 Settings
+            </button>
+          </div>
+          <div class="status-message">
+            <span v-if="s3TestSuccess" class="success-msg"><CheckCircle :size="14"/> {{ isSavingS3 ? '' : 'Settings saved.' }}</span>
+            <span v-if="s3TestError" class="error-msg">{{ s3TestError }}</span>
+          </div>
         </div>
       </div>
 

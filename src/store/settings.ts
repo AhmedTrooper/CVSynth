@@ -260,6 +260,31 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   };
 
+  const saveSecret = async (key: string, value: string) => {
+    try {
+      const { stronghold, store } = await getVault();
+      await store.insert(key, Array.from(new TextEncoder().encode(value)));
+      await stronghold.save(); 
+    } catch (error) {
+      console.error("Stronghold save error:", error);
+      throw error;
+    }
+  };
+
+  const getSecret = async (key: string): Promise<string | null> => {
+    try {
+      const { store } = await getVault();
+      const keyBytes = await store.get(key);
+      if (keyBytes && keyBytes.length > 0) {
+        return new TextDecoder().decode(keyBytes);
+      }
+      return null;
+    } catch (error) {
+      console.error("Stronghold get error:", error);
+      return null;
+    }
+  };
+
   const loadProviderKeyStatus = async (provider: string) => {
     try {
       const { store } = await getVault();
@@ -336,6 +361,8 @@ export const useSettingsStore = defineStore('settings', () => {
     deleteCustomTheme,
     saveApiKey, 
     getDecryptedKey,
+    saveSecret,
+    getSecret,
     loadProviderKeyStatus,
     saveModelConfig,
     loadSettings 

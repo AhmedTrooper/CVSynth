@@ -30,7 +30,8 @@ import 'katex/dist/katex.min.css';
 
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { 
-  RotateCw, 
+  RotateCw,
+  Loader2,
   X,
   FileCode,
   FolderOpen,

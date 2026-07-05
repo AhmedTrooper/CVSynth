@@ -5,7 +5,10 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import Titlebar from "./components/Titlebar.vue";
 import SplashLoader from "./components/SplashLoader.vue";
 import CustomDialog from "./components/CustomDialog.vue";
+import CloudUploadOverlay from "./components/CloudUploadOverlay.vue";
 import { useSettingsStore } from "./store/settings";
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { invoke } from '@tauri-apps/api/core';
 import {
     Home,
     Briefcase,
@@ -48,6 +51,7 @@ const externalLinks = [
 const settingsStore = useSettingsStore();
 const activeTooltip = ref<string | null>(null);
 const isAppLoading = ref(true);
+const isUploadingToCloud = ref(false);
 
 onMounted(async () => {
     try {
@@ -58,6 +62,51 @@ onMounted(async () => {
     } finally {
         isAppLoading.value = false;
     }
+    
+    // Intercept window close for cloud backup
+    const appWindow = getCurrentWindow();
+    appWindow.onCloseRequested(async (event) => {
+        // Prevent immediate close
+        event.preventDefault();
+        
+        try {
+            // Check if dirty
+            const isDirty = await invoke<boolean>('check_data_dirty');
+            if (!isDirty) {
+                appWindow.destroy();
+                return;
+            }
+            
+            // Check if S3 is configured
+            const endpoint = await invoke<string>('get_setting', { key: 's3_endpoint_url', default_value: '' });
+            if (!endpoint || endpoint.trim() === '') {
+                appWindow.destroy();
+                return;
+            }
+            
+            // Show overlay
+            isUploadingToCloud.value = true;
+            
+            // Get credentials from Stronghold
+            const ak = (await settingsStore.getSecret('s3_access_key')) || '';
+            const sk = (await settingsStore.getSecret('s3_secret_key')) || '';
+            
+            // Call upload command
+            await invoke('upload_backup_to_s3', {
+                accessKeyId: ak,
+                secretAccessKey: sk
+            });
+            
+            // Brief pause so the user sees it actually completed if it was too fast
+            setTimeout(() => {
+                appWindow.destroy();
+            }, 600);
+            
+        } catch (e) {
+            console.error("Cloud backup on close failed:", e);
+            appWindow.destroy();
+        }
+    });
 });
 
 onMounted(() => {
@@ -173,6 +222,9 @@ const handleExternalClick = (url: string) => {
 
     <!-- Global Bespoke Dialog System -->
     <CustomDialog />
+    
+    <!-- Cloud Upload Overlay -->
+    <CloudUploadOverlay :is-visible="isUploadingToCloud" />
 </template>
 
 <style scoped>

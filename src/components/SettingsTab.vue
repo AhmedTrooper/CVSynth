@@ -1152,40 +1152,40 @@ const handleSave = async () => {
         <div class="input-row">
           <div class="input-group">
             <label>Endpoint URL</label>
-            <input type="text" v-model="s3Endpoint" placeholder="e.g. https://s3.us-east-1.amazonaws.com" />
+            <input type="text" v-model="s3Endpoint" class="form-input" placeholder="e.g. https://s3.us-east-1.amazonaws.com" />
           </div>
           <div class="input-group">
             <label>Bucket Name</label>
-            <input type="text" v-model="s3Bucket" placeholder="my-roletect-backup-bucket" />
+            <input type="text" v-model="s3Bucket" class="form-input" placeholder="my-roletect-backup-bucket" />
           </div>
         </div>
 
-        <div class="input-row" style="margin-top: 16px;">
+        <div class="input-row">
           <div class="input-group">
             <label>Region</label>
-            <input type="text" v-model="s3Region" placeholder="us-east-1" />
+            <input type="text" v-model="s3Region" class="form-input" placeholder="us-east-1" />
           </div>
           <div class="input-group">
             <label>Path Style Access</label>
-            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; margin-top: 10px; cursor: pointer;">
-              <input type="checkbox" v-model="s3ForcePathStyle" />
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; margin-top: 8px; cursor: pointer; color: var(--ink); font-size: 0.9rem; font-weight: normal; text-transform: none; letter-spacing: normal;">
+              <input type="checkbox" v-model="s3ForcePathStyle" style="width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer;" />
               <span>Enable (Required for MinIO/R2)</span>
             </label>
           </div>
         </div>
         
-        <div class="input-row" style="margin-top: 16px;">
+        <div class="input-row">
           <div class="input-group">
             <label>Access Key ID</label>
-            <input type="password" v-model="s3AccessKey" placeholder="Leave empty to keep saved key" />
+            <input type="password" v-model="s3AccessKey" class="form-input" placeholder="Leave empty to keep saved key" />
           </div>
           <div class="input-group">
             <label>Secret Access Key</label>
-            <input type="password" v-model="s3SecretKey" placeholder="Leave empty to keep saved key" />
+            <input type="password" v-model="s3SecretKey" class="form-input" placeholder="Leave empty to keep saved key" />
           </div>
         </div>
         
-        <div class="credentials-actions" style="margin-top: 24px;">
+        <div class="credentials-actions">
           <div class="button-group">
             <button class="btn-test-connection" @click="handleTestS3" :disabled="isTestingS3 || isSavingS3">
               <RefreshCw v-if="isTestingS3" :size="14" class="spinner" />
@@ -1197,7 +1197,7 @@ const handleSave = async () => {
               Save S3 Settings
             </button>
           </div>
-          <div class="status-message">
+          <div class="status-area-inline">
             <span v-if="s3TestSuccess" class="success-msg"><CheckCircle :size="14"/> {{ isSavingS3 ? '' : 'Settings saved.' }}</span>
             <span v-if="s3TestError" class="error-msg">{{ s3TestError }}</span>
           </div>
@@ -1362,6 +1362,16 @@ label {
   width: 100%;
   padding: 12px 16px;
   font-size: 1rem;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input:focus, .custom-select:focus {
+  border-color: var(--accent);
 }
 
 .custom-select {

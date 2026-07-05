@@ -152,14 +152,15 @@ const toggleCompare = async () => {
         baseLatex = c.latex_content || '';
       }
       
+      const baseFilename = activeMode.value === 'resume' ? 'base_resume_compiled_roletect.pdf' : 'base_cover_letter_compiled_roletect.pdf';
       await invoke<number[]>('compile_resume_to_pdf', { 
         latexCode: baseLatex,
-        filename: 'base_compiled_roletect.pdf'
+        filename: baseFilename
       });
       
       const port = await invoke<string>('get_setting', { key: 'active_server_port', default_value: '1420' });
       basePdfUrl.value = {
-        url: `http://127.0.0.1:${port}/static-pdf/base_compiled_roletect.pdf?cache-bust=${Date.now()}`,
+        url: `http://127.0.0.1:${port}/static-pdf/${baseFilename}?cache-bust=${Date.now()}`,
         disableRange: false,
         disableStream: false,
         rangeChunkSize: 1024 * 1024

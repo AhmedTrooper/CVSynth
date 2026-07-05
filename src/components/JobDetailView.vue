@@ -154,12 +154,12 @@ const toggleCompare = async () => {
       
       await invoke<number[]>('compile_resume_to_pdf', { 
         latexCode: baseLatex,
-        filename: 'base.pdf'
+        filename: 'base_compiled_roletect.pdf'
       });
       
       const port = await invoke<string>('get_setting', { key: 'active_server_port', default_value: '1420' });
       basePdfUrl.value = {
-        url: `http://127.0.0.1:${port}/static-pdf/base.pdf?cache-bust=${Date.now()}`,
+        url: `http://127.0.0.1:${port}/static-pdf/base_compiled_roletect.pdf?cache-bust=${Date.now()}`,
         disableRange: false,
         disableStream: false,
         rangeChunkSize: 1024 * 1024
@@ -453,9 +453,10 @@ const doCompilePdf = async (targetMode: 'resume' | 'cl') => {
   else clCompError.value = null;
   
   try {
+    const pdfFilename = targetMode === 'resume' ? 'resume_compiled_roletect.pdf' : 'cover_compiled_roletect.pdf';
     const pdfBytes = await invoke<number[]>('compile_resume_to_pdf', { 
       latexCode: currentLatex,
-      filename: 'output.pdf'
+      filename: pdfFilename
     });
     
     const bytes = new Uint8Array(pdfBytes);
@@ -463,7 +464,7 @@ const doCompilePdf = async (targetMode: 'resume' | 'cl') => {
     // Fetch port from DB
     const port = await invoke<string>('get_setting', { key: 'active_server_port', default_value: '1420' });
     const sourceObj = {
-      url: `http://127.0.0.1:${port}/static-pdf/output.pdf?cache-bust=${Date.now()}`,
+      url: `http://127.0.0.1:${port}/static-pdf/${pdfFilename}?cache-bust=${Date.now()}`,
       disableRange: false,
       disableStream: false,
       rangeChunkSize: 1024 * 1024 // 1MB chunks
@@ -1172,7 +1173,7 @@ const deleteJob = async () => {
 
           <div v-if="activePdfUrl && (activeMode === 'resume' ? isResumeCompiled : isClCompiled)" class="pdf-viewer tailored-pdf-viewer" :style="isComparing ? { flex: 1, width: 'auto' } : { width: previewWidth + 'px', flex: 'none' }">
             <div v-if="isComparing" class="compare-header" style="padding: 8px; text-align: center; font-size: 0.8rem; font-weight: 800; background: var(--surface-soft); border-bottom: 1px solid var(--line); color: var(--accent);">TAILORED VERSION</div>
-            <VuePdfEmbed :source="activePdfUrl" class="pdf-embed-component" @error="onPdfError" />
+            <VuePdfEmbed :key="isComparing.toString()" :source="activePdfUrl" class="pdf-embed-component" @error="onPdfError" />
           </div>
         </div>
       </div>

@@ -833,11 +833,18 @@ const compilePdf = async () => {
       pdfBytes = await invoke<number[]>('compile_workspace_to_pdf', { 
         workspaceDir: targetWorkspace,
         mainFileName: relativePath,
-        filename: 'output.pdf'
+        filename: 'latex_workspace_roletect.pdf'
       });
       
       if (workspacePath.value) {
         await refreshFileTree();
+        const port = await invoke<string>('get_setting', { key: 'active_server_port', default_value: '1420' });
+        pdfUrl.value = {
+          url: `http://127.0.0.1:${port}/static-pdf/latex_workspace_roletect.pdf?cache-bust=${Date.now()}`,
+          disableRange: false,
+          disableStream: false,
+          rangeChunkSize: 1024 * 1024
+        };
       }
     } else {
       // True standalone string compilation (scratchpad mode)
@@ -846,7 +853,7 @@ const compilePdf = async () => {
       }
       pdfBytes = await invoke<number[]>('compile_resume_to_pdf', { 
         latexCode: latexCode.value,
-        filename: 'output.pdf'
+        filename: 'latex_workspace_roletect.pdf'
       });
     }
     
@@ -857,7 +864,7 @@ const compilePdf = async () => {
     
     // Pass configuration object to vue-pdf-embed for chunking
     pdfUrl.value = {
-      url: `http://127.0.0.1:${port}/static-pdf/output.pdf?cache-bust=${Date.now()}`,
+      url: `http://127.0.0.1:${port}/static-pdf/latex_workspace_roletect.pdf?cache-bust=${Date.now()}`,
       disableRange: false,
       disableStream: false,
       rangeChunkSize: 1024 * 1024 // 1MB chunks

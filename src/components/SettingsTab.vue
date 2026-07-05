@@ -178,6 +178,8 @@ const s3Endpoint = ref('');
 const s3Bucket = ref('');
 const s3Region = ref('us-east-1');
 const s3AccessKey = ref('');
+const hasS3AccessKey = ref(false);
+const hasS3SecretKey = ref(false);
 const s3SecretKey = ref('');
 const s3ForcePathStyle = ref(true);
 const isTestingS3 = ref(false);
@@ -272,6 +274,18 @@ const availableBackups = ref<BackupEntry[]>([]);
 const selectedBackup = ref('');
 const restoreMode = ref('merge');
 const isRestoringBackup = ref(false);
+
+const availableBackupsOptions = computed(() => {
+  return availableBackups.value.map(b => ({
+    value: b.key,
+    label: `${b.key} (${Math.round(b.size / 1024)} KB)`
+  }));
+});
+
+const restoreModeOptions = [
+  { value: 'merge', label: 'Merge (Keep Existing Local Data)' },
+  { value: 'overwrite', label: 'Overwrite All Local Data' }
+];
 
 const handleFetchBackups = async () => {
   isFetchingBackups.value = true;
@@ -676,6 +690,11 @@ const syncFromStore = async () => {
   s3LastUpload.value = await invoke('get_setting', { key: 's3_last_upload', default_value: 'Never' }) as string;
   s3AccessKey.value = '';
   s3SecretKey.value = '';
+  
+  const s3Ak = await store.getSecret('s3_access_key');
+  const s3Sk = await store.getSecret('s3_secret_key');
+  hasS3AccessKey.value = !!s3Ak;
+  hasS3SecretKey.value = !!s3Sk;
 };
 
 onMounted(syncFromStore);
@@ -1273,11 +1292,11 @@ const handleSave = async () => {
         <div class="input-row">
           <div class="input-group">
             <label>Access Key ID</label>
-            <input type="password" v-model="s3AccessKey" class="form-input" placeholder="Leave empty to keep saved key" />
+            <input type="password" v-model="s3AccessKey" class="form-input" :placeholder="hasS3AccessKey ? '•••••••••••••••• (Saved)' : 'Enter AWS/S3 Access Key ID'" />
           </div>
           <div class="input-group">
             <label>Secret Access Key</label>
-            <input type="password" v-model="s3SecretKey" class="form-input" placeholder="Leave empty to keep saved key" />
+            <input type="password" v-model="s3SecretKey" class="form-input" :placeholder="hasS3SecretKey ? '•••••••••••••••• (Saved)' : 'Enter AWS/S3 Secret Access Key'" />
           </div>
         </div>
         
@@ -1325,19 +1344,22 @@ const handleSave = async () => {
           </div>
         </div>
 
-        <div v-if="availableBackups.length > 0" class="input-row">
+        <div v-if="availableBackups.length > 0" class="input-row" style="margin-top: 16px;">
           <div class="input-group">
             <label>Select Backup to Restore</label>
-            <select v-model="selectedBackup" class="custom-select">
-              <option v-for="b in availableBackups" :key="b.key" :value="b.key">{{ b.key }} ({{ Math.round(b.size / 1024) }} KB)</option>
-            </select>
+            <CustomSelect
+              v-model="selectedBackup"
+              :options="availableBackupsOptions"
+              class="custom-select"
+            />
           </div>
           <div class="input-group">
             <label>Restore Mode</label>
-            <select v-model="restoreMode" class="custom-select">
-              <option value="overwrite">Overwrite All Local Data (Default)</option>
-              <option value="merge">Merge (Keep Existing Local Data)</option>
-            </select>
+            <CustomSelect
+              v-model="restoreMode"
+              :options="restoreModeOptions"
+              class="custom-select"
+            />
           </div>
         </div>
         

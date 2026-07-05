@@ -45,7 +45,7 @@ pub async fn start_server(app_handle: AppHandle) {
     let app = Router::new()
         .route("/health", axum::routing::get(health_check))
         .route("/inbox/ingest", post(ingest_job))
-        .route("/static-pdf/:filename", get(stream_pdf))
+        .route("/static-pdf/{filename}", get(stream_pdf))
         .layer(cors)
         .with_state(state);
 

@@ -123,6 +123,30 @@ If you wish to build from source or install the appication manually:
 
 ---
 
+## 🎬 Tutorial & Quick Start
+
+[▶️ Watch the Complete Software Usage Video](./assets/Complete_Software_Usage.mp4)
+
+### What You Can Instantly Do
+Once you've installed the desktop app and browser extension, you can instantly:
+1. Browse to any job posting online and click the RoleTect extension to securely send the job data to the app.
+2. The app will automatically parse the requirements and responsibilities.
+3. Use the built-in AI tools to automatically tailor your Base Resume to match the job description, and watch it compile the final PDF instantly.
+
+### Configuring Your Settings
+Before tailoring, you need to configure your AI providers. Head over to the **Settings Tab** in the desktop application.
+
+*   **AI Credentials:** RoleTect requires an API key to function unless you are running local models via Ollama. 
+    *   *Google Gemini:* Get a free API key from [Google AI Studio](https://aistudio.google.com/).
+    *   *Groq:* Get blazing fast API keys from the [GroqConsole](https://console.groq.com/).
+    *   Once you have a key, paste it into the respective provider section in the Settings page. These keys are securely encrypted in the IOTA Stronghold vault.
+*   **S3 Cloud Backup:** If you want to back up your resumes and job history to the cloud:
+    *   Create an S3 bucket (Any S3-compatible provider is supported, e.g., AWS, Cloudflare R2, MinIO, etc.).
+    *   In the Settings tab, enter your `Access Key`, `Secret Key`, `Bucket Name`, and `Endpoint URL`.
+    *   Toggle "Auto Cloud Backup" to sync your local SQLite database seamlessly.
+
+---
+
 ## 📊 Model & Data Card
 
 ### 1. Model Summary
@@ -140,6 +164,118 @@ If you wish to build from source or install the appication manually:
 ### 3. Limitations & Considerations
 *   **Initial Compiler Latency:** On its first run, the Tectonic engine downloads compiler assets to compile document structures. Subsequent runs utilize the local Tectonic cache.
 *   **Offline Compilation:** While LaTeX PDF generation is 100% offline, AI-based parsing and tailoring require a network connection unless a local model is running via Ollama.
+
+---
+
+## 💻 Core Code Highlights
+The following are snippets of our most critical engineering implementations, showcasing actual developer rationale rather than generic AI comments.
+
+### 1. Axum Server (Chunked PDF Streaming)
+We had to implement chunked streaming because serving 5MB+ compiled PDFs in a single payload to the frontend was causing Vue 3 to freeze.
+```rust
+// We use tower_http and axum to stream the compiled PDF directly from the temporary 
+// compilation directory back to the Vue frontend.
+// This prevents memory bloat and keeps the UI thread snappy.
+pub async fn serve_pdf(
+    Path(job_id): Path<String>,
+) -> impl IntoResponse {
+    let pdf_path = format!("{}/compilations/{}.pdf", std::env::temp_dir().display(), job_id);
+    
+    // Attempt to open the file. If it doesn't exist yet, the compiler is still running.
+    let file = match tokio::fs::File::open(&pdf_path).await {
+        Ok(f) => f,
+        Err(_) => return (StatusCode::NOT_FOUND, "PDF not found or still compiling".to_string()).into_response(),
+    };
+
+    // Convert the file into a byte stream for chunked transfer
+    let stream = tokio_util::io::ReaderStream::new(file);
+    let body = axum::body::Body::from_stream(stream);
+
+    // Explicitly set the application/pdf header so the browser/PDF viewer renders it
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/pdf")
+        .body(body)
+        .unwrap()
+}
+```
+
+### 2. Tectonic Stack Size Workaround
+One of our biggest technical hurdles was Tectonic overflowing the standard Rust thread stack when parsing complex LaTeX templates like `Awesome-CV`.
+```rust
+// Standard threads only have 2MB of stack space, which instantly panics Tectonic.
+// We spin up a custom thread with 100MB allocated exclusively for the compiler.
+pub fn compile_latex_safely(tex_content: String) -> Result<Vec<u8>, String> {
+    let builder = std::thread::Builder::new()
+        .name("tectonic_compiler_thread".into())
+        .stack_size(100 * 1024 * 1024); // 100MB stack limit
+
+    let handler = builder.spawn(move || {
+        // Run the tectonic engine safely inside this massive stack context
+        let mut compiler = tectonic::Compiler::new();
+        // ... compilation logic ...
+    }).map_err(|e| format!("Failed to spawn compiler thread: {}", e))?;
+
+    handler.join().unwrap()
+}
+```
+
+### 3. Agentic Orchestration with Rig AI
+To make the application truly agentic, we utilized the Rust `rig` library. We unified the extraction capabilities across multiple distinct AI providers, injecting a dual-capability system prompt directly into Rig's schema extractor to enforce reliable JSON validation from LLMs.
+```rust
+// We inject a specialized system prompt into the Rig extractor.
+// Rig handles the underlying HTTP complexities and JSON deserialization 
+// for 7 different AI providers using the exact same interface.
+pub async fn parse_job_description(
+    provider: &str,
+    model: &str,
+    api_key: &str,
+    input_text: &str,
+) -> Result<JobDetails, String> {
+    let system_prompt = "You are an expert job details extractor.
+TASK: Extract structured job details. Prioritize manual RAW DESCRIPTION over URL crawling.";
+
+    match provider {
+        "gemini" => {
+            let client = gemini::Client::new(api_key).map_err(|e| e.to_string())?;
+            client.extractor::<JobDetails>(model)
+                .preamble(system_prompt)
+                .build()
+                .extract(input_text)
+                .await
+                .map_err(|e| format!("Gemini AI Parsing Error: {}", e))
+        },
+        // ... (other providers follow the exact same rig architecture)
+        _ => Err("Unsupported provider".into()),
+    }
+}
+```
+
+### 4. Direct Cloud Sync (AWS SDK)
+To provide users with secure, decentralized backups, we integrated the official `aws-sdk-s3` crate. This allows users to bypass proprietary cloud constraints and back up their entire SQLite database structure to any S3-compatible provider (Cloudflare R2, MinIO, AWS).
+```rust
+// We build a custom S3 client bypassing default credential chains, 
+// pulling securely from the IOTA Stronghold enclave in memory.
+pub async fn build_s3_client(config: &S3Config) -> Result<s3::Client, String> {
+    let credentials = aws_sdk_s3::config::Credentials::new(
+        &config.access_key_id,
+        &config.secret_access_key,
+        None, // session token
+        None, // expiry
+        "roletect",
+    );
+
+    let s3_config = s3::config::Builder::new()
+        .endpoint_url(&config.endpoint_url)
+        .region(s3::config::Region::new(config.region.clone()))
+        .credentials_provider(credentials)
+        .force_path_style(config.force_path_style)
+        .behavior_version(s3::config::BehaviorVersion::latest())
+        .build();
+
+    Ok(s3::Client::from_conf(s3_config))
+}
+```
 
 ---
 

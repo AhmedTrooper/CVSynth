@@ -22,6 +22,7 @@ import {
   Download, 
   Wand2, 
   RotateCw, 
+  Loader2,
   X,
   FileCode,
   Terminal,
@@ -1291,7 +1292,7 @@ const activeFileName = computed(() => {
           @keyup.enter="refineWithAi"
         />
         <button @click="refineWithAi" :disabled="isRefining">
-          <RotateCw v-if="isRefining" :size="14" class="spinner" />
+          <Loader2 v-if="isRefining" :size="14" class="spinner" />
           <span v-else>→</span>
         </button>
       </Motion>

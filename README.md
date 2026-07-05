@@ -24,27 +24,35 @@ The following diagram illustrates how the components of RoleTect interact, from 
 *   **The Solution:** RoleTect utilizes `tauri-plugin-stronghold` to create an encrypted database enclave (`secrets.stronghold`) utilizing Argon2 key derivation.
 *   **Runtime Security:** A cryptographically random 256-bit passkey is generated at first run and stored locally. API credentials are decrypted on-the-fly inside Rust command memory only when executing AI calls, and are never saved to the SQLite database.
 
-### 2. Secure Local Ingest Server (Axum Core)
-*   **Dynamic Port Bindings:** At startup, the Tauri backend spins up a local Axum server. It tests a port range (from `14207` to `14280`) to avoid port conflicts and registers the active port in the local configuration.
-*   **Authentication:** The browser extension communicates with the Axum server using a dynamic 32-character secret key generated with `nanoid`. Requests lacking this secret in the JSON payload are rejected with a `401 Unauthorized` status.
+### 2. Dual-Purpose Local Axum Server
+*   **Dynamic Port Bindings & Auth:** At startup, the Tauri backend spins up an Axum server on an available port. The browser extension communicates using a dynamic 32-character secret key.
+*   **Chunked PDF Streaming:** Beyond just receiving job payloads from the extension, the server is uniquely engineered to serve compiled PDFs back to the frontend chunk by chunk. This data-streaming architecture ensures that massive PDFs load instantly without freezing or slowing down the Vue 3 UI.
 
 ### 3. Token-Squashing Scraper Pipeline
 *   **Efficiency:** Raw HTML bloats token counts and incurs unnecessary API costs.
 *   **DOM Sanitation:** The extension cleans the webpage DOM before transmission, stripping scripts, CSS styles, images, inline SVGs, iframes, navbars, and buttons.
 *   **Text Processing:** The content script runs a regex pipeline to collapse vertical spacing, convert returns into periods, eliminate horizontal gaps, and squash duplicate periods.
 
-### 4. On-Device Tectonic LaTeX Compilation
-*   **Architecture:** To bypass the requirement of a system-wide LaTeX installation (such as TeX Live or MiKTeX), RoleTect embeds the **Tectonic compiler** directly into a background thread.
-*   **Compilation Isolation:** PDF compilation runs in a dedicated thread stack sized to 10MB to handle complex LaTeX structures, utilizing a temporary directory to manage intermediate files and cache output dynamically.
+### 4. On-Device Tectonic LaTeX Compilation & Powerful IDE
+*   **Architecture & Workaround:** To bypass the requirement of a system-wide LaTeX installation, RoleTect embeds the **Tectonic compiler** directly into a background thread. We solved persistent stack overflow issues with complex LaTeX templates by significantly increasing the thread stack size to 100MB.
+*   **Pre-Caching for Offline Use:** We implemented a custom template that caches over 85 essential scientific and layout packages initially. This allows developers to run and compile complex documents completely offline after the initial setup.
+*   **Workspace Performance:** The built-in LaTeX IDE provides a seamless, side-by-side editing experience with CodeMirror. It instantly compiles and previews PDFs without UI lag.
 
-### 5. AI-Assisted Technical Diagramming Workspace
+### 5. Advanced Job Application Workspace
+*   **Side-by-Side Comparison:** Users can instantly toggle between their base resume/CV and the AI-tailored version to review exactly what the AI changed.
+*   **Precision AI Input Box:** For any tailored job, users have an interactive AI input box to dictate specific changes—whether generating a brand new section from scratch or updating a specific bullet point to better match the job requirements.
+*   **Self-Healing Compilation:** RoleTect leverages the Rig AI library for self-healing pipelines. If the AI-generated LaTeX compiles successfully, it is saved automatically. If compilation fails, the system catches the error logs and provides a one-click "AI Fix" option to automatically debug and resolve syntax issues.
+
+### 6. S3 Cloud Backup & Complete Offline Capability
+*   **S3 Cloud Sync:** Users can securely back up their entire SQLite database and workspaces to an S3-compatible cloud (AWS, Cloudflare R2, etc.). S3 credentials are saved securely in the OS keyring (Stronghold).
+*   **Intelligent Restore:** When restoring, users have the option to safely merge cloud data with their local database or completely overwrite it. 
+*   **Graceful Shutdown:** The app purposefully delays closing to ensure auto local and cloud backups complete successfully.
+*   **Multi-Provider LLM & Offline AI:** Integrates with Gemini, OpenAI, Anthropic, Groq, and Bedrock. If a user's computer can handle powerful models, they can route all AI tailoring and debugging through Ollama. Combined with the pre-cached LaTeX packages, the entire application can run 100% offline.
+
+### 7. AI-Assisted Technical Diagramming Workspace
 *   **Interactive Visual Canvas:** Incorporates a dedicated workspace for creating, editing, and rendering Mermaid.js flowcharts, sequence diagrams, and ER diagrams.
 *   **Interactive Panning & Zooming:** Uses `svg-pan-zoom` to allow users to interact with large, complex layouts.
 *   **AI Synthesis & Repair:** Features specialized commands (`refine_diagram_with_ai`, `fix_diagram_with_ai`) that use AI to dynamically build, refine, and debug diagrams from conversational natural language instructions.
-
-### 6. Multi-Provider LLM Orchestration
-*   **Implementation:** Using the Rust-based `rig` AI library, the application integrates with Gemini, OpenAI, Anthropic, Groq, and Bedrock.
-*   **Local Inference Support:** Supports Ollama, enabling users to keep both their data and LLM operations entirely offline.
 
 ---
 
@@ -72,14 +80,29 @@ The following diagram illustrates how the components of RoleTect interact, from 
 
 ---
 
-## 🚀 Setup & Local Execution
+## 🚀 Installation & Setup
 
-### Prerequisites
+### 1. Standard Installation (Recommended)
+The easiest way to get started is to download the pre-compiled application and official extension.
+
+*   **Desktop App:** Download the latest installer for your operating system from the [Releases](https://github.com/AhmedTrooper/RoleTect/releases) page.
+*   **Browser Extension:** Install the official companion extension to scrape and send job descriptions to the app.
+    *   **Firefox Users:** [🦊 Install Firefox Add-on](https://addons.mozilla.org/en-US/firefox/addon/roletect-ingest/) (Available Now)
+    *   **Chrome/Edge Users:** Download the `roletect-chrome-extension.zip` file from the [Releases](https://github.com/AhmedTrooper/RoleTect/releases) page. Extract the zip file, navigate to `chrome://extensions` in your browser, enable **Developer Mode**, click **Load unpacked**, and select the extracted folder.
+
+> **Connecting the Extension:** Once installed, click the extension icon in your browser. Copy the **Secret Key** and **Active Server Port** from the *Inbox* or *Settings* tab in the RoleTect desktop app and paste them into the extension to authenticate the secure connection.
+
+---
+
+### 2. Developer Setup & Local Execution
+If you wish to build from source or install the appication manually:
+
+#### Prerequisites
 *   [Node.js](https://nodejs.org/) (v18+)
 *   [Rust Compiler & Cargo](https://www.rust-lang.org/)
 *   [Bun Package Manager](https://bun.sh/) (Recommended, or npm)
 
-### Backend & Frontend Setup
+#### Backend & Frontend Build
 1.  **Clone the Repository:**
     ```bash
     git clone https://github.com/AhmedTrooper/RoleTect.git
@@ -88,21 +111,15 @@ The following diagram illustrates how the components of RoleTect interact, from 
 2.  **Install Dependencies:**
     ```bash
     bun install
-    # or
-    npm install
+    # or npm install
     ```
 3.  **Run Development Environment:**
     ```bash
     bun run tauri dev
-    # or
-    npm run tauri dev
+    # or npm run tauri dev
     ```
 
-### Extension Installation
-1.  Open your browser and navigate to the extensions page (e.g., `chrome://extensions` in Chrome).
-2.  Enable **Developer Mode** (toggle in the top-right corner).
-3.  Click **Load unpacked** and select the `extentions/chrome` folder (or `extentions/firefox` for Firefox).
-4.  Copy the **Secret Key** and **Active Server Port** from the *Inbox* or *Settings* tab in the RoleTect desktop app and paste them into the extension settings popup.
+
 
 ---
 

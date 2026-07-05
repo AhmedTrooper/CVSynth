@@ -3,7 +3,7 @@
 # RoleTect
 
 [![Firefox Add-on](https://img.shields.io/badge/Firefox-Add--on-FF7139?logo=firefox-browser&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/roletect-ingest/)
-[📄 Read the RoleTect Report](./assets/RoleTectReport.pdf) — *Explains the architectural, business, and privacy value of RoleTect.*
+[📄 Read the RoleTect Report](./assets/RoleTect_Architecture.pdf) — *Explains the architectural, business, and privacy value of RoleTect.*
 
 RoleTect is a local-first, privacy-focused desktop application and companion browser extension designed to organize the job application process, parse job descriptions, and tailor LaTeX-based resumes and cover letters using on-device or API-driven AI models.
 

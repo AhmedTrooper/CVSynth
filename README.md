@@ -2,6 +2,8 @@
 
 # RoleTect
 
+### 🚀 **[Firefox Extension (AVAILABLE NOW)](https://addons.mozilla.org/en-US/firefox/addon/roletect-ingest/)** | 🚧 **Chrome Extension (COMING SOON)**
+
 [![Firefox Add-on](https://img.shields.io/badge/Firefox-Add--on-FF7139?logo=firefox-browser&logoColor=white)](https://addons.mozilla.org/en-US/firefox/addon/roletect-ingest/)
 [📄 Read the RoleTect Report](./assets/RoleTect_Architecture.pdf) — *Explains the architectural, business, and privacy value of RoleTect.*
 

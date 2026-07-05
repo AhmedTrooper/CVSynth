@@ -9,6 +9,7 @@ import CloudUploadOverlay from "./components/CloudUploadOverlay.vue";
 import { useSettingsStore } from "./store/settings";
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
+import { exit } from '@tauri-apps/plugin-process';
 import {
     Home,
     Briefcase,
@@ -73,14 +74,14 @@ onMounted(async () => {
             // Check if dirty
             const isDirty = await invoke<boolean>('check_data_dirty');
             if (!isDirty) {
-                appWindow.destroy();
+                await exit(0);
                 return;
             }
             
             // Check if S3 is setup correctly
             const isSetupOk = await invoke<string>('get_setting', { key: 's3_setup_ok', default_value: 'false' });
             if (isSetupOk !== 'true') {
-                appWindow.destroy();
+                await exit(0);
                 return;
             }
             
@@ -98,13 +99,13 @@ onMounted(async () => {
             });
             
             // Brief pause so the user sees it actually completed if it was too fast
-            setTimeout(() => {
-                appWindow.destroy();
+            setTimeout(async () => {
+                await exit(0);
             }, 600);
             
         } catch (e) {
             console.error("Cloud backup on close failed:", e);
-            appWindow.destroy();
+            await exit(0);
         }
     });
 });

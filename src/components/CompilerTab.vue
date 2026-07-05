@@ -1291,7 +1291,8 @@ const activeFileName = computed(() => {
           @keyup.enter="refineWithAi"
         />
         <button @click="refineWithAi" :disabled="isRefining">
-          {{ isRefining ? '...' : '→' }}
+          <RotateCw v-if="isRefining" :size="14" class="spinner" />
+          <span v-else>→</span>
         </button>
       </Motion>
     </AnimatePresence>

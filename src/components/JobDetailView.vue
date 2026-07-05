@@ -36,7 +36,8 @@ import {
   Layers,
   Activity,
   Mail,
-  FileText
+  FileText,
+  Columns
 } from '@lucide/vue';
 
 interface TemplateItem {
@@ -128,6 +129,50 @@ const refinementInstruction = ref('');
 
 const isResumeCompiled = ref(false);
 const isClCompiled = ref(false);
+
+// Compare State
+const isComparing = ref(false);
+const basePdfUrl = ref<any>(null);
+const isCompilingBase = ref(false);
+
+const toggleCompare = async () => {
+  isComparing.value = !isComparing.value;
+  if (isComparing.value && !basePdfUrl.value) {
+    isCompilingBase.value = true;
+    try {
+      const baseId = activeMode.value === 'resume' ? resumeSelectedId.value : clSelectedId.value;
+      if (!baseId) throw new Error("No base template selected");
+
+      let baseLatex = '';
+      if (activeMode.value === 'resume') {
+        const r = await resumesStore.getResumeById(baseId);
+        baseLatex = r.latex_content || '';
+      } else {
+        const c = await clStore.getCoverLetterById(baseId);
+        baseLatex = c.latex_content || '';
+      }
+      
+      await invoke<number[]>('compile_resume_to_pdf', { 
+        latexCode: baseLatex,
+        filename: 'base.pdf'
+      });
+      
+      const port = await invoke<string>('get_setting', { key: 'active_server_port', default_value: '1420' });
+      basePdfUrl.value = {
+        url: `http://127.0.0.1:${port}/static-pdf/base.pdf?cache-bust=${Date.now()}`,
+        disableRange: false,
+        disableStream: false,
+        rangeChunkSize: 1024 * 1024
+      };
+    } catch (err: any) {
+      console.error("Failed to compile base PDF:", err);
+      isComparing.value = false;
+      error.value = `Compare Error: ${err.toString()}`;
+    } finally {
+      isCompilingBase.value = false;
+    }
+  }
+};
 
 // Resizer State
 const previewWidth = ref(450);
@@ -409,7 +454,8 @@ const doCompilePdf = async (targetMode: 'resume' | 'cl') => {
   
   try {
     const pdfBytes = await invoke<number[]>('compile_resume_to_pdf', { 
-      latexCode: currentLatex 
+      latexCode: currentLatex,
+      filename: 'output.pdf'
     });
     
     const bytes = new Uint8Array(pdfBytes);
@@ -991,6 +1037,25 @@ const deleteJob = async () => {
                 </Motion>
               </AnimatePresence>
             </div>
+            <div class="btn-tooltip-wrapper" v-if="activePdfBytes" @mouseenter="activeTooltip = 'compare'" @mouseleave="activeTooltip = null">
+              <button class="tab-btn" :class="{ 'active': isComparing }" @click="toggleCompare" :disabled="isCompilingBase">
+                <Columns v-if="!isCompilingBase && !isComparing" :size="14" />
+                <FileText v-else-if="!isCompilingBase && isComparing" :size="14" />
+                <RotateCw v-else :size="14" class="spinner" />
+              </button>
+              <AnimatePresence>
+                <Motion
+                  v-if="activeTooltip === 'compare'"
+                  :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                  :animate="{ opacity: 1, y: 0, scale: 1 }"
+                  :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                  :transition="{ duration: 0.15 }"
+                  class="flying-message tab-tooltip"
+                >
+                  {{ isComparing ? 'Exit Compare' : 'Compare with Base' }}
+                </Motion>
+              </AnimatePresence>
+            </div>
             <div class="btn-tooltip-wrapper" v-if="activePdfBytes" @mouseenter="activeTooltip = 'export-pdf'" @mouseleave="activeTooltip = null">
               <button class="tab-btn" @click="downloadPdf" :disabled="isDownloading">
                 <Download v-if="!isDownloading" :size="14" />
@@ -1029,7 +1094,18 @@ const deleteJob = async () => {
         </AnimatePresence>
 
         <div class="split-pane" ref="splitPaneRef" :class="{ 'is-resizing': isResizingPreview }">
-          <div class="editor-container" ref="editorContainer">
+          
+          <!-- Base PDF Viewer (Compare Mode) -->
+          <div v-if="isComparing" class="pdf-viewer base-pdf-viewer" style="flex: 1; border-right: 1px solid var(--line); display: flex; flex-direction: column; overflow-y: auto;">
+            <div class="compare-header" style="padding: 8px; text-align: center; font-size: 0.8rem; font-weight: 800; background: var(--surface-soft); border-bottom: 1px solid var(--line);">BASE TEMPLATE</div>
+            <div v-if="!basePdfUrl && isCompilingBase" class="loader-content" style="height: 100%; display: flex; align-items: center; justify-content: center;">
+              <RotateCw :size="32" class="spinner" />
+            </div>
+            <VuePdfEmbed v-else-if="basePdfUrl" :source="basePdfUrl" class="pdf-embed-component" />
+          </div>
+
+          <!-- Code Editor -->
+          <div v-show="!isComparing" class="editor-container" ref="editorContainer">
             <!-- AI Loading Overlay (Scoped to the editor so it doesn't block tabs) -->
             <AnimatePresence>
               <Motion
@@ -1067,33 +1143,35 @@ const deleteJob = async () => {
               :extensions="extensions"
               class="latex-editor-cm"
             />
-            
-            <AnimatePresence>
-              <Motion 
-                v-if="activeLatex"
-                class="refinement-bar"
-                drag
-                :drag-constraints="editorContainer || undefined"
-                :drag-elastic="0.1"
-                :initial="{ opacity: 0, y: -10, x: '-50%' }"
-                :animate="{ opacity: 1, y: 0, x: '-50%' }"
-                :exit="{ opacity: 0, y: -10, x: '-50%' }"
-              >
-                <input 
-                  v-model="refinementInstruction" 
-                  :placeholder="`Refine tailored ${activeMode === 'resume' ? 'resume' : 'cover letter'}...`"
-                  @keyup.enter="refineWithAi"
-                />
-                <button @click="refineWithAi" :disabled="isRefining">
-                  {{ isRefining ? '...' : '→' }}
-                </button>
-              </Motion>
-            </AnimatePresence>
           </div>
 
-          <div v-if="activePdfUrl && (activeMode === 'resume' ? isResumeCompiled : isClCompiled)" class="preview-resizer" @mousedown="startResizingPreview"></div>
+          <AnimatePresence>
+            <Motion 
+              v-if="activeLatex && (isComparing || activePdfUrl)"
+              class="refinement-bar"
+              drag
+              :drag-constraints="splitPaneRef || undefined"
+              :drag-elastic="0.1"
+              :initial="{ opacity: 0, y: -10, x: '-50%' }"
+              :animate="{ opacity: 1, y: 0, x: '-50%' }"
+              :exit="{ opacity: 0, y: -10, x: '-50%' }"
+              style="z-index: 100; position: absolute; left: 50%; top: 20px;"
+            >
+              <input 
+                v-model="refinementInstruction" 
+                :placeholder="`Refine tailored ${activeMode === 'resume' ? 'resume' : 'cover letter'}...`"
+                @keyup.enter="refineWithAi"
+              />
+              <button @click="refineWithAi" :disabled="isRefining">
+                {{ isRefining ? '...' : '→' }}
+              </button>
+            </Motion>
+          </AnimatePresence>
 
-          <div v-if="activePdfUrl && (activeMode === 'resume' ? isResumeCompiled : isClCompiled)" class="pdf-viewer" :style="{ width: previewWidth + 'px', flex: 'none' }">
+          <div v-if="activePdfUrl && (activeMode === 'resume' ? isResumeCompiled : isClCompiled) && !isComparing" class="preview-resizer" @mousedown="startResizingPreview"></div>
+
+          <div v-if="activePdfUrl && (activeMode === 'resume' ? isResumeCompiled : isClCompiled)" class="pdf-viewer tailored-pdf-viewer" :style="isComparing ? { flex: 1, width: 'auto' } : { width: previewWidth + 'px', flex: 'none' }">
+            <div v-if="isComparing" class="compare-header" style="padding: 8px; text-align: center; font-size: 0.8rem; font-weight: 800; background: var(--surface-soft); border-bottom: 1px solid var(--line); color: var(--accent);">TAILORED VERSION</div>
             <VuePdfEmbed :source="activePdfUrl" class="pdf-embed-component" @error="onPdfError" />
           </div>
         </div>

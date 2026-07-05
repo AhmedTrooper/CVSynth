@@ -832,7 +832,8 @@ const compilePdf = async () => {
 
       pdfBytes = await invoke<number[]>('compile_workspace_to_pdf', { 
         workspaceDir: targetWorkspace,
-        mainFileName: relativePath
+        mainFileName: relativePath,
+        filename: 'output.pdf'
       });
       
       if (workspacePath.value) {
@@ -844,7 +845,8 @@ const compilePdf = async () => {
         throw new Error("No .tex file selected and no content to compile.");
       }
       pdfBytes = await invoke<number[]>('compile_resume_to_pdf', { 
-        latexCode: latexCode.value 
+        latexCode: latexCode.value,
+        filename: 'output.pdf'
       });
     }
     

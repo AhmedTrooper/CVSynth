@@ -1,6 +1,6 @@
 use axum::{
     body::Body,
-    extract::{State, Json},
+    extract::{State, Json, Path},
     http::{header, HeaderMap, StatusCode},
     response::IntoResponse,
     routing::{get, post},
@@ -45,7 +45,7 @@ pub async fn start_server(app_handle: AppHandle) {
     let app = Router::new()
         .route("/health", axum::routing::get(health_check))
         .route("/inbox/ingest", post(ingest_job))
-        .route("/static-pdf/output.pdf", get(stream_fixed_pdf))
+        .route("/static-pdf/:filename", get(stream_pdf))
         .layer(cors)
         .with_state(state);
 
@@ -139,12 +139,17 @@ async fn ingest_job(
     }
 }
 
-async fn stream_fixed_pdf(
+async fn stream_pdf(
+    Path(filename): Path<String>,
     State(state): State<Arc<ServerState>>,
     headers: HeaderMap,
 ) -> axum::response::Response {
+    if filename.contains('/') || filename.contains('\\') || filename.contains("..") || !filename.ends_with(".pdf") {
+        return (StatusCode::BAD_REQUEST, "Invalid filename").into_response();
+    }
+
     let docs_dir = state.app_handle.path().document_dir().expect("Failed to locate Documents folder");
-    let file_path = docs_dir.join("RoleTect").join("output.pdf");
+    let file_path = docs_dir.join("RoleTect").join(filename);
 
     let mut file = match File::open(&file_path).await {
         Ok(f) => f,

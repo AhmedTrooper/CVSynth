@@ -101,13 +101,14 @@ pub async fn fix_diagram_with_ai(
 }
 
 #[command]
-pub async fn compile_resume_to_pdf(app_handle: AppHandle, latex_code: String) -> Result<Vec<u8>, String> {
+pub async fn compile_resume_to_pdf(app_handle: AppHandle, latex_code: String, filename: Option<String>) -> Result<Vec<u8>, String> {
     let docs_dir = app_handle.path().document_dir().map_err(|e| format!("Failed to get documents dir: {}", e))?;
     let roletect_dir = docs_dir.join("RoleTect");
     if !roletect_dir.exists() {
         std::fs::create_dir_all(&roletect_dir).map_err(|e| format!("Failed to create RoleTect dir: {}", e))?;
     }
-    let output_pdf_path = roletect_dir.join("output.pdf");
+    let output_name = filename.unwrap_or_else(|| "output.pdf".to_string());
+    let output_pdf_path = roletect_dir.join(output_name);
 
     tokio::task::spawn_blocking(move || {
         let thread_handle = std::thread::Builder::new()
@@ -172,13 +173,14 @@ pub async fn compile_resume_to_pdf(app_handle: AppHandle, latex_code: String) ->
 }
 
 #[command]
-pub async fn compile_workspace_to_pdf(app_handle: AppHandle, workspace_dir: String, main_file_name: String) -> Result<Vec<u8>, String> {
+pub async fn compile_workspace_to_pdf(app_handle: AppHandle, workspace_dir: String, main_file_name: String, filename: Option<String>) -> Result<Vec<u8>, String> {
     let docs_dir = app_handle.path().document_dir().map_err(|e| format!("Failed to get documents dir: {}", e))?;
     let roletect_dir = docs_dir.join("RoleTect");
     if !roletect_dir.exists() {
         std::fs::create_dir_all(&roletect_dir).map_err(|e| format!("Failed to create RoleTect dir: {}", e))?;
     }
-    let output_pdf_path = roletect_dir.join("output.pdf");
+    let output_name = filename.unwrap_or_else(|| "output.pdf".to_string());
+    let output_pdf_path = roletect_dir.join(output_name);
 
     let workspace_path = PathBuf::from(&workspace_dir);
     

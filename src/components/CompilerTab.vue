@@ -1212,7 +1212,7 @@ const activeFileName = computed(() => {
           <!-- Loading Overlay (Scoped to Preview) -->
           <AnimatePresence>
             <Motion
-              v-if="isCompiling || isFixing || isRefining"
+              v-if="isCompiling || isFixing"
               :initial="{ opacity: 0 }"
               :animate="{ opacity: 1 }"
               :exit="{ opacity: 0 }"
@@ -1220,7 +1220,7 @@ const activeFileName = computed(() => {
             >
               <div class="loader-content">
                 <RotateCw :size="32" class="spinner" />
-                <h3>{{ isFixing ? 'DEBUGGING...' : isRefining ? 'REFINING...' : 'COMPILING...' }}</h3>
+                <h3>{{ isFixing ? 'DEBUGGING...' : 'COMPILING...' }}</h3>
               </div>
             </Motion>
           </AnimatePresence>

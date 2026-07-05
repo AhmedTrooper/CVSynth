@@ -1112,7 +1112,7 @@ const deleteJob = async () => {
             <!-- AI Loading Overlay (Scoped to the editor so it doesn't block tabs) -->
             <AnimatePresence>
               <Motion
-                v-if="isGenerating || isFixing || isRefining"
+                v-if="isGenerating || isFixing"
                 :initial="{ opacity: 0 }"
                 :animate="{ opacity: 1 }"
                 :exit="{ opacity: 0 }"
@@ -1120,7 +1120,7 @@ const deleteJob = async () => {
               >
                 <div class="loader-content">
                   <RotateCw :size="32" class="spinner" />
-                  <h3>{{ isGenerating ? (activeMode === 'resume' ? 'TAILORING RESUME...' : 'CRAFTING COVER LETTER...') : isFixing ? 'DEBUGGING...' : 'REFINING...' }}</h3>
+                  <h3>{{ isGenerating ? (activeMode === 'resume' ? 'TAILORING RESUME...' : 'CRAFTING COVER LETTER...') : 'DEBUGGING...' }}</h3>
                 </div>
               </Motion>
             </AnimatePresence>

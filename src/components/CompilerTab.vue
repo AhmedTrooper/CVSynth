@@ -1945,6 +1945,10 @@ const activeFileName = computed(() => {
   align-self: center;
 }
 
+.refinement-bar button .spinner {
+  color: white !important;
+}
+
 .pdf-viewer {
   flex: 1;
   display: block;

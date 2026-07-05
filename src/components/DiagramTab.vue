@@ -2193,6 +2193,10 @@ const activeFileName = computed(() => {
   align-self: center;
 }
 
+.refinement-bar button .spinner {
+  color: white !important;
+}
+
 .preview-section {
   flex: 1.5;
   display: flex;

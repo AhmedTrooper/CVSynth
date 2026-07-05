@@ -183,11 +183,15 @@ const isTestingS3 = ref(false);
 const s3TestError = ref('');
 const s3TestSuccess = ref(false);
 const isSavingS3 = ref(false);
+const s3SetupOk = ref(false);
+const s3LastUpload = ref('Never');
 
-const handleTestS3 = async () => {
-  isTestingS3.value = true;
-  s3TestError.value = '';
-  s3TestSuccess.value = false;
+const handleTestS3 = async (silent = false) => {
+  if (!silent) {
+    isTestingS3.value = true;
+    s3TestError.value = '';
+    s3TestSuccess.value = false;
+  }
   
   try {
     let ak = s3AccessKey.value.trim();
@@ -205,12 +209,16 @@ const handleTestS3 = async () => {
       forcePathStyle: s3ForcePathStyle.value
     });
     
-    s3TestSuccess.value = true;
-    await dialog.showAlert(res, 'S3 Connection Succeeded');
+    if (!silent) {
+      s3TestSuccess.value = true;
+      await dialog.showAlert(res, 'S3 Connection Succeeded');
+    }
+    return true;
   } catch (err: any) {
-    s3TestError.value = err.toString();
+    if (!silent) s3TestError.value = err.toString();
+    return false;
   } finally {
-    isTestingS3.value = false;
+    if (!silent) isTestingS3.value = false;
   }
 };
 
@@ -220,10 +228,20 @@ const handleSaveS3 = async () => {
   s3TestSuccess.value = false;
   
   try {
+    // Implicit test on save
+    const testPassed = await handleTestS3(true);
+    if (!testPassed) {
+      s3SetupOk.value = false;
+      await invoke('save_setting', { key: 's3_setup_ok', value: 'false' });
+      throw new Error('Connection test failed. Please verify credentials/endpoint.');
+    }
+    
     await invoke('save_setting', { key: 's3_endpoint_url', value: s3Endpoint.value.trim() });
     await invoke('save_setting', { key: 's3_bucket_name', value: s3Bucket.value.trim() });
     await invoke('save_setting', { key: 's3_region', value: s3Region.value.trim() });
     await invoke('save_setting', { key: 's3_force_path_style', value: s3ForcePathStyle.value ? 'true' : 'false' });
+    await invoke('save_setting', { key: 's3_setup_ok', value: 'true' });
+    s3SetupOk.value = true;
     
     if (s3AccessKey.value.trim()) {
       await store.saveSecret('s3_access_key', s3AccessKey.value.trim());
@@ -578,6 +596,8 @@ const syncFromStore = async () => {
   s3Bucket.value = await invoke('get_setting', { key: 's3_bucket_name', default_value: '' }) as string;
   s3Region.value = await invoke('get_setting', { key: 's3_region', default_value: 'us-east-1' }) as string;
   s3ForcePathStyle.value = await invoke('get_setting', { key: 's3_force_path_style', default_value: 'true' }) === 'true';
+  s3SetupOk.value = await invoke('get_setting', { key: 's3_setup_ok', default_value: 'false' }) === 'true';
+  s3LastUpload.value = await invoke('get_setting', { key: 's3_last_upload', default_value: 'Never' }) as string;
   s3AccessKey.value = '';
   s3SecretKey.value = '';
 };
@@ -1187,7 +1207,7 @@ const handleSave = async () => {
         
         <div class="credentials-actions" style="margin-top: 24px;">
           <div class="button-group">
-            <button class="btn-test-connection" @click="handleTestS3" :disabled="isTestingS3 || isSavingS3">
+            <button class="btn-test-connection" @click="handleTestS3(false)" :disabled="isTestingS3 || isSavingS3">
               <RefreshCw v-if="isTestingS3" :size="14" class="spinner" />
               <Play v-else :size="14" />
               Test Connection
@@ -1200,6 +1220,10 @@ const handleSave = async () => {
           <div class="status-area-inline">
             <span v-if="s3TestSuccess" class="success-msg"><CheckCircle :size="14"/> {{ isSavingS3 ? '' : 'Settings saved.' }}</span>
             <span v-if="s3TestError" class="error-msg">{{ s3TestError }}</span>
+            <span v-if="!s3TestError && !s3TestSuccess && s3SetupOk" style="font-size: 0.75rem; color: var(--muted); display: flex; flex-direction: column; text-align: right;">
+              <strong style="color: var(--accent);">Auto-Backup: Active</strong>
+              <span>Last Upload: {{ s3LastUpload }}</span>
+            </span>
           </div>
         </div>
       </div>

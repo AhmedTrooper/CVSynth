@@ -65,6 +65,16 @@ pub async fn upload_backup_to_s3(
     
     let key = s3::upload_backup(&client, &config.bucket_name, &json).await?;
     
+    // Track last successful upload
+    let now_str = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+    let _ = state.with_db(|conn| {
+        conn.execute(
+            "INSERT INTO app_settings (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            ["s3_last_upload", &now_str],
+        ).map_err(|e| e.to_string())?;
+        Ok(())
+    }).await;
+    
     // Reset dirty flag
     if let Ok(mut dirty) = state.data_dirty.lock() {
         *dirty = false;

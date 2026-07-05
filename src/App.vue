@@ -77,9 +77,9 @@ onMounted(async () => {
                 return;
             }
             
-            // Check if S3 is configured
-            const endpoint = await invoke<string>('get_setting', { key: 's3_endpoint_url', default_value: '' });
-            if (!endpoint || endpoint.trim() === '') {
+            // Check if S3 is setup correctly
+            const isSetupOk = await invoke<string>('get_setting', { key: 's3_setup_ok', default_value: 'false' });
+            if (isSetupOk !== 'true') {
                 appWindow.destroy();
                 return;
             }

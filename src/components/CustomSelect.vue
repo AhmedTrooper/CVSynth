@@ -17,6 +17,7 @@ const props = defineProps<{
   options: Option[];
   placeholder?: string;
   disabled?: boolean;
+  placement?: 'top' | 'bottom';
 }>();
 
 const emit = defineEmits<{
@@ -59,7 +60,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="custom-select-container" ref="selectRef">
+  <div class="custom-select-container" :class="`placement-${placement || 'bottom'}`" ref="selectRef">
     <button
       type="button"
       class="custom-select-trigger"
@@ -166,6 +167,11 @@ onUnmounted(() => {
   padding: 6px;
   margin: 0;
   list-style: none;
+}
+
+.custom-select-container.placement-top .custom-select-options {
+  top: auto;
+  bottom: calc(100% + 6px);
 }
 
 .custom-select-option {

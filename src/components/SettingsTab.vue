@@ -1365,6 +1365,7 @@ const handleSave = async () => {
               v-model="selectedBackup"
               :options="availableBackupsOptions"
               class="custom-select"
+              placement="top"
             />
           </div>
           <div class="input-group">
@@ -1373,6 +1374,7 @@ const handleSave = async () => {
               v-model="restoreMode"
               :options="restoreModeOptions"
               class="custom-select"
+              placement="top"
             />
           </div>
         </div>

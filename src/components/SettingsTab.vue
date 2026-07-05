@@ -25,6 +25,7 @@ import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs';
 
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { useDialogStore } from '../store/dialog';
+import { ask } from '@tauri-apps/plugin-dialog';
 import CustomSelect from './CustomSelect.vue';
 
 const store = useSettingsStore();
@@ -145,9 +146,9 @@ const exportData = async () => {
 
 const handleImport = async (mode: 'merge' | 'overwrite') => {
   if (mode === 'overwrite') {
-    const confirmed = await dialog.showConfirm(
-      'This will DELETE all current jobs and resumes, replacing them with the backup. Are you sure?',
-      'CRITICAL: Overwrite Data'
+    const confirmed = await ask(
+      'Are you absolutely sure you want to overwrite your entire local vault? This action cannot be undone and will permanently delete any unsaved local changes.',
+      { title: 'Overwrite Local Vault?', kind: 'warning' }
     );
     if (!confirmed) return;
   }
@@ -322,11 +323,13 @@ const handleFetchBackups = async () => {
 const handleRestoreBackup = async () => {
   if (!selectedBackup.value) return;
   
-  const modeText = restoreMode.value === 'overwrite' ? 'overwrite your current local database' : 'merge cloud data with your local database';
-  const confirmed = await dialog.showConfirm(
-    'Restore from Cloud Backup?',
-    `Are you sure you want to restore "${selectedBackup.value}"?\n\nWARNING: This will ${modeText}. The application will reload upon success.`
+  const modeText = restoreMode.value === 'overwrite' ? 'OVERWRITE ALL LOCAL DATA' : 'merge the cloud backup into your local data';
+  
+  const confirmed = await ask(
+    `Are you sure you want to restore "${selectedBackup.value}"?\n\nWARNING: This will ${modeText}. The application will reload upon success.`,
+    { title: 'Restore from Cloud Backup?', kind: 'warning' }
   );
+  
   if (!confirmed) return;
   
   isRestoringBackup.value = true;

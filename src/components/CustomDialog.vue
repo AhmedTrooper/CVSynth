@@ -212,6 +212,7 @@ onUnmounted(() => {
   line-height: 1.6;
   color: var(--ink);
   margin-bottom: 16px;
+  white-space: pre-wrap;
 }
 
 .input-wrapper {

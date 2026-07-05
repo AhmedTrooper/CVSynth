@@ -270,7 +270,7 @@ const isFetchingBackups = ref(false);
 const fetchBackupsError = ref('');
 const availableBackups = ref<BackupEntry[]>([]);
 const selectedBackup = ref('');
-const restoreMode = ref('overwrite');
+const restoreMode = ref('merge');
 const isRestoringBackup = ref(false);
 
 const handleFetchBackups = async () => {
@@ -1248,18 +1248,18 @@ const handleSave = async () => {
         <div class="input-row">
           <div class="input-group">
             <label>Endpoint URL</label>
-            <input type="text" v-model="s3Endpoint" class="form-input" placeholder="e.g. https://s3.us-east-1.amazonaws.com" />
+            <input type="password" v-model="s3Endpoint" class="form-input" placeholder="e.g. https://s3.us-east-1.amazonaws.com" />
           </div>
           <div class="input-group">
             <label>Bucket Name</label>
-            <input type="text" v-model="s3Bucket" class="form-input" placeholder="my-roletect-backup-bucket" />
+            <input type="password" v-model="s3Bucket" class="form-input" placeholder="my-roletect-backup-bucket" />
           </div>
         </div>
 
         <div class="input-row">
           <div class="input-group">
             <label>Region</label>
-            <input type="text" v-model="s3Region" class="form-input" placeholder="us-east-1" />
+            <input type="password" v-model="s3Region" class="form-input" placeholder="us-east-1" />
           </div>
           <div class="input-group">
             <label>Path Style Access</label>

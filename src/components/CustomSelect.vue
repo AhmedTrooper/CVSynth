@@ -156,7 +156,7 @@ onUnmounted(() => {
   top: calc(100% + 6px);
   left: 0;
   width: 100%;
-  max-height: 220px;
+  max-height: 350px;
   overflow-y: auto;
   background: var(--surface, #121214);
   border: 1px solid var(--line, #32323c);

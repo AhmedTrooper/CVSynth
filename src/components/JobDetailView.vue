@@ -520,8 +520,10 @@ const handleTabSwitch = async (mode: 'resume' | 'cl') => {
   
   isResumeCompiled.value = false;
   resumePdfUrl.value = null;
+  resumePdfBytes.value = null;
   isClCompiled.value = false;
   clPdfUrl.value = null;
+  clPdfBytes.value = null;
   
   activeMode.value = mode;
 };
@@ -1037,7 +1039,7 @@ const deleteJob = async () => {
                 </Motion>
               </AnimatePresence>
             </div>
-            <div class="btn-tooltip-wrapper" v-if="activePdfBytes" @mouseenter="activeTooltip = 'compare'" @mouseleave="activeTooltip = null">
+            <div class="btn-tooltip-wrapper" v-if="activeMode === 'resume' ? isResumeCompiled : isClCompiled" @mouseenter="activeTooltip = 'compare'" @mouseleave="activeTooltip = null">
               <button class="tab-btn" :class="{ 'active': isComparing }" @click="toggleCompare" :disabled="isCompilingBase">
                 <Columns v-if="!isCompilingBase && !isComparing" :size="14" />
                 <FileText v-else-if="!isCompilingBase && isComparing" :size="14" />

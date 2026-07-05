@@ -13,35 +13,7 @@ RoleTect is a local-first, privacy-focused desktop application and companion bro
 
 The following diagram illustrates how the components of RoleTect interact, from web scraping to secure key retrieval, database storage, and local compilation.
 
-```mermaid
-flowchart TD
-    subgraph Browser ["Web Browser"]
-        A[Job Posting Webpage] -->|1. Scrape & Compress DOM| B[Extension Content Script]
-        B -->|2. POST JSON + Secret Key| C[Extension Background Worker]
-    end
-
-    subgraph DesktopApp ["RoleTect (Tauri Desktop App)"]
-        C -->|3. Send Job Data| D[Local Axum Server]
-        D -->|4. Authenticate Secret| E[Tauri AppState]
-        E -->|5. Store Pending Job| F[(Local SQLite DB)]
-        
-        G[Vue 3 Frontend UI] -->|6. Trigger Parsing / Tailoring| H[Tauri Command Handlers]
-        
-        H -->|7. Request Decryption| I[IOTA Stronghold Vault]
-        I -->|8. Return Decrypted Key to Memory| H
-        
-        H -->|9. Run LLM Ingestion / Tailoring| J[Rig AI Library]
-        J -->|10. Execute API Call| K[AI Providers]
-        
-        H -->|11. Compile LaTeX Document| L[Tectonic Engine]
-        L -->|12. Output PDF Output| M[Local File System]
-    end
-
-    classDef component fill:#2a2f3d,stroke:#4e5a75,stroke-width:1px,color:#fff;
-    classDef storage fill:#1e2430,stroke:#3b475c,stroke-width:2px,color:#fff;
-    class Browser,DesktopApp component;
-    class F,I storage;
-```
+![RoleTect Architecture Diagram](./assets/RoleTect_Diagram.jpg)
 
 ---
 

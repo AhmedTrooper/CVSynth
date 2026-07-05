@@ -515,14 +515,13 @@ const handleTabSwitch = async (mode: 'resume' | 'cl') => {
     if (!confirmed) return;
   }
   
-  // Clear the PDF preview to prevent showing stale 'output.pdf' which might belong to the other tab
-  if (mode === 'resume') {
-    isResumeCompiled.value = false;
-    resumePdfUrl.value = null;
-  } else {
-    isClCompiled.value = false;
-    clPdfUrl.value = null;
-  }
+  isComparing.value = false;
+  basePdfUrl.value = null;
+  
+  isResumeCompiled.value = false;
+  resumePdfUrl.value = null;
+  isClCompiled.value = false;
+  clPdfUrl.value = null;
   
   activeMode.value = mode;
 };

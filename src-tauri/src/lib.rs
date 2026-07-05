@@ -2,6 +2,7 @@ pub mod ai;
 pub mod commands;
 pub mod db;
 pub mod server;
+pub mod s3;
 
 use rusqlite::Connection;
 use std::sync::Mutex;
@@ -9,6 +10,16 @@ use tauri::Manager;
 
 pub struct AppState {
     pub db: Mutex<Option<Connection>>,
+    pub data_dirty: Mutex<bool>,
+    pub startup_snapshot_hash: Mutex<Option<String>>,
+}
+
+impl AppState {
+    pub fn mark_dirty(&self) {
+        if let Ok(mut dirty) = self.data_dirty.lock() {
+            *dirty = true;
+        }
+    }
 }
 
 impl AppState {
@@ -60,9 +71,12 @@ pub fn run() {
 
             // 2. Initialize SQLite Database Asynchronously
             let app_handle = app.handle().clone();
-            app.manage(AppState {
+            let app_state = AppState {
                 db: Mutex::new(None),
-            });
+                data_dirty: Mutex::new(false),
+                startup_snapshot_hash: Mutex::new(None),
+            };
+            app.manage(app_state);
 
             tauri::async_runtime::spawn(async move {
                 match db::init_db(&app_handle) {
@@ -152,7 +166,12 @@ pub fn run() {
             commands::inbox::delete_all_inbox_jobs,
             commands::inbox::mark_inbox_job_processed,
             commands::inbox::get_extension_config,
-            commands::inbox::reset_extension_secret
+            commands::inbox::reset_extension_secret,
+            commands::cloud::test_s3_connection,
+            commands::cloud::check_data_dirty,
+            commands::cloud::upload_backup_to_s3,
+            commands::cloud::list_s3_backups,
+            commands::cloud::restore_from_s3,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

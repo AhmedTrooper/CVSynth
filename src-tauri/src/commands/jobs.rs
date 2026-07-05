@@ -104,6 +104,7 @@ pub async fn save_job(state: State<'_, AppState>, payload: JobPayload) -> Result
     )
     .map_err(|e| format!("Database error: {}", e))?;
 
+    state.mark_dirty();
     Ok(payload.id)
 }
 
@@ -236,6 +237,7 @@ pub async fn delete_job(state: State<'_, AppState>, id: String) -> Result<(), St
 
     tx.commit().map_err(|e| format!("Commit error: {}", e))?;
 
+    state.mark_dirty();
     Ok(())
 }
 
@@ -264,6 +266,7 @@ pub async fn delete_jobs_batch(state: State<'_, AppState>, ids: Vec<String>) -> 
 
     tx.commit().map_err(|e| format!("Commit error: {}", e))?;
 
+    state.mark_dirty();
     Ok(())
 }
 
@@ -290,6 +293,7 @@ pub async fn delete_all_jobs(state: State<'_, AppState>) -> Result<(), String> {
 
     tx.commit().map_err(|e| format!("Commit error: {}", e))?;
 
+    state.mark_dirty();
     Ok(())
 }
 
@@ -328,6 +332,7 @@ pub async fn update_job_status(
     }
 
     tx.commit().map_err(|e| e.to_string())?;
+    state.mark_dirty();
     Ok(())
 }
 
@@ -355,6 +360,7 @@ pub async fn update_job_metadata(
     conn.execute(&sql, [&value, &id])
         .map_err(|e| format!("Database error: {}", e))?;
 
+    state.mark_dirty();
     Ok(())
 }
 
@@ -402,6 +408,7 @@ pub async fn update_tailored_resume(
     }
 
     tx.commit().map_err(|e| e.to_string())?;
+    state.mark_dirty();
     Ok(())
 }
 
@@ -538,6 +545,7 @@ pub async fn tailor_resume(
             ).map_err(|e| format!("Database error (update job): {}", e))?;
 
             tx.commit().map_err(|e| e.to_string())?;
+            state.mark_dirty();
             Ok(tailored_id)
         } else {
             Err("Database connection lost".to_string())

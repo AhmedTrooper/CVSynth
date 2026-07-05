@@ -19,6 +19,7 @@ pub async fn save_compiler_state(
     )
     .map_err(|e| format!("Database error: {}", e))?;
 
+    state.mark_dirty();
     Ok(())
 }
 

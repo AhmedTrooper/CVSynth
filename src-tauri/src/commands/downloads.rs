@@ -38,6 +38,7 @@ pub async fn record_download(
     )
     .map_err(|e| e.to_string())?;
 
+    state.mark_dirty();
     Ok(id)
 }
 

@@ -163,6 +163,7 @@ pub fn create_new_cover_letter(
         )
         .map_err(|e| format!("Database error: {}", e))?;
 
+        state.mark_dirty();
         Ok(cl_id)
     } else {
         Err("Database connection lost".to_string())
@@ -182,6 +183,7 @@ pub fn update_cover_letter(
             [&args.name, &args.category, &args.latex_content, &args.cl_id],
         ).map_err(|e| format!("Database error: {}", e))?;
 
+        state.mark_dirty();
         Ok(())
     } else {
         Err("Database connection lost".to_string())
@@ -203,6 +205,7 @@ pub fn delete_cover_letter(
         )
         .map_err(|e| format!("Database error: {}. This template might be in use.", e))?;
 
+        state.mark_dirty();
         Ok(())
     } else {
         Err("Database connection lost".to_string())
@@ -253,6 +256,7 @@ pub async fn update_tailored_cover_letter(
     }
 
     tx.commit().map_err(|e| e.to_string())?;
+    state.mark_dirty();
     Ok(())
 }
 
@@ -389,6 +393,7 @@ pub async fn tailor_cover_letter(
             ).map_err(|e| format!("Database error (update job): {}", e))?;
 
             tx.commit().map_err(|e| e.to_string())?;
+            state.mark_dirty();
             Ok(tailored_id)
         } else {
             Err("Database connection lost".to_string())

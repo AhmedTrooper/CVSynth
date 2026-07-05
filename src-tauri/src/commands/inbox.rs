@@ -71,7 +71,9 @@ pub async fn delete_inbox_job(state: State<'_, AppState>, id: String) -> Result<
         conn.execute("DELETE FROM inbox_jobs WHERE id = ?1", [&id])
             .map_err(|e| e.to_string())?;
         Ok(())
-    }).await
+    }).await?;
+    state.mark_dirty();
+    Ok(())
 }
 
 #[tauri::command]
@@ -80,7 +82,9 @@ pub async fn delete_all_inbox_jobs(state: State<'_, AppState>) -> Result<(), Str
         conn.execute("DELETE FROM inbox_jobs", [])
             .map_err(|e| e.to_string())?;
         Ok(())
-    }).await
+    }).await?;
+    state.mark_dirty();
+    Ok(())
 }
 
 #[tauri::command]
@@ -89,7 +93,9 @@ pub async fn mark_inbox_job_processed(state: State<'_, AppState>, id: String) ->
         conn.execute("UPDATE inbox_jobs SET status = 'Processed' WHERE id = ?1", [&id])
             .map_err(|e| e.to_string())?;
         Ok(())
-    }).await
+    }).await?;
+    state.mark_dirty();
+    Ok(())
 }
 
 #[tauri::command]
@@ -123,6 +129,7 @@ pub async fn reset_extension_secret(state: State<'_, AppState>) -> Result<String
         ).map_err(|e| e.to_string())?;
         Ok(())
     }).await?;
-
+    
+    state.mark_dirty();
     Ok(new_secret)
 }

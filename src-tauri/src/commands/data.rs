@@ -668,6 +668,31 @@ pub async fn import_data(
     import_data_core(&state, data, mode)
 }
 
+#[tauri::command]
+pub async fn auto_local_backup(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    use tauri::Manager;
+    
+    let data = export_all_data_core(&state)?;
+    let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
+    
+    let docs_dir = app.path().document_dir().map_err(|_| "Could not find documents directory".to_string())?;
+    let backup_dir = docs_dir.join("RoleTect-Backups");
+    
+    if !backup_dir.exists() {
+        std::fs::create_dir_all(&backup_dir).map_err(|e| e.to_string())?;
+    }
+    
+    let timestamp = chrono::Local::now().format("%Y%m%d_%H%M");
+    let file_path = backup_dir.join(format!("RoleTect_Backup_{}.json", timestamp));
+    
+    std::fs::write(&file_path, json).map_err(|e| format!("Failed to write local backup: {}", e))?;
+    
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

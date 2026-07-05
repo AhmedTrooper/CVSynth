@@ -140,7 +140,7 @@ onUnmounted(() => {
 .dialog-card {
   position: relative;
   width: 100%;
-  max-width: 400px;
+  max-width: 500px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 16px;

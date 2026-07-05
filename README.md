@@ -9,6 +9,21 @@
 
 RoleTect is a local-first, privacy-focused desktop application and companion browser extension designed to organize the job application process, parse job descriptions, and tailor LaTeX-based resumes and cover letters using on-device or API-driven AI models.
 
+<table>
+  <tr>
+    <td width="50%"><img src="./assets/RoleTect/home_page.png" /></td>
+    <td width="50%"><img src="./assets/RoleTect/extention_job_vault.png" /></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="./assets/RoleTect/job_details_compile.png" /></td>
+    <td width="50%"><img src="./assets/RoleTect/job_details_comparison_base_vs_tailored.png" /></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="./assets/RoleTect/latex_workspace.png" /></td>
+    <td width="50%"><img src="./assets/RoleTect/diagram_mermaid_markdown.png" /></td>
+  </tr>
+</table>
+
 ---
 
 ## 🏗️ System Architecture

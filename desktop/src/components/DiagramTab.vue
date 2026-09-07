@@ -35,6 +35,7 @@ import {
   X,
   FileCode,
   FolderOpen,
+  FolderX,
   Plus,
   FolderPlus,
   Share2,
@@ -1111,7 +1112,12 @@ const activeFileName = computed(() => {
   <div class="studio-container">
     <header class="studio-header">
       <div class="header-left">
-        <button class="toggle-sidebar-btn" @click="toggleSidebar" title="Toggle Sidebar">
+        <button 
+          class="toggle-sidebar-btn" 
+          :class="{ active: isSidebarVisible }"
+          @click="toggleSidebar" 
+          :title="isSidebarVisible ? 'Hide Sidebar' : 'Show Sidebar'"
+        >
           <Layout :size="18" />
         </button>
         <Share2 :size="20" class="header-icon" />
@@ -1264,7 +1270,14 @@ const activeFileName = computed(() => {
               <div class="workspace-name-row">
                 <FolderOpen :size="14" class="workspace-folder-icon" />
                 <span class="workspace-title">{{ workspaceName || 'EXPLORER' }}</span>
-                <button v-if="workspacePath" @click="closeWorkspace" title="Close Workspace" class="close-workspace-btn"><X :size="14" /></button>
+                <button 
+                  v-if="workspacePath" 
+                  @click="closeWorkspace" 
+                  title="Close Workspace (Unload Folder)" 
+                  class="close-workspace-btn"
+                >
+                  <FolderX :size="14" />
+                </button>
               </div>
               <span v-if="workspacePath" class="workspace-path-subtext">{{ workspacePath }}</span>
             </div>

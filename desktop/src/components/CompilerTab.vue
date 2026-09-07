@@ -27,6 +27,7 @@ import {
   FileCode,
   Terminal,
   FolderOpen,
+  FolderX,
   Plus,
   FolderPlus,
   Files,
@@ -996,7 +997,7 @@ const activeFileName = computed(() => {
           class="toggle-sidebar-btn" 
           :class="{ active: isSidebarVisible }"
           @click="toggleSidebar" 
-          :title="isSidebarVisible ? 'Close Workspace' : 'Open Workspace'"
+          :title="isSidebarVisible ? 'Hide Sidebar' : 'Show Sidebar'"
         >
           <Layout :size="18" />
         </button>
@@ -1004,7 +1005,7 @@ const activeFileName = computed(() => {
           class="toggle-sidebar-btn" 
           :class="{ active: isPreviewVisible }"
           @click="togglePreview" 
-          :title="isPreviewVisible ? 'Close PDF Preview' : 'Open PDF Preview'"
+          :title="isPreviewVisible ? 'Hide PDF Preview' : 'Show PDF Preview'"
         >
           <PanelRight :size="18" />
         </button>
@@ -1171,8 +1172,22 @@ const activeFileName = computed(() => {
               <div class="workspace-name-row">
                 <FolderOpen :size="14" class="workspace-folder-icon" />
                 <span class="workspace-title">{{ workspaceName || 'EXPLORER' }}</span>
-                <button v-if="workspacePath" @click="closeWorkspace" title="Close Workspace" class="close-workspace-btn"><X :size="14" /></button>
-                <button v-if="isMobile" @click="isSidebarVisible = false" title="Hide Explorer" class="mobile-close-sidebar-btn"><X :size="16" /></button>
+                <button 
+                  v-if="workspacePath" 
+                  @click="closeWorkspace" 
+                  title="Close Workspace (Unload Folder)" 
+                  class="close-workspace-btn"
+                >
+                  <FolderX :size="14" />
+                </button>
+                <button 
+                  v-if="isMobile" 
+                  @click="isSidebarVisible = false" 
+                  title="Close Drawer" 
+                  class="mobile-close-sidebar-btn"
+                >
+                  <X :size="16" />
+                </button>
               </div>
               <span v-if="workspacePath" class="workspace-path-subtext">{{ workspacePath }}</span>
             </div>

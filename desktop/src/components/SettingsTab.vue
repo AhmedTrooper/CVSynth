@@ -1110,7 +1110,7 @@ const handleSave = async () => {
         <div class="theme-selector-row">
           <div class="input-group">
             <label>Active Theme</label>
-            <div class="theme-picker-wrapper" style="width: 100%;">
+            <div class="theme-picker-wrapper">
               <CustomSelect 
                 :model-value="store.activeThemeId" 
                 :disabled="!licenseStore.isLicensed"
@@ -1204,7 +1204,7 @@ const handleSave = async () => {
         <div class="typography-row">
           <div class="input-group">
             <label>Font Family</label>
-            <div class="theme-picker-wrapper" style="width: 100%;">
+            <div class="theme-picker-wrapper">
               <CustomSelect 
                 :model-value="store.fontFamily" 
                 :disabled="!licenseStore.isLicensed"
@@ -1230,7 +1230,7 @@ const handleSave = async () => {
 
           <div class="input-group">
             <label>Font Style</label>
-            <div class="theme-picker-wrapper" style="width: 100%;">
+            <div class="theme-picker-wrapper">
               <CustomSelect 
                 :model-value="store.fontStyle" 
                 :disabled="!licenseStore.isLicensed"
@@ -1320,7 +1320,7 @@ const handleSave = async () => {
         </div>
 
         <!-- Custom Overrides -->
-        <div class="input-row" style="margin-top: 16px;">
+        <div class="input-row overrides-row">
           <div class="input-group">
             <label>Custom Endpoint URL (Optional)</label>
             <input 
@@ -1330,7 +1330,7 @@ const handleSave = async () => {
               spellcheck="false"
               class="form-input"
             />
-            <span class="setup-tip" style="font-size: 0.8rem; color: var(--muted); margin-top: 4px; display: block; line-height: 1.4;">
+            <span class="setup-tip">
               {{ providerInput === 'ollama' 
                 ? 'Override the Ollama service URL (defaults to http://localhost:11434 if blank).' 
                 : 'Override the API base URL for this provider (ideal for local or custom OpenAI-compatible endpoints).' }}
@@ -1346,7 +1346,7 @@ const handleSave = async () => {
               spellcheck="false"
               class="form-input"
             />
-            <span class="setup-tip" style="font-size: 0.8rem; color: var(--muted); margin-top: 4px; display: block; line-height: 1.4;">
+            <span class="setup-tip">
               Type a custom model string to override the dropdown selection above.
             </span>
           </div>
@@ -1387,7 +1387,7 @@ const handleSave = async () => {
               spellcheck="false"
               class="form-input"
             />
-            <span v-if="providerInput === 'bedrock'" class="setup-tip" style="margin-top: 8px; font-size: 0.85rem; color: var(--muted); display: block; line-height: 1.4;">
+            <span v-if="providerInput === 'bedrock'" class="setup-tip bedrock-tip">
               Format: <code>ACCESS_KEY_ID:SECRET_ACCESS_KEY:REGION</code>. If region is omitted, it defaults to <code>us-east-1</code>.
             </span>
           </div>
@@ -1548,8 +1548,8 @@ const handleSave = async () => {
           </div>
           <div class="input-group">
             <label>Path Style Access</label>
-            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; margin-top: 8px; cursor: pointer; color: var(--ink); font-size: 0.9rem; font-weight: normal; text-transform: none; letter-spacing: normal;">
-              <input type="checkbox" v-model="s3ForcePathStyle" style="width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer;" />
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="s3ForcePathStyle" class="custom-checkbox" />
               <span>Enable (Required for MinIO/R2)</span>
             </label>
           </div>
@@ -1566,19 +1566,19 @@ const handleSave = async () => {
           </div>
         </div>
         
-        <div class="credentials-actions" style="margin-top: 24px;">
-          <div class="button-group">
+        <div class="credentials-actions credentials-actions-s3">
+          <div class="button-group s3-button-group">
             <button class="btn-test-connection" @click="handleTestS3(false)" :disabled="isTestingS3 || isSavingS3">
               <RefreshCw v-if="isTestingS3" :size="14" class="spinner" />
               <Play v-else :size="14" />
               Test Connection
             </button>
-            <button class="btn-action primary" style="width: auto; padding: 0 16px; font-weight: 700; gap: 8px;" @click="handleSaveS3" :disabled="isSavingS3">
+            <button class="btn-action primary btn-save-s3" @click="handleSaveS3" :disabled="isSavingS3">
               <Save :size="14" />
               Save S3 Settings
             </button>
           </div>
-          <div class="status-area-inline">
+          <div class="status-area-inline s3-status-area">
             <span v-if="s3TestSuccess" class="success-msg"><CheckCircle :size="14"/> {{ isSavingS3 ? '' : 'Settings saved.' }}</span>
             <span v-if="s3TestError" class="error-msg">
               <span>{{ s3TestError }}</span>
@@ -1593,8 +1593,8 @@ const handleSave = async () => {
                 <span>{{ copiedInlineError === s3TestError ? 'Copied!' : 'Copy' }}</span>
               </button>
             </span>
-            <span v-if="!s3TestError && !s3TestSuccess && s3SetupOk" style="font-size: 0.75rem; color: var(--muted); display: flex; flex-direction: column; text-align: right;">
-              <strong style="color: var(--accent);">Auto-Backup: Active</strong>
+            <span v-if="!s3TestError && !s3TestSuccess && s3SetupOk" class="s3-auto-status">
+              <strong class="s3-auto-strong">Auto-Backup: Active</strong>
               <span>Last Upload: {{ s3LastUpload }}</span>
             </span>
           </div>
@@ -1608,9 +1608,9 @@ const handleSave = async () => {
           <p>Fetch and restore your data from your S3 backup vault. <strong>Warning:</strong> Restoring will modify local data.</p>
         </div>
         
-        <div class="credentials-actions" style="margin-top: 16px; border-top: none; padding-top: 0;">
-          <div class="button-group">
-            <button class="btn-test-connection" @click="handleFetchBackups" :disabled="isFetchingBackups || !s3SetupOk">
+        <div class="credentials-actions restore-fetch-actions">
+          <div class="button-group restore-button-group">
+            <button class="btn-test-connection btn-fetch-backups" @click="handleFetchBackups" :disabled="isFetchingBackups || !s3SetupOk">
               <DownloadCloud v-if="!isFetchingBackups" :size="14" />
               <RefreshCw v-else :size="14" class="spinner" />
               Fetch Available Backups
@@ -1630,11 +1630,11 @@ const handleSave = async () => {
                 <span>{{ copiedInlineError === fetchBackupsError ? 'Copied!' : 'Copy' }}</span>
               </button>
             </span>
-            <span v-if="!s3SetupOk" class="warning-msg" style="color: var(--warning); font-size: 0.85rem;">S3 not active.</span>
+            <span v-if="!s3SetupOk" class="warning-msg">S3 not active.</span>
           </div>
         </div>
 
-        <div v-if="availableBackups.length > 0" class="input-row" style="margin-top: 16px;">
+        <div v-if="availableBackups.length > 0" class="input-row restore-inputs">
           <div class="input-group">
             <label>Select Backup to Restore</label>
             <CustomSelect
@@ -1655,8 +1655,8 @@ const handleSave = async () => {
           </div>
         </div>
         
-        <div v-if="availableBackups.length > 0" class="credentials-actions" style="margin-top: 24px;">
-          <button class="btn-action primary" style="width: 100%; justify-content: center; background: var(--warning); color: white; border: none; font-weight: 700; gap: 8px;" @click="handleRestoreBackup" :disabled="isRestoringBackup || !selectedBackup">
+        <div v-if="availableBackups.length > 0" class="credentials-actions restore-submit-actions">
+          <button class="btn-restore-submit" @click="handleRestoreBackup" :disabled="isRestoringBackup || !selectedBackup">
             <RotateCcw v-if="!isRestoringBackup" :size="16" />
             <RefreshCw v-else :size="16" class="spinner" />
             {{ isRestoringBackup ? 'Restoring & Reloading...' : 'Restore Selected Backup' }}
@@ -1671,23 +1671,23 @@ const handleSave = async () => {
           <p>Control what happens automatically when you close RoleTect.</p>
         </div>
         
-        <div class="input-row" style="margin-top: 16px;">
+        <div class="input-row backup-automation-row">
           <div class="input-group">
             <label class="checkbox-label">
               <input type="checkbox" v-model="autoLocalBackup" class="custom-checkbox" />
-              Auto Local Backup on Exit
+              <span>Auto Local Backup on Exit</span>
             </label>
-            <p style="font-size: 0.75rem; color: var(--muted); margin-top: 4px; margin-left: 24px;">Automatically exports an unencrypted snapshot to your <strong>Documents/RoleTect-Backups</strong> folder.</p>
+            <p class="backup-tip">Automatically exports an unencrypted snapshot to your <strong>Documents/RoleTect-Backups</strong> folder.</p>
           </div>
         </div>
 
-        <div class="input-row">
+        <div class="input-row backup-automation-row">
           <div class="input-group">
             <label class="checkbox-label">
               <input type="checkbox" v-model="autoCloudBackup" class="custom-checkbox" :disabled="!s3SetupOk" />
-              Auto Cloud Backup on Exit
+              <span>Auto Cloud Backup on Exit</span>
             </label>
-            <p style="font-size: 0.75rem; color: var(--muted); margin-top: 4px; margin-left: 24px;">Automatically uploads an encrypted snapshot to your configured S3 bucket. Requires active S3 setup.</p>
+            <p class="backup-tip">Automatically uploads an encrypted snapshot to your configured S3 bucket. Requires active S3 setup.</p>
           </div>
         </div>
       </div>
@@ -1718,14 +1718,14 @@ const handleSave = async () => {
         <div class="card-header">
           <div class="title-row">
             <div class="title-with-badge">
-              <AlertTriangle :size="16" style="color: var(--warning);" />
+              <AlertTriangle :size="16" class="warning-icon" />
               <h3>Diagnostics & Error Audit Trail</h3>
             </div>
           </div>
           <p>Time-by-time error ledger capturing creating, compiling, fetching, and AI tasks with diagnostic filters and 1-click copying.</p>
         </div>
 
-        <div class="error-audit-card-body" style="margin-top: 14px;">
+        <div class="error-audit-card-body">
           <ErrorAuditViewer />
         </div>
       </div>
@@ -1749,84 +1749,83 @@ const handleSave = async () => {
           <p>Manage your Lemon Squeezy license activation and device authorization.</p>
         </div>
 
-        <div class="license-info-section" style="margin-top: 16px;">
-          <div class="info-row" style="display: flex; flex-direction: column; gap: 12px;">
-            <div v-if="licenseStore.licenseStatus?.customer_email" class="license-detail-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; font-size: 0.85rem;">
-              <span style="color: var(--muted);">Registered To</span>
-              <span style="color: var(--ink); font-weight: 500;">{{ licenseStore.licenseStatus.customer_email }}</span>
+        <div class="license-info-section">
+          <div class="info-row">
+            <div v-if="licenseStore.licenseStatus?.customer_email" class="license-detail-item">
+              <span class="detail-label">Registered To</span>
+              <span class="detail-val">{{ licenseStore.licenseStatus.customer_email }}</span>
             </div>
 
-                        <div v-if="licenseStore.licenseStatus?.trial_ends_at" class="license-detail-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; font-size: 0.85rem;">
-              <span style="color: var(--muted);">Trial Expiration</span>
-              <span style="color: var(--accent); font-weight: 500;">{{ new Date(licenseStore.licenseStatus.trial_ends_at).toLocaleDateString() }}</span>
+            <div v-if="licenseStore.licenseStatus?.trial_ends_at" class="license-detail-item">
+              <span class="detail-label">Trial Expiration</span>
+              <span class="detail-val trial-val">{{ new Date(licenseStore.licenseStatus.trial_ends_at).toLocaleDateString() }}</span>
             </div>
 
-            <div v-if="licenseStore.licenseStatus?.license_key" class="license-detail-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; font-size: 0.85rem;">
-              <span style="color: var(--muted);">License Key</span>
-              <span style="color: var(--ink); font-family: monospace; font-size: 0.8rem;">
+            <div v-if="licenseStore.licenseStatus?.license_key" class="license-detail-item">
+              <span class="detail-label">License Key</span>
+              <span class="detail-val key-val">
                 ••••••••-••••-{{ licenseStore.licenseStatus.license_key.slice(-8) }}
               </span>
             </div>
 
             <!-- Upgrade / Enter License Key -->
-            <div v-if="!licenseStore.licenseStatus?.license_key" class="license-upgrade-box" style="margin-top: 14px; padding: 14px; background: var(--bg); border: 1px dashed var(--line); border-radius: 8px; display: flex; flex-direction: column; gap: 10px;">
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 6px;">
+            <div v-if="!licenseStore.licenseStatus?.license_key" class="license-upgrade-box">
+              <div class="upgrade-header-row">
+                <div class="upgrade-header-left">
                   <Sparkles :size="14" style="color: var(--accent);" />
-                  <span style="font-size: 0.85rem; font-weight: 600; color: var(--ink);">Have a License Key?</span>
+                  <span class="upgrade-title">Have a License Key?</span>
                 </div>
                 <button
                   type="button"
+                  class="btn-get-license"
                   @click="openUrl('https://github.com/AhmedTrooper/roletect-app')"
-                  style="background: transparent; border: none; color: var(--accent); font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 4px; text-decoration: underline;"
                 >
                   <ExternalLink :size="12" />
                   <span>Get License</span>
                 </button>
               </div>
-              <p style="font-size: 0.8rem; color: var(--muted); margin: 0;">
+              <p class="upgrade-desc">
                 Activate your permanent license key from Lemon Squeezy to upgrade to RoleTect Pro.
               </p>
-              <div style="display: flex; gap: 8px;">
-                <input
-                  id="upgrade-key-input"
-                  v-model="upgradeKeyInput"
-                  type="text"
-                  placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
-                  style="flex: 1; padding: 8px 12px; font-family: monospace; font-size: 0.8rem; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 6px; color: var(--ink);"
-                  :disabled="isActivatingUpgrade"
-                />
+              <div class="upgrade-input-row">
+                <div class="upgrade-input-inner">
+                  <input
+                    id="upgrade-key-input"
+                    v-model="upgradeKeyInput"
+                    type="text"
+                    placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+                    class="upgrade-key-field"
+                    :disabled="isActivatingUpgrade"
+                  />
+                  <button
+                    type="button"
+                    class="btn-paste-key"
+                    @click="handlePasteUpgradeKey"
+                    :disabled="isActivatingUpgrade"
+                    title="Paste from clipboard"
+                  >
+                    <ClipboardPaste :size="14" />
+                  </button>
+                </div>
                 <button
                   type="button"
-                  @click="handlePasteUpgradeKey"
-                  :disabled="isActivatingUpgrade"
-                  title="Paste from clipboard"
-                  style="display: flex; align-items: center; justify-content: center; padding: 8px 10px; background: var(--surface-soft); border: 1px solid var(--line); color: var(--muted); border-radius: 6px; font-size: 0.8rem; cursor: pointer;"
-                >
-                  <ClipboardPaste :size="14" />
-                </button>
-                <button
-                  type="button"
+                  class="btn-activate-key"
                   @click="handleActivateUpgrade"
                   :disabled="isActivatingUpgrade || !upgradeKeyInput.trim()"
-                  style="padding: 8px 16px; background: var(--accent); color: #fff; border: none; border-radius: 6px; font-size: 0.8rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px;"
                 >
                   <ShieldCheck :size="14" />
                   <span>{{ isActivatingUpgrade ? 'Activating...' : 'Activate' }}</span>
                 </button>
               </div>
-
-              </div>
-
             </div>
+          </div>
 
-          <div v-if="licenseStore.licenseStatus?.license_key" class="license-actions" style="margin-top: 18px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div v-if="licenseStore.licenseStatus?.license_key" class="license-actions">
             <button 
               type="button" 
-              class="text-btn" 
+              class="license-btn verify-btn" 
               @click="handleSyncLicenseSettings"
               :disabled="isSyncingLicenseSettings"
-              style="display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: var(--surface-soft); border: 1px solid var(--line); color: var(--ink); border-radius: 8px; font-size: 0.85rem; cursor: pointer;"
             >
               <RefreshCw :size="14" :class="{ 'spinner': isSyncingLicenseSettings }" />
               <span>{{ isSyncingLicenseSettings ? 'Verifying Online...' : 'Verify Status with Lemon Squeezy' }}</span>
@@ -1835,9 +1834,8 @@ const handleSave = async () => {
             <button
               v-if="licenseStore.isLicensed"
               type="button"
-              class="text-btn warning"
+              class="license-btn cancel-btn"
               @click="handleCancelSubscription"
-              style="display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: rgba(250, 189, 47, 0.12); border: 1px solid rgba(250, 189, 47, 0.4); color: #fabd2f; border-radius: 8px; font-size: 0.85rem; cursor: pointer;"
             >
               <LogOut :size="14" />
               <span>Cancel Subscription</span>
@@ -1845,10 +1843,9 @@ const handleSave = async () => {
 
             <button 
               type="button" 
-              class="text-btn danger" 
+              class="license-btn deactivate-btn" 
               @click="handleDeactivateLicense"
               :disabled="isDeactivatingLicense"
-              style="display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: rgba(248, 81, 73, 0.1); border: 1px solid rgba(248, 81, 73, 0.3); color: var(--warning); border-radius: 8px; font-size: 0.85rem; cursor: pointer;"
             >
               <LogOut :size="14" />
               <span>{{ isDeactivatingLicense ? 'Deactivating...' : 'Deactivate License on This Device' }}</span>
@@ -1861,61 +1858,137 @@ const handleSave = async () => {
 </template>
 
 <style scoped>
+/* =======================================================================
+   Base Container & Header
+   ======================================================================= */
 .settings-container {
-  padding: 40px;
+  padding: 40px 32px 100px 32px;
   max-width: 900px;
+  width: 100%;
   margin: 0 auto;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
-.header { margin-bottom: 32px; }
-.header h2 { font-size: 2rem; margin: 0; color: var(--ink); }
-.subtitle { color: var(--muted); margin: 8px 0 0; }
+.header {
+  margin-bottom: 32px;
+  width: 100%;
+}
 
-.settings-grid { display: flex; flex-direction: column; gap: 24px; padding-bottom: 100px; }
+.header h2 {
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  font-weight: 700;
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.25;
+}
 
+.subtitle {
+  color: var(--muted);
+  margin: 8px 0 0;
+  font-size: clamp(0.78rem, 2vw, 0.9rem);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.settings-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-bottom: 60px;
+  width: 100%;
+  min-width: 0;
+}
+
+/* =======================================================================
+   Card Component Base
+   ======================================================================= */
 .settings-card {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: 24px;
   box-shadow: var(--shadow);
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
-.credentials-content {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  margin-top: 20px;
+.card-header {
+  width: 100%;
+  min-width: 0;
 }
 
-.credentials-actions {
+.card-header h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--ink);
+}
+
+.card-header p {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin: 6px 0 0;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.title-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
+  gap: 12px;
+  width: 100%;
 }
 
-.status-area-inline {
+.title-with-badge {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
-.title-row { display: flex; justify-content: space-between; align-items: center; }
+.capped-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: 12px;
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  color: #eab308;
+  flex-shrink: 0;
+}
 
 .header-btns {
   display: flex;
+  align-items: center;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .text-btn {
-  background: none; border: none;
-  color: var(--accent); font-weight: 700; font-size: 0.75rem;
-  text-transform: uppercase; cursor: pointer;
-  display: flex;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: inline-flex;
   align-items: center;
   gap: 4px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm, 4px);
+  transition: all 0.15s ease;
+  min-height: 32px;
+  white-space: nowrap;
 }
 
 .text-btn.secondary {
@@ -1927,14 +2000,238 @@ const handleSave = async () => {
 }
 
 .text-btn:hover {
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
+.text-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Feature Capped Banner */
+.feature-capped-banner {
+  margin: 12px 0 16px 0;
+  padding: 12px 14px;
+  background: rgba(234, 179, 8, 0.06);
+  border: 1px dashed rgba(234, 179, 8, 0.3);
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.banner-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.banner-icon {
+  color: #eab308;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.banner-text {
+  min-width: 0;
+}
+
+.banner-text strong {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.banner-text p {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.btn-activate-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  flex-shrink: 0;
+  min-height: 38px;
+}
+
+.btn-activate-inline:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+/* =======================================================================
+   Theme Selector & Import
+   ======================================================================= */
+.theme-selector-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+  width: 100%;
+}
+
+.theme-picker-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.delete-theme-btn {
+  height: 42px;
+  width: 42px;
+  min-width: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(248, 81, 73, 0.1);
+  border: 1px solid rgba(248, 81, 73, 0.2);
+  color: var(--warning);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.2s;
+  flex-shrink: 0;
+}
+
+.delete-theme-btn:hover:not(:disabled) {
+  background: var(--warning);
+  color: white;
+  border-color: var(--warning);
+}
+
+.delete-theme-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.import-theme-area {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.import-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.help-link-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.theme-textarea {
+  width: 100%;
+  height: 120px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--ink);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  resize: vertical;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.theme-textarea::-webkit-scrollbar {
+  width: 5px;
+}
+
+.theme-textarea::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px 0;
+}
+
+.theme-textarea::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
+.theme-textarea::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+.import-actions-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-import-confirm {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 38px;
+  transition: opacity 0.15s ease;
+}
+
+.btn-import-confirm:hover {
+  opacity: 0.9;
+}
+
+.error-inline {
+  color: var(--warning);
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  word-break: break-word;
+}
+
+/* =======================================================================
+   Typography Settings
+   ======================================================================= */
 .typography-row {
   display: flex;
   gap: 24px;
   margin-top: 20px;
   align-items: flex-end;
+  width: 100%;
 }
 
 .size-group {
@@ -1943,13 +2240,35 @@ const handleSave = async () => {
 
 .font-size-slider {
   width: 100%;
-  margin-top: 12px;
+  height: 32px;
+  margin-top: 8px;
   cursor: pointer;
   accent-color: var(--accent);
 }
 
-.input-row { display: flex; gap: 20px; margin-top: 20px; }
-.input-group { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.font-size-slider:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* =======================================================================
+   Input Rows & Controls
+   ======================================================================= */
+.input-row {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
+  width: 100%;
+}
+
+.input-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+}
 
 .label-row {
   display: flex;
@@ -1980,25 +2299,41 @@ const handleSave = async () => {
   border: 1px solid var(--line);
 }
 
+.tooltip-top {
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.tooltip-bottom-left {
+  top: calc(100% + 6px);
+  right: 0;
+}
+
 .btn-tooltip-wrapper {
   position: relative;
   display: flex;
 }
 
 label {
-  color: var(--accent); font-weight: 700; font-size: 0.7rem;
-  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
 .form-input, .custom-select {
   width: 100%;
-  padding: 12px 16px;
-  font-size: 1rem;
+  padding: 10px 14px;
+  min-height: 42px;
+  font-size: 0.95rem;
   background: var(--surface-soft);
   border: 1px solid var(--line);
   color: var(--ink);
   border-radius: 8px;
   outline: none;
+  box-sizing: border-box;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -2006,136 +2341,230 @@ label {
   border-color: var(--accent);
 }
 
-.custom-select {
-  cursor: pointer;
+.setup-tip {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 4px;
+  display: block;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
-.theme-selector-row {
+.bedrock-tip {
+  margin-top: 8px;
+  font-size: 0.85rem;
+}
+
+/* =======================================================================
+   Credentials Actions & Buttons
+   ======================================================================= */
+.credentials-content {
   display: flex;
-  align-items: flex-end;
-  gap: 12px;
+  flex-direction: column;
+  gap: 20px;
   margin-top: 20px;
+  width: 100%;
 }
 
-.theme-picker-wrapper {
-  position: relative;
+.credentials-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  gap: 16px;
+  flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.status-area-inline {
   display: flex;
   align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
-.picker-icon {
-  position: absolute;
-  left: 12px;
+.button-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.btn-test-connection {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--bg-accent);
+  border: 1px solid var(--line);
   color: var(--accent);
-  pointer-events: none;
-}
-
-.custom-select.with-icon {
-  padding-left: 36px;
-}
-
-.delete-theme-btn {
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  border-radius: 10px;
+  padding: 0 16px;
   height: 42px;
+  min-height: 42px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-test-connection:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--surface-soft);
+}
+
+.btn-test-connection:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-action {
   width: 42px;
+  height: 42px;
+  min-width: 42px;
+  min-height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(248, 81, 73, 0.1);
-  border: 1px solid rgba(248, 81, 73, 0.2);
-  color: var(--warning);
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   transition: 0.2s;
-}
-
-.delete-theme-btn:hover {
-  background: var(--warning);
-  color: white;
-  border-color: var(--warning);
-}
-
-.import-theme-area {
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid var(--line);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  overflow: hidden;
-}
-
-.import-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.help-link-btn {
-  background: none;
-  border: none;
-  color: var(--accent);
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  cursor: pointer;
-  padding: 0;
-}
-
-.theme-textarea {
-  width: 100%;
-  height: 120px;
-  background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 12px;
-  color: var(--ink);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8rem;
-  resize: vertical;
+  flex-shrink: 0;
 }
 
-.import-actions-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.btn-import-confirm {
+.btn-action.primary {
   background: var(--accent);
   color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
-  font-size: 0.8rem;
+  border-color: var(--accent);
+}
+
+.btn-action.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-action.secondary {
+  background: none;
+  color: var(--muted);
+}
+
+.btn-action.secondary:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.btn-save-s3 {
+  width: auto;
+  padding: 0 16px;
   font-weight: 700;
-  cursor: pointer;
-}
-
-.error-inline {
-  color: var(--warning);
+  gap: 8px;
   font-size: 0.75rem;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
+.s3-auto-status {
+  font-size: 0.75rem;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  text-align: right;
+}
+
+.s3-auto-strong {
+  color: var(--accent);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+  min-height: 38px;
+  user-select: none;
+}
+
+.custom-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.backup-tip {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 4px;
+  margin-left: 28px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* =======================================================================
+   Cloud Restore
+   ======================================================================= */
+.btn-restore-submit {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--warning);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-restore-submit:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.btn-restore-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* =======================================================================
+   Backup & Vault Sync
+   ======================================================================= */
 .export-row {
   margin-top: 24px;
+  width: 100%;
 }
 
 .btn-export {
   width: 100%;
+  min-height: 52px;
   background: var(--surface-soft);
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 16px 20px;
+  padding: 14px 18px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   color: var(--ink);
+  gap: 12px;
+  box-sizing: border-box;
 }
 
 .btn-export:hover:not(:disabled) {
@@ -2153,29 +2582,34 @@ label {
 .export-btn-content {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   text-align: left;
+  min-width: 0;
 }
 
 .export-text {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .main-text {
   font-size: 0.9rem;
   font-weight: 700;
   color: var(--ink);
+  word-break: break-word;
 }
 
 .sub-text {
   font-size: 0.7rem;
   color: var(--muted);
+  word-break: break-word;
 }
 
 .download-icon {
   color: var(--accent);
   opacity: 0.8;
+  flex-shrink: 0;
 }
 
 .btn-export:hover .download-icon {
@@ -2188,13 +2622,15 @@ label {
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   margin-top: 24px;
+  width: 100%;
 }
 
 .btn-import-option {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px;
+  gap: 14px;
+  padding: 14px 16px;
+  min-height: 52px;
   background: var(--surface-soft);
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -2202,6 +2638,8 @@ label {
   transition: all 0.2s ease;
   text-align: left;
   color: var(--ink);
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .btn-import-option:hover:not(:disabled) {
@@ -2218,34 +2656,44 @@ label {
 .option-text {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .option-title {
   font-size: 0.85rem;
   font-weight: 700;
+  word-break: break-word;
 }
 
 .option-desc {
   font-size: 0.65rem;
   color: var(--muted);
+  word-break: break-word;
 }
 
+/* =======================================================================
+   Maintenance
+   ======================================================================= */
 .maintenance-row {
   margin-top: 24px;
+  width: 100%;
 }
 
 .btn-maintenance {
   width: 100%;
+  min-height: 52px;
   background: rgba(248, 81, 73, 0.05);
   border: 1px solid rgba(248, 81, 73, 0.1);
   border-radius: 12px;
-  padding: 16px 20px;
+  padding: 14px 18px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
   transition: all 0.2s ease;
   color: var(--warning);
+  gap: 12px;
+  box-sizing: border-box;
 }
 
 .btn-maintenance:hover:not(:disabled) {
@@ -2257,157 +2705,276 @@ label {
 .maintenance-btn-content {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   text-align: left;
+  min-width: 0;
 }
 
 .maintenance-text {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
-.btn-import-option .spinner {
-  color: var(--accent);
+/* =======================================================================
+   Diagnostics & Error Audit Card
+   ======================================================================= */
+.error-audit-card {
+  overflow: visible;
 }
 
-.button-group { display: flex; gap: 12px; }
+.error-audit-card-body {
+  margin-top: 14px;
+  width: 100%;
+  min-width: 0;
+}
 
-.btn-test-connection {
+.warning-icon {
+  color: var(--warning);
+  flex-shrink: 0;
+}
+
+/* =======================================================================
+   License & Subscription Section
+   ======================================================================= */
+.license-info-section {
+  margin-top: 16px;
+  width: 100%;
+  min-width: 0;
+}
+
+.info-row {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--bg-accent);
-  border: 1px solid var(--line);
-  color: var(--accent);
-  font-weight: 700;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  border-radius: 10px;
-  padding: 0 16px;
-  height: 42px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
 }
 
-.btn-test-connection:hover:not(:disabled) {
-  border-color: var(--accent);
-  background: var(--surface-soft);
-}
-
-.btn-test-connection:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-action {
-  width: 42px;
-  height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: 0.2s;
-  border: 1px solid var(--line);
-}
-
-.btn-action.primary { background: var(--accent); color: white; border-color: var(--accent); }
-.btn-action.primary:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.btn-action.secondary { background: none; color: var(--muted); }
-.btn-action.secondary:hover { border-color: var(--ink); color: var(--ink); }
-
-.spinner {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.success-msg { color: var(--accent); font-weight: 600; display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
-.error-msg { color: var(--warning); font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px; }
-
-.title-with-badge {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.capped-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  font-size: 0.68rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-radius: 12px;
-  background: rgba(234, 179, 8, 0.12);
-  border: 1px solid rgba(234, 179, 8, 0.35);
-  color: #eab308;
-}
-
-.feature-capped-banner {
-  margin: 12px 0 16px 0;
-  padding: 12px 14px;
-  background: rgba(234, 179, 8, 0.06);
-  border: 1px dashed rgba(234, 179, 8, 0.3);
-  border-radius: 8px;
+.license-detail-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  gap: 8px;
 }
 
-.banner-content {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.banner-icon {
-  color: #eab308;
+.detail-label {
+  color: var(--muted);
   flex-shrink: 0;
-  margin-top: 2px;
 }
 
-.banner-text strong {
-  display: block;
-  font-size: 0.82rem;
+.detail-val {
   color: var(--ink);
-  margin-bottom: 2px;
+  font-weight: 500;
+  word-break: break-all;
+  text-align: right;
 }
 
-.banner-text p {
-  font-size: 0.78rem;
+.trial-val {
+  color: var(--accent);
+}
+
+.key-val {
+  font-family: monospace;
+  font-size: 0.8rem;
+}
+
+.license-upgrade-box {
+  margin-top: 14px;
+  padding: 14px;
+  background: var(--bg);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.upgrade-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.upgrade-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.upgrade-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.btn-get-license {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: underline;
+  padding: 2px 4px;
+}
+
+.upgrade-desc {
+  font-size: 0.8rem;
   color: var(--muted);
   margin: 0;
   line-height: 1.4;
+  word-break: break-word;
 }
 
-.btn-activate-inline {
-  display: inline-flex;
+.upgrade-input-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.upgrade-input-inner {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.upgrade-key-field {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  font-family: monospace;
+  font-size: 0.8rem;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  min-height: 40px;
+  box-sizing: border-box;
+}
+
+.btn-paste-key {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
+  justify-content: center;
+  padding: 8px 10px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  min-height: 40px;
+  min-width: 40px;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.btn-paste-key:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
+.btn-activate-key {
+  padding: 8px 16px;
   background: var(--accent);
   color: #fff;
   border: none;
   border-radius: 6px;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  white-space: nowrap;
   cursor: pointer;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  white-space: nowrap;
   flex-shrink: 0;
+  transition: opacity 0.15s ease;
 }
 
-.btn-activate-inline:hover {
+.btn-activate-key:hover:not(:disabled) {
   opacity: 0.9;
-  transform: translateY(-1px);
+}
+
+.btn-activate-key:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.license-actions {
+  margin-top: 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.license-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  min-height: 42px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.license-btn.verify-btn {
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.license-btn.verify-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.license-btn.cancel-btn {
+  background: rgba(250, 189, 47, 0.12);
+  border: 1px solid rgba(250, 189, 47, 0.4);
+  color: #fabd2f;
+}
+
+.license-btn.cancel-btn:hover {
+  background: rgba(250, 189, 47, 0.2);
+}
+
+.license-btn.deactivate-btn {
+  background: rgba(248, 81, 73, 0.1);
+  border: 1px solid rgba(248, 81, 73, 0.3);
+  color: var(--warning);
+}
+
+.license-btn.deactivate-btn:hover:not(:disabled) {
+  background: rgba(248, 81, 73, 0.2);
+}
+
+.license-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .badge-status-active {
@@ -2421,6 +2988,7 @@ label {
   color: var(--accent, #238636);
   font-size: 0.75rem;
   font-weight: 600;
+  flex-shrink: 0;
 }
 
 .badge-status-free {
@@ -2434,11 +3002,61 @@ label {
   color: var(--muted);
   font-size: 0.75rem;
   font-weight: 600;
+  flex-shrink: 0;
 }
 
-.font-size-slider:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.copy-err-inline-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.7rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  transition: all 0.15s ease;
+}
+
+.copy-err-inline-btn:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.success-msg {
+  color: var(--accent);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.error-msg {
+  color: var(--warning);
+  font-weight: 600;
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+.warning-msg {
+  color: var(--warning);
+  font-size: 0.85rem;
 }
 
 @keyframes inputPulse {
@@ -2453,10 +3071,175 @@ label {
   outline: none;
 }
 
+/* =======================================================================
+   Tablet Responsive Tier (601px - 959px)
+   ======================================================================= */
+@media (max-width: 959px) and (min-width: 601px) {
+  .settings-container {
+    padding: 28px 20px 90px 20px;
+  }
+  .typography-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    align-items: flex-end;
+  }
+}
+
+/* =======================================================================
+   Mobile Responsive Tier (<= 600px)
+   ======================================================================= */
 @media (max-width: 600px) {
-  .input-row { flex-direction: column; }
-  .typography-row { flex-direction: column; align-items: stretch; }
-  .credentials-actions { flex-direction: column; gap: 20px; align-items: flex-start; }
-  .feature-capped-banner { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .settings-container {
+    padding: 16px 12px 90px 12px;
+  }
+  .header {
+    margin-bottom: 20px;
+  }
+  .settings-grid {
+    gap: 16px;
+    padding-bottom: 30px;
+  }
+  .settings-card {
+    padding: 16px 12px;
+    border-radius: 12px;
+  }
+  .title-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .header-btns {
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+  }
+  .text-btn {
+    min-height: 38px;
+    padding: 6px 10px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+  }
+  .feature-capped-banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .btn-activate-inline {
+    width: 100%;
+    justify-content: center;
+    min-height: 40px;
+  }
+  .typography-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .input-row {
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 14px;
+  }
+  .import-actions {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .credentials-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .button-group {
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 10px;
+  }
+  .btn-test-connection {
+    flex: 1 1 auto;
+    min-width: 130px;
+    justify-content: center;
+  }
+  .s3-button-group {
+    flex-direction: column;
+    width: 100%;
+  }
+  .s3-button-group .btn-test-connection,
+  .s3-button-group .btn-save-s3 {
+    width: 100%;
+    justify-content: center;
+    min-height: 42px;
+  }
+  .s3-status-area {
+    width: 100%;
+    align-items: flex-start;
+    text-align: left;
+  }
+  .s3-auto-status {
+    text-align: left !important;
+  }
+  .backup-tip {
+    margin-left: 0;
+    margin-top: 2px;
+  }
+  .license-detail-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  .detail-val {
+    text-align: left;
+  }
+  .upgrade-input-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .btn-activate-key {
+    width: 100%;
+    min-height: 42px;
+  }
+  .license-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .license-btn {
+    width: 100%;
+  }
+}
+
+/* =======================================================================
+   Ultra-Compact Mobile Tier (<= 340px)
+   ======================================================================= */
+@media (max-width: 340px) {
+  .settings-container {
+    padding: 10px 6px 80px 6px;
+  }
+  .settings-card {
+    padding: 12px 8px;
+    border-radius: 10px;
+  }
+  .header h2 {
+    font-size: 1.25rem;
+  }
+  .btn-export, .btn-import-option, .btn-maintenance {
+    padding: 12px 10px;
+  }
+  .export-btn-content, .maintenance-btn-content {
+    gap: 10px;
+  }
+  .btn-action {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
+  }
+  .upgrade-input-inner {
+    flex-direction: column;
+  }
+  .btn-paste-key {
+    width: 100%;
+  }
 }
 </style>

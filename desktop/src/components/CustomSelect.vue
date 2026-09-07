@@ -167,6 +167,26 @@ onUnmounted(() => {
   padding: 6px;
   margin: 0;
   list-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line, #32323c) transparent;
+}
+
+.custom-select-options::-webkit-scrollbar {
+  width: 5px;
+}
+
+.custom-select-options::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px 0;
+}
+
+.custom-select-options::-webkit-scrollbar-thumb {
+  background: var(--line, #32323c);
+  border-radius: 4px;
+}
+
+.custom-select-options::-webkit-scrollbar-thumb:hover {
+  background: var(--accent, #238636);
 }
 
 .custom-select-container.placement-top .custom-select-options {
@@ -219,5 +239,21 @@ onUnmounted(() => {
 .custom-select-trigger.status-select {
   font-weight: 700;
   color: var(--accent);
+}
+
+@media (max-width: 600px) {
+  .custom-select-trigger {
+    min-height: 42px;
+    padding: 10px 12px;
+  }
+  .custom-select-option {
+    padding: 10px 12px;
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+  }
+  .custom-select-options {
+    max-height: 250px;
+  }
 }
 </style>

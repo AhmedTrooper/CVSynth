@@ -347,7 +347,7 @@ const handleExternalClick = (url: string) => {
     display: flex;
     align-items: center;
     padding: 0 4px;
-    height: 52px;
+    height: 56px;
     flex-shrink: 0;
 }
 
@@ -356,7 +356,7 @@ const handleExternalClick = (url: string) => {
     align-items: center;
     width: 100%;
     height: 100%;
-    padding: 3px 6px 4px 6px;
+    padding: 3px 6px 7px 6px;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
@@ -368,17 +368,18 @@ const handleExternalClick = (url: string) => {
 
 /* Sleek production-grade horizontal scrollbar for mobile/tablet */
 .nav-menu::-webkit-scrollbar {
-    height: 3px;
+    height: 4px;
     display: block;
 }
 
 .nav-menu::-webkit-scrollbar-track {
     background: transparent;
+    margin: 0 4px;
 }
 
 .nav-menu::-webkit-scrollbar-thumb {
     background: var(--line);
-    border-radius: 3px;
+    border-radius: 4px;
 }
 
 .nav-menu::-webkit-scrollbar-thumb:hover {
@@ -390,7 +391,8 @@ const handleExternalClick = (url: string) => {
     align-items: center;
     justify-content: center;
     min-width: 44px;
-    height: 42px;
+    height: 38px;
+    margin-bottom: 4px; /* Clearance gap above bottom scrollbar */
     padding: 0 10px;
     color: var(--muted);
     text-decoration: none;
@@ -507,6 +509,7 @@ const handleExternalClick = (url: string) => {
         min-width: 36px;
         height: 36px;
         padding: 0;
+        margin-bottom: 0;
     }
 
     .nav-item.active::after {

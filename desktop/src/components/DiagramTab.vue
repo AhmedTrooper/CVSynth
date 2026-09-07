@@ -1746,7 +1746,7 @@ const activeFileName = computed(() => {
   flex: 1;
   overflow-y: auto;
   overflow-x: auto;
-  padding: 8px 0;
+  padding: 8px 0 12px 0;
 }
 
 .mode-toggle {

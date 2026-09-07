@@ -235,7 +235,7 @@ const getTaskBadgeClass = (task: string): string => {
         </div>
       </div>
 
-      <div class="toolbar-right">
+      <div class="toolbar-right scroll-tray-x">
         <button
           type="button"
           class="audit-btn secondary"
@@ -291,7 +291,7 @@ const getTaskBadgeClass = (task: string): string => {
     </div>
 
     <!-- Task Type Filter Pills -->
-    <div class="task-filter-pills">
+    <div class="task-filter-pills scroll-tray-x">
       <button
         v-for="task in errorStore.availableTaskTypes"
         :key="task"
@@ -644,7 +644,7 @@ const getTaskBadgeClass = (task: string): string => {
 .audit-entries {
   display: flex;
   flex-direction: column;
-  divide-y: 1px solid var(--line);
+  padding-bottom: 8px;
 }
 
 .audit-card {
@@ -1005,23 +1005,25 @@ const getTaskBadgeClass = (task: string): string => {
     scroll-behavior: smooth;
     gap: 6px;
     width: 100%;
-    padding-bottom: 4px;
+    padding-top: 2px;
+    padding-bottom: 10px;
     scrollbar-width: thin;
     scrollbar-color: var(--line) transparent;
   }
 
   .toolbar-right::-webkit-scrollbar {
-    height: 3px;
+    height: 4px;
     display: block;
   }
 
   .toolbar-right::-webkit-scrollbar-track {
     background: transparent;
+    margin: 0 4px;
   }
 
   .toolbar-right::-webkit-scrollbar-thumb {
     background: var(--line);
-    border-radius: 3px;
+    border-radius: 4px;
   }
 
   .toolbar-right::-webkit-scrollbar-thumb:hover {
@@ -1032,6 +1034,7 @@ const getTaskBadgeClass = (task: string): string => {
     flex-shrink: 0;
     min-height: 36px;
     padding: 6px 12px;
+    margin-bottom: 4px;
   }
 
   /* Horizontal scroll tray for task filter pills */
@@ -1042,23 +1045,25 @@ const getTaskBadgeClass = (task: string): string => {
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
     gap: 6px;
-    padding-bottom: 4px;
+    padding-top: 2px;
+    padding-bottom: 10px;
     scrollbar-width: thin;
     scrollbar-color: var(--line) transparent;
   }
 
   .task-filter-pills::-webkit-scrollbar {
-    height: 3px;
+    height: 4px;
     display: block;
   }
 
   .task-filter-pills::-webkit-scrollbar-track {
     background: transparent;
+    margin: 0 4px;
   }
 
   .task-filter-pills::-webkit-scrollbar-thumb {
     background: var(--line);
-    border-radius: 3px;
+    border-radius: 4px;
   }
 
   .task-filter-pills::-webkit-scrollbar-thumb:hover {
@@ -1069,6 +1074,7 @@ const getTaskBadgeClass = (task: string): string => {
     flex-shrink: 0;
     min-height: 32px;
     padding: 4px 10px;
+    margin-bottom: 4px;
   }
 
   .audit-list-container {

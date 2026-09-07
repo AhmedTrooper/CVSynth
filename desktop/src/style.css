@@ -67,22 +67,22 @@ body {
 
 /* Scrollbar Styles */
 ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 6px;
 }
 ::-webkit-scrollbar-track {
     background: transparent;
 }
 ::-webkit-scrollbar-thumb {
     background: #30363d;
-    border: 2px solid var(--bg);
-    border-radius: 10px;
+    border: 1px solid var(--bg);
+    border-radius: 6px;
 }
 ::-webkit-scrollbar-thumb:hover {
     background: #484f58;
 }
 
-@media (max-width: 480px), (max-height: 500px) {
+@media (max-width: 600px), (max-height: 500px) {
     ::-webkit-scrollbar {
         width: 4px;
         height: 4px;
@@ -91,6 +91,61 @@ body {
         border: none;
         border-radius: 4px;
     }
+}
+
+/* =======================================================================
+   Scroll Clearance Standards (Horizontal Scroll Trays & Icon Rows)
+   Prevents horizontal scrollbars from overlapping or intercepting clicks
+   on buttons, pills, tabs, and interactive icons across all present
+   and future components.
+   ======================================================================= */
+.scroll-tray-x,
+.horizontal-scroll-tray,
+[data-scroll-tray] {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    padding-top: 2px;
+    padding-bottom: 12px !important;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+}
+
+.scroll-tray-x > *,
+.horizontal-scroll-tray > *,
+[data-scroll-tray] > * {
+    margin-bottom: 4px !important;
+    flex-shrink: 0;
+}
+
+.scroll-tray-x::-webkit-scrollbar,
+.horizontal-scroll-tray::-webkit-scrollbar,
+[data-scroll-tray]::-webkit-scrollbar {
+    height: 4px;
+    display: block;
+}
+
+.scroll-tray-x::-webkit-scrollbar-track,
+.horizontal-scroll-tray::-webkit-scrollbar-track,
+[data-scroll-tray]::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 0 4px;
+}
+
+.scroll-tray-x::-webkit-scrollbar-thumb,
+.horizontal-scroll-tray::-webkit-scrollbar-thumb,
+[data-scroll-tray]::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 4px;
+}
+
+.scroll-tray-x::-webkit-scrollbar-thumb:hover,
+.horizontal-scroll-tray::-webkit-scrollbar-thumb:hover,
+[data-scroll-tray]::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
 }
 
 button,

@@ -58,7 +58,7 @@ watch(() => route.fullPath, async () => {
         Surgical AI tailoring for high-performance LaTeX resumes.
       </p>
 
-      <div class="actions">
+      <div class="actions scroll-tray-x">
         <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'new-app'" @mouseleave="activeTooltip = null">
           <button class="btn-primary" @click="$router.push('/parse')" title="New Application" aria-label="New Application"><Plus :size="18" class="action-icon" /></button>
           <AnimatePresence>
@@ -388,23 +388,30 @@ watch(() => route.fullPath, async () => {
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
-    padding-bottom: 6px;
+    padding-top: 2px;
+    padding-bottom: 12px; /* Generous gap separating scrollbar from icons */
     scrollbar-width: thin;
     scrollbar-color: var(--line) transparent;
   }
 
+  .actions .btn-tooltip-wrapper,
+  .actions > * {
+    margin-bottom: 4px;
+  }
+
   .actions::-webkit-scrollbar {
-    height: 3px;
+    height: 4px;
     display: block;
   }
 
   .actions::-webkit-scrollbar-track {
     background: transparent;
+    margin: 0 4px;
   }
 
   .actions::-webkit-scrollbar-thumb {
     background: var(--line);
-    border-radius: 3px;
+    border-radius: 4px;
   }
 
   .actions::-webkit-scrollbar-thumb:hover {

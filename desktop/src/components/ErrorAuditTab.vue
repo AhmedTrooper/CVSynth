@@ -156,4 +156,38 @@ const handleTriggerTestError = async () => {
   padding: 16px;
   box-shadow: var(--shadow);
 }
+
+@media (max-width: 959px) and (min-width: 601px) {
+  .audit-tab-page {
+    padding: 16px 20px;
+    gap: 14px;
+  }
+}
+
+@media (max-width: 600px) {
+  .audit-tab-page {
+    padding: 12px 10px;
+    gap: 12px;
+  }
+
+  .audit-page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .header-right {
+    width: 100%;
+  }
+
+  .test-log-btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 38px;
+  }
+
+  .audit-viewer-card {
+    padding: 8px;
+  }
+}
 </style>

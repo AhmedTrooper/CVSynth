@@ -111,9 +111,34 @@ const activeFilePath = ref<string | null>(null);
 const isTemplatesVisible = ref(false);
 const isExporting = ref(false);
 const isPreviewVisible = ref(true);
+const previewWidth = ref(500);
+const isResizingPreview = ref(false);
+
+const splitPaneRef = ref<HTMLElement | null>(null);
+const isMobile = ref(false);
+
+const checkMobile = () => {
+  const wasMobile = isMobile.value;
+  isMobile.value = window.innerWidth <= 768;
+  if (!wasMobile && isMobile.value) {
+    isSidebarVisible.value = false;
+    isPreviewVisible.value = false;
+  } else if (wasMobile && !isMobile.value) {
+    isSidebarVisible.value = true;
+    isPreviewVisible.value = true;
+    nextTick(() => {
+      initializePanZoom();
+    });
+  }
+};
 
 const togglePreview = () => {
   isPreviewVisible.value = !isPreviewVisible.value;
+  if (isPreviewVisible.value) {
+    nextTick(() => {
+      initializePanZoom();
+    });
+  }
 };
 
 const workspaceName = computed(() => {
@@ -455,6 +480,13 @@ graph LR
 
 // Persistence & Initialization
 onMounted(async () => {
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+  if (isMobile.value) {
+    isSidebarVisible.value = false;
+    isPreviewVisible.value = false;
+  }
+
   try {
     const savedWorkspace = await invoke<string | null>('get_diagram_workspace_path');
     if (savedWorkspace && await exists(savedWorkspace)) {
@@ -480,6 +512,12 @@ onMounted(async () => {
 });
 
 onUnmounted(async () => {
+  window.removeEventListener('resize', checkMobile);
+  document.removeEventListener('mousemove', handleMouseMove);
+  document.removeEventListener('mouseup', stopResizing);
+  document.removeEventListener('mousemove', handlePreviewMouseMove);
+  document.removeEventListener('mouseup', stopResizingPreview);
+
   if (renderTimeout) clearTimeout(renderTimeout);
   if (isDirty.value) {
     await saveActiveFile();
@@ -496,19 +534,66 @@ watch(() => settingsStore.activeThemeId, () => {
 
 // Sidebar methods
 const toggleSidebar = () => isSidebarVisible.value = !isSidebarVisible.value;
+
 const startResizing = (_e: MouseEvent) => {
   isResizing.value = true;
   document.addEventListener('mousemove', handleMouseMove);
   document.addEventListener('mouseup', stopResizing);
 };
+
 const handleMouseMove = (e: MouseEvent) => {
-  if (!isResizing.value) return;
-  if (e.clientX > 150 && e.clientX < 500) sidebarWidth.value = e.clientX;
+  if (!isResizing.value || !splitPaneRef.value) return;
+  const rect = splitPaneRef.value.getBoundingClientRect();
+  const newWidth = e.clientX - rect.left;
+  if (newWidth < 60) {
+    isSidebarVisible.value = false;
+    stopResizing();
+    sidebarWidth.value = 240;
+    return;
+  }
+  const minWidth = 150;
+  const maxWidth = Math.min(500, rect.width - 200);
+  sidebarWidth.value = Math.max(minWidth, Math.min(maxWidth, newWidth));
 };
+
 const stopResizing = () => {
   isResizing.value = false;
   document.removeEventListener('mousemove', handleMouseMove);
   document.removeEventListener('mouseup', stopResizing);
+};
+
+// Preview Resizing methods
+const startResizingPreview = (_e: MouseEvent) => {
+  isResizingPreview.value = true;
+  document.addEventListener('mousemove', handlePreviewMouseMove);
+  document.addEventListener('mouseup', stopResizingPreview);
+};
+
+const handlePreviewMouseMove = (e: MouseEvent) => {
+  if (!isResizingPreview.value || !splitPaneRef.value) return;
+  const rect = splitPaneRef.value.getBoundingClientRect();
+  const newWidth = rect.right - e.clientX;
+  if (newWidth < 100) {
+    isPreviewVisible.value = false;
+    stopResizingPreview();
+    previewWidth.value = 500;
+    return;
+  }
+  const currentSidebar = isSidebarVisible.value ? sidebarWidth.value : 0;
+  const minWidth = 180;
+  const maxWidth = rect.width - currentSidebar - 180;
+  previewWidth.value = Math.max(minWidth, Math.min(maxWidth, newWidth));
+};
+
+const stopResizingPreview = () => {
+  isResizingPreview.value = false;
+  document.removeEventListener('mousemove', handlePreviewMouseMove);
+  document.removeEventListener('mouseup', stopResizingPreview);
+  
+  nextTick(() => {
+    initializePanZoom();
+    window.dispatchEvent(new Event('resize'));
+  });
 };
 
 // Workspace Management
@@ -630,6 +715,10 @@ const toggleFolder = async (item: FileItem) => {
 const selectFile = async (item: FileItem, skipRender = false) => {
   if (item.isDir) return;
   
+  if (isMobile.value) {
+    isSidebarVisible.value = false;
+  }
+
   if (isDirty.value && activeFilePath.value) {
     await saveActiveFile();
   }
@@ -957,7 +1046,7 @@ const getMermaidThemeVariables = () => {
 };
 
 // Rendering Logic
-const renderContent = async () => {
+const renderContent = async (userInitiated = false) => {
   const codeToRender = diagramCode.value.trim();
   if (!codeToRender) {
     diagramSvg.value = '';
@@ -1036,6 +1125,10 @@ const renderContent = async () => {
       
       await nextTick();
       initializePanZoom();
+    }
+
+    if (userInitiated && isMobile.value) {
+      isPreviewVisible.value = true;
     }
   } catch (err: any) {
     if (version !== currentRenderVersion) return;
@@ -1120,8 +1213,16 @@ const activeFileName = computed(() => {
         >
           <Layout :size="18" />
         </button>
+        <button 
+          class="toggle-sidebar-btn" 
+          :class="{ active: isPreviewVisible }"
+          @click="togglePreview" 
+          :title="isPreviewVisible ? 'Hide Preview' : 'Show Preview'"
+        >
+          <PanelRight :size="18" />
+        </button>
         <Share2 :size="20" class="header-icon" />
-        <h1>Diagram Studio</h1>
+        <h1 class="header-title">Diagram Studio</h1>
         <span v-if="workspacePath" class="workspace-label">
           {{ workspacePath.split(/[/\\]/).pop() }}
         </span>
@@ -1239,7 +1340,7 @@ const activeFileName = computed(() => {
         <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'render'" @mouseleave="activeTooltip = null">
           <button 
             class="action-btn render-btn" 
-            @click="renderContent" 
+            @click="renderContent(true)" 
             :disabled="isRendering || !diagramCode"
           >
             <Workflow v-if="!isRendering" :size="16" />
@@ -1262,9 +1363,21 @@ const activeFileName = computed(() => {
     </header>
 
     <main class="studio-main">
-      <div class="split-pane">
+      <div class="split-pane" ref="splitPaneRef">
+        <!-- Mobile Backdrop for Workspace Drawer -->
+        <div 
+          v-if="isMobile && isSidebarVisible" 
+          class="sidebar-mobile-backdrop" 
+          @click="isSidebarVisible = false"
+        ></div>
+
         <!-- Sidebar File Explorer -->
-        <aside v-if="isSidebarVisible" class="workspace-sidebar" :style="{ width: sidebarWidth + 'px' }">
+        <aside 
+          v-if="isSidebarVisible" 
+          class="workspace-sidebar" 
+          :class="{ 'mobile-sidebar': isMobile }"
+          :style="isMobile ? {} : { width: sidebarWidth + 'px' }"
+        >
           <div class="sidebar-header">
             <div class="sidebar-header-top" :title="workspacePath || 'Workspace'">
               <div class="workspace-name-row">
@@ -1277,6 +1390,14 @@ const activeFileName = computed(() => {
                   class="close-workspace-btn"
                 >
                   <FolderX :size="14" />
+                </button>
+                <button 
+                  v-if="isMobile" 
+                  @click="isSidebarVisible = false" 
+                  title="Close Drawer" 
+                  class="mobile-close-sidebar-btn"
+                >
+                  <X :size="16" />
                 </button>
               </div>
               <span v-if="workspacePath" class="workspace-path-subtext">{{ workspacePath }}</span>
@@ -1325,7 +1446,7 @@ const activeFileName = computed(() => {
         </aside>
 
         <!-- Sidebar Resizer -->
-        <div v-if="isSidebarVisible" class="sidebar-resizer" @mousedown="startResizing"></div>
+        <div v-if="isSidebarVisible && !isMobile" class="sidebar-resizer" @mousedown="startResizing"></div>
 
         <!-- Editor Section -->
         <section class="editor-section">
@@ -1392,8 +1513,16 @@ const activeFileName = computed(() => {
           </div>
         </section>
 
+        <!-- Preview Resizer -->
+        <div v-if="isPreviewVisible && !isMobile" class="preview-resizer" @mousedown="startResizingPreview"></div>
+
         <!-- Preview Section -->
-        <section class="preview-section" v-if="isPreviewVisible">
+        <section 
+          v-if="isPreviewVisible" 
+          class="preview-section" 
+          :class="{ 'mobile-preview': isMobile }"
+          :style="isMobile ? {} : { width: previewWidth + 'px', flex: 'none' }"
+        >
           <!-- Loading Overlay (Scoped to Preview) -->
           <AnimatePresence>
             <Motion
@@ -1415,10 +1544,10 @@ const activeFileName = computed(() => {
               <Layout :size="14" />
               <span>{{ isMarkdown ? 'DOCUMENT PREVIEW' : 'DIAGRAM PREVIEW' }}</span>
             </div>
-            <div class="pane-header-actions" v-if="!isMarkdown && diagramSvg">
+            <div class="pane-header-actions">
               <!-- Export as SVG (Guaranteed success) -->
-              <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'export-svg'" @mouseleave="activeTooltip = null">
-                <button class="action-btn-inline" @click="downloadAsSvg">
+              <div v-if="!isMarkdown && diagramSvg" class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'export-svg'" @mouseleave="activeTooltip = null">
+                <button class="action-btn-inline" @click="downloadAsSvg" title="Export as SVG">
                   <FileCode :size="14" />
                 </button>
                 <AnimatePresence>
@@ -1435,8 +1564,8 @@ const activeFileName = computed(() => {
               </div>
 
               <!-- Export as PNG (Resolution picker) -->
-              <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'export-png'" @mouseleave="activeTooltip = null">
-                <button class="action-btn-inline" @click="openExportModal" :disabled="isExporting">
+              <div v-if="!isMarkdown && diagramSvg" class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'export-png'" @mouseleave="activeTooltip = null">
+                <button class="action-btn-inline" @click="openExportModal" :disabled="isExporting" title="Export as PNG">
                   <ImageDown v-if="!isExporting" :size="14" />
                   <RotateCw v-else :size="14" class="spinner" />
                 </button>
@@ -1452,6 +1581,15 @@ const activeFileName = computed(() => {
                   </Motion>
                 </AnimatePresence>
               </div>
+
+              <!-- Close Preview Button -->
+              <button 
+                class="action-btn-inline close-preview-btn" 
+                @click="togglePreview" 
+                title="Close Preview"
+              >
+                <X :size="14" />
+              </button>
             </div>
           </div>
           <div class="preview-wrapper" ref="previewContainer" :class="{ 'markdown-view': isMarkdown }">
@@ -1668,6 +1806,11 @@ const activeFileName = computed(() => {
   color: var(--ink);
 }
 
+.toggle-sidebar-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .header-icon {
   color: var(--accent);
 }
@@ -1737,6 +1880,11 @@ const activeFileName = computed(() => {
 .action-btn:hover:not(:disabled) {
   border-color: var(--muted);
   background: var(--surface);
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn-secondary-sm {
@@ -1874,7 +2022,7 @@ const activeFileName = computed(() => {
   max-width: 500px;
 }
 
-.sidebar-resizer {
+.sidebar-resizer, .preview-resizer {
   width: 4px;
   cursor: col-resize;
   background: transparent;
@@ -1883,7 +2031,8 @@ const activeFileName = computed(() => {
   margin-left: -2px;
 }
 
-.sidebar-resizer:hover, .sidebar-resizer:active {
+.sidebar-resizer:hover, .sidebar-resizer:active,
+.preview-resizer:hover, .preview-resizer:active {
   background: var(--accent);
 }
 
@@ -2020,7 +2169,7 @@ const activeFileName = computed(() => {
 .file-tree {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 0;
+  padding: 8px 0 12px 0;
 }
 
 .tree-item-wrapper {
@@ -2102,6 +2251,7 @@ const activeFileName = computed(() => {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
   position: relative;
 }
 
@@ -2166,9 +2316,19 @@ const activeFileName = computed(() => {
   outline: none !important;
 }
 
+:deep(.cm-content) {
+  padding: 20px 0;
+}
+
+:deep(.cm-gutters) {
+  background-color: #282c34 !important;
+  border-right: 1px solid #3e4451 !important;
+  color: #abb2bf !important;
+}
+
 .refinement-bar {
   position: absolute;
-  top: 16px;
+  top: 50px;
   left: 50%;
   width: 90%;
   max-width: 440px;
@@ -2177,8 +2337,13 @@ const activeFileName = computed(() => {
   border-radius: 20px;
   display: flex;
   padding: 4px 14px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-  z-index: 20;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  z-index: 1000;
+  cursor: grab;
+}
+
+.refinement-bar:active {
+  cursor: grabbing;
 }
 
 .refinement-bar input {
@@ -2216,7 +2381,9 @@ const activeFileName = computed(() => {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
   background: var(--bg);
+  border-left: 1px solid var(--line);
 }
 
 .preview-wrapper {
@@ -2786,36 +2953,284 @@ const activeFileName = computed(() => {
   .workspace-sidebar {
     width: 200px;
   }
-  
+
+  .studio-header {
+    padding: 0 12px;
+  }
+
+  .header-actions {
+    gap: 8px;
+  }
+
+  .refinement-bar {
+    max-width: 360px;
+  }
+
   .export-presets-grid {
     grid-template-columns: repeat(3, 1fr);
   }
 }
 
+/* Custom sleek scrollbars: 4px default expanding to 6px on focus/hover.
+   CodeMirror track keeps a 56px top margin so the thumb never slides
+   under the floating refinement-bar (top:50px) or pane-header icons. */
+.file-tree::-webkit-scrollbar,
+.error-logs-container::-webkit-scrollbar,
+.preview-wrapper::-webkit-scrollbar,
+.preview-wrapper.markdown-view::-webkit-scrollbar,
+:deep(.cm-scroller)::-webkit-scrollbar {
+  width: 4px;
+  height: 2px;
+  transition: all 0.15s ease;
+}
+
+.file-tree:hover::-webkit-scrollbar,
+.file-tree:focus-within::-webkit-scrollbar,
+.error-logs-container:hover::-webkit-scrollbar,
+.error-logs-container:focus-within::-webkit-scrollbar,
+.preview-wrapper:hover::-webkit-scrollbar,
+.preview-wrapper:focus-within::-webkit-scrollbar,
+:deep(.cm-scroller:hover)::-webkit-scrollbar,
+:deep(.cm-scroller:focus-within)::-webkit-scrollbar {
+  width: 6px;
+  height: 5px;
+}
+
+.file-tree::-webkit-scrollbar-track,
+.error-logs-container::-webkit-scrollbar-track,
+.preview-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px 0;
+}
+
+:deep(.cm-scroller)::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 56px 0 6px 0;
+}
+
+.file-tree::-webkit-scrollbar-thumb,
+.error-logs-container::-webkit-scrollbar-thumb,
+.preview-wrapper::-webkit-scrollbar-thumb,
+:deep(.cm-scroller)::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
+.file-tree::-webkit-scrollbar-thumb:hover,
+.error-logs-container::-webkit-scrollbar-thumb:hover,
+.preview-wrapper::-webkit-scrollbar-thumb:hover,
+:deep(.cm-scroller)::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+.file-tree,
+.preview-wrapper.markdown-view,
+:deep(.cm-scroller) {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+/* Mobile Backdrop for Workspace Drawer */
+.sidebar-mobile-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 45;
+  animation: fadeInBackdrop 0.15s ease-out;
+}
+
+@keyframes fadeInBackdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.mobile-close-sidebar-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  transition: 0.15s;
+}
+
+.mobile-close-sidebar-btn:hover {
+  color: var(--warning) !important;
+  background: rgba(248, 81, 73, 0.1);
+}
+
+.close-preview-btn:hover {
+  color: var(--warning);
+}
+
 @media (max-width: 768px) {
+  .studio-header {
+    padding: 0 10px;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .studio-header::-webkit-scrollbar {
+    display: none;
+  }
+
+  .header-left {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .header-icon,
+  .workspace-label {
+    display: none;
+  }
+
+  .header-title {
+    font-size: 0.8rem;
+  }
+
+  .header-actions {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .action-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+  }
+
+  .save-btn span,
+  .ai-fix-btn span,
+  .mode-label {
+    display: none;
+  }
+
+  .save-btn,
+  .ai-fix-btn,
+  .mode-toggle {
+    width: 28px;
+    padding: 0;
+  }
+
+  .divider-v {
+    display: none;
+  }
+
   .split-pane {
-    flex-direction: column;
-  }
-  
-  .workspace-sidebar {
+    position: relative;
     width: 100%;
-    height: 180px;
-    border-right: none;
-    border-bottom: 1px solid var(--line);
+    height: 100%;
+    overflow: hidden;
   }
-  
+
+  .sidebar-resizer,
+  .preview-resizer {
+    display: none !important;
+  }
+
+  /* Workspace Drawer on Mobile */
+  .workspace-sidebar.mobile-sidebar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 85%;
+    max-width: 320px;
+    z-index: 50;
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    animation: slideInDrawer 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes slideInDrawer {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+
+  /* Editor takes full screen */
   .editor-section {
-    border-right: none;
-    border-bottom: 1px solid var(--line);
     flex: 1;
+    width: 100%;
+    height: 100%;
+    border-right: none;
+    border-bottom: none;
   }
-  
-  .preview-section {
-    flex: 1.2;
+
+  /* Preview positioned on top of editor, closable */
+  .preview-section.mobile-preview {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100% !important;
+    height: 100%;
+    z-index: 40;
+    background: var(--bg);
+    border-left: none;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 24px rgba(0, 0, 0, 0.5);
+    animation: slideUpPreview 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  
+
+  @keyframes slideUpPreview {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .preview-wrapper.markdown-view {
+    padding: 16px;
+  }
+
+  .refinement-bar {
+    top: 40px;
+    width: calc(100% - 20px);
+    max-width: calc(100% - 20px);
+  }
+
+  :deep(.cm-scroller)::-webkit-scrollbar-track {
+    margin: 46px 0 4px 0;
+  }
+
+  .template-modal,
+  .export-modal {
+    width: calc(100% - 20px);
+    max-width: calc(100% - 20px);
+    padding: 16px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+  }
+
+  .template-grid {
+    grid-template-columns: 1fr;
+  }
+
   .export-presets-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .export-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .export-cancel-btn,
+  .export-confirm-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .error-console {
+    max-height: 55%;
   }
 }
 </style>

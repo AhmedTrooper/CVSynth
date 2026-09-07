@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, watch, nextTick } from "vue";
+import { useRoute } from "vue-router";
 import { Motion, AnimatePresence } from "motion-v";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import Titlebar from "./components/Titlebar.vue";
@@ -55,6 +56,20 @@ const externalLinks = [
         icon: Video,
     },
 ];
+
+const route = useRoute();
+const navMenuRef = ref<HTMLElement | null>(null);
+
+// Keep active navigation tab centered in horizontal scroll view on mobile/tablet
+watch(() => route.path, async () => {
+    await nextTick();
+    if (navMenuRef.value) {
+        const activeEl = navMenuRef.value.querySelector('.nav-item.active') as HTMLElement;
+        if (activeEl) {
+            activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+    }
+});
 
 const settingsStore = useSettingsStore();
 const licenseStore = useLicenseStore();
@@ -192,7 +207,7 @@ const handleExternalClick = (url: string) => {
     <Titlebar />
     <div class="app-container select-none" @dblclick.prevent>
         <aside class="sidebar">
-            <nav class="nav-menu">
+            <nav class="nav-menu" ref="navMenuRef">
                 <router-link
                     v-for="tab in tabs"
                     :key="tab.path"
@@ -287,6 +302,7 @@ const handleExternalClick = (url: string) => {
 </template>
 
 <style scoped>
+/* App Shell Base */
 .app-container {
     display: flex;
     flex-direction: column;
@@ -306,138 +322,6 @@ const handleExternalClick = (url: string) => {
     display: none !important;
 }
 
-.sidebar {
-    order: 2;
-    background: var(--bg-accent);
-    border-top: 1px solid var(--line);
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    padding: 0 8px;
-}
-
-.logo-section {
-    padding-right: 12px;
-    border-right: 1px solid var(--line);
-    margin-right: 4px;
-}
-
-.logo-dot {
-    width: 6px;
-    height: 6px;
-    background: var(--accent);
-    border-radius: 50%;
-    box-shadow: 0 0 8px var(--accent);
-}
-
-.nav-menu {
-    display: flex;
-    width: 100%;
-    padding: 2px 0;
-    overflow-x: auto;
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
-    gap: 2px;
-}
-
-.nav-menu::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
-}
-
-.nav-item {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 12px;
-    color: var(--muted);
-    text-decoration: none;
-    transition: 0.15s;
-    background: none;
-    border: none;
-    cursor: pointer;
-    flex-shrink: 0;
-}
-
-.nav-divider {
-    width: 1px;
-    height: 20px;
-    background: var(--line);
-    margin: 0 8px;
-    flex-shrink: 0;
-}
-
-.nav-item.external {
-    opacity: 0.8;
-}
-
-.nav-item.external:hover {
-    opacity: 1;
-    color: var(--accent);
-}
-
-.nav-item:hover {
-    color: var(--ink);
-}
-
-.nav-item.active {
-    color: var(--accent);
-}
-
-.icon-wrapper {
-    font-size: 1.2rem;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-}
-
-.flying-message {
-    position: absolute;
-    bottom: 140%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--accent);
-    color: white;
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 0.65rem;
-    font-weight: 700;
-    white-space: nowrap;
-    pointer-events: none;
-    z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    display: none; /* Hidden by default, shown on desktop */
-}
-
-.flying-message::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 4px solid transparent;
-    border-top-color: var(--accent);
-}
-
-.sidebar-tooltip {
-    left: 100%;
-    top: 50%;
-    bottom: auto;
-    transform: translateY(-50%);
-    margin-left: 12px;
-}
-
-.sidebar-tooltip::after {
-    top: 50%;
-    right: 100%;
-    left: auto;
-    bottom: auto;
-    transform: translateY(-50%);
-    border-top-color: transparent;
-    border-right-color: var(--accent);
-}
-
 .content-area {
     flex: 1;
     overflow: hidden;
@@ -451,22 +335,139 @@ const handleExternalClick = (url: string) => {
     overflow-x: hidden;
 }
 
-@media (max-width: 959px) {
-    .nav-divider {
-        display: none;
-    }
-    .nav-item {
-        padding: 8px 10px;
-    }
-    .icon-wrapper {
-        font-size: 1rem;
-    }
+/* =======================================================================
+   Mobile & Tablet Bottom Bar (<960px):
+   Touch-friendly 44px targets, full 20px icons, smooth left-to-right scroll
+   ======================================================================= */
+.sidebar {
+    order: 2;
+    background: var(--bg-accent);
+    border-top: 1px solid var(--line);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+    height: 52px;
+    flex-shrink: 0;
 }
 
+.nav-menu {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    padding: 3px 6px 4px 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    gap: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+}
+
+/* Sleek production-grade horizontal scrollbar for mobile/tablet */
+.nav-menu::-webkit-scrollbar {
+    height: 3px;
+    display: block;
+}
+
+.nav-menu::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.nav-menu::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 3px;
+}
+
+.nav-menu::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    height: 42px;
+    padding: 0 10px;
+    color: var(--muted);
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+    background: none;
+    border: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    border-radius: var(--radius-md);
+    position: relative;
+}
+
+.nav-item:hover {
+    color: var(--ink);
+    background: var(--surface-soft);
+}
+
+.nav-item:active {
+    transform: scale(0.94);
+}
+
+.nav-item.active {
+    color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.nav-item.active::after {
+    content: "";
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 16px;
+    height: 2px;
+    background: var(--accent);
+    border-radius: 2px;
+}
+
+.nav-divider {
+    width: 1px;
+    height: 22px;
+    background: var(--line);
+    margin: 0 4px;
+    flex-shrink: 0;
+}
+
+.nav-item.external {
+    opacity: 0.75;
+}
+
+.nav-item.external:hover {
+    opacity: 1;
+    color: var(--accent);
+}
+
+.icon-wrapper {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.icon-wrapper svg {
+    width: 20px;
+    height: 20px;
+}
+
+.flying-message {
+    display: none;
+}
+
+/* =======================================================================
+   Desktop (>= 960px): Vertical Left Sidebar
+   ======================================================================= */
 @media (min-width: 960px) {
-    .flying-message {
-        display: block;
-    }
     .app-container {
         flex-direction: row;
     }
@@ -483,43 +484,73 @@ const handleExternalClick = (url: string) => {
     }
 
     .nav-menu {
-        display: flex;
         flex-direction: column;
         gap: 8px;
         padding: 0;
         overflow-x: visible;
+        overflow-y: auto;
+        scrollbar-width: none;
+    }
+
+    .nav-menu::-webkit-scrollbar {
+        display: none;
     }
 
     .nav-divider {
-        display: block;
-        width: auto;
+        width: 24px;
         height: 1px;
-        background: var(--line);
-        margin: 8px 12px;
+        margin: 8px 0;
     }
 
     .nav-item {
-        width: 100%;
-        padding: 8px 0;
-        position: relative;
+        width: 36px;
+        min-width: 36px;
+        height: 36px;
+        padding: 0;
     }
 
-    .nav-label {
+    .nav-item.active::after {
         display: none;
     }
 
     .nav-item.active::before {
         content: "";
         position: absolute;
-        left: 0;
-        top: 8px;
-        bottom: 8px;
+        left: -6px;
+        top: 6px;
+        bottom: 6px;
         width: 2px;
         background: var(--accent);
+        border-radius: 2px;
     }
 
-    .icon-wrapper {
-        font-size: 1.1rem;
+    .flying-message {
+        display: block;
+        position: absolute;
+        left: 100%;
+        top: 50%;
+        transform: translateY(-50%);
+        margin-left: 12px;
+        background: var(--accent);
+        color: white;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        white-space: nowrap;
+        pointer-events: none;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .flying-message::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        right: 100%;
+        transform: translateY(-50%);
+        border: 4px solid transparent;
+        border-right-color: var(--accent);
     }
 }
 </style>

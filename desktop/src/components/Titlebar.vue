@@ -544,12 +544,62 @@ onUnmounted(() => {
     display: none !important;
   }
   
+  .titlebar-left {
+    padding-left: 10px;
+    gap: 8px;
+  }
+
+  .titlebar-button {
+    width: 36px;
+  }
+
+  .error-audit-titlebar-btn {
+    width: 36px;
+  }
+
   .profile-wrapper {
     margin-right: 4px;
   }
 
   .license-badge-btn {
     padding: 3px 6px;
+    margin-right: 4px;
+  }
+
+  .license-badge-btn.free {
+    margin-right: 4px;
+    padding: 3px 6px;
+  }
+
+  .profile-dropdown {
+    width: 220px;
+    top: 34px;
+    right: 4px;
+  }
+}
+
+@media (max-width: 340px) {
+  .titlebar-left {
+    padding-left: 8px;
+    gap: 6px;
+  }
+
+  .titlebar-button {
+    width: 34px;
+  }
+
+  .error-audit-titlebar-btn {
+    width: 34px;
+  }
+
+  .license-badge-btn,
+  .license-badge-btn.free {
+    padding: 3px 5px;
+    margin-right: 2px;
+  }
+
+  .profile-wrapper {
+    margin-right: 2px;
   }
 }
 

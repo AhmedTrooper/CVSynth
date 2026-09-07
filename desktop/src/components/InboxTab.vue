@@ -308,7 +308,7 @@ const getStatusClass = (status: string) => {
           <CustomSelect
             v-model="statusFilter"
             :options="statuses.map(s => ({ value: s, label: s }))"
-            style="min-width: 140px;"
+            class="inbox-select"
           >
             <template #icon>
               <Filter :size="14" style="color: var(--muted);" />
@@ -339,7 +339,7 @@ const getStatusClass = (status: string) => {
               { value: 'date-desc', label: 'Newest First' },
               { value: 'date-asc', label: 'Oldest First' }
             ]"
-            style="min-width: 150px;"
+            class="inbox-select"
           >
             <template #icon>
               <ArrowUpDown :size="14" style="color: var(--muted);" />
@@ -412,22 +412,24 @@ const getStatusClass = (status: string) => {
             </div>
 
             <div class="card-footer" v-if="!isSelectionMode">
-              <div class="actions">
-                <button class="icon-btn danger" @click.stop="deleteJob(job.id)">
+              <div class="card-actions">
+                <button class="icon-btn danger" @click.stop="deleteJob(job.id)" title="Delete Capture" aria-label="Delete Capture">
                   <Trash2 :size="16" />
                 </button>
-                <div style="display: flex; gap: 12px; align-items: center;">
+                <div class="card-action-right">
                   <div v-if="job.status === 'Processed'" class="done-indicator">
-                    <CheckCircle :size="14" /> Processed
+                    <CheckCircle :size="14" />
+                    <span>Processed</span>
                   </div>
                   <button 
                     class="process-btn" 
                     @click.stop="processJob(job)"
                     :disabled="isProcessing || processingJobs.has(job.id)"
+                    :title="job.status === 'Processed' ? 'Re-Process with AI' : 'Process with AI'"
                   >
                     <RefreshCw v-if="processingJobs.has(job.id)" :size="14" class="spinner" />
                     <Cpu v-else :size="14" /> 
-                    {{ processingJobs.has(job.id) ? 'Analyzing...' : (job.status === 'Processed' ? 'Re-Process' : 'Process with AI') }}
+                    <span>{{ processingJobs.has(job.id) ? 'Analyzing...' : (job.status === 'Processed' ? 'Re-Process' : 'Process with AI') }}</span>
                   </button>
                 </div>
               </div>
@@ -479,7 +481,7 @@ const getStatusClass = (status: string) => {
 
 <style scoped>
 .inbox-container {
-  padding: 40px;
+  padding: 32px 40px;
   max-width: 1200px;
   margin: 0 auto;
   min-height: 100%;
@@ -491,82 +493,88 @@ const getStatusClass = (status: string) => {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
+  gap: 16px;
 }
 
-.page-header h1 { font-size: 2.2rem; margin: 0; color: var(--ink); }
-.subtitle { color: var(--muted); margin: 8px 0 0; }
+.title-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.page-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 6px 0 0 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
 
 .filters-bar {
   background: var(--surface);
   border: 1px solid var(--line);
-  padding: 12px 20px;
-  border-radius: 12px;
+  padding: 12px 18px;
+  border-radius: var(--radius-lg, 12px);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   box-shadow: var(--shadow);
+  gap: 16px;
 }
 
-.controls { display: flex; gap: 12px; }
-
-.filter-group { display: flex; align-items: center; gap: 6px; position: relative; }
-
-.icon-select {
-  flex-direction: row;
-  align-items: center;
-  background: var(--surface-soft);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 0 8px 0 12px;
-  transition: border-color 0.2s;
-}
-
-.icon-select:focus-within {
-  border-color: var(--accent);
-}
-
-.icon-indicator {
-  color: var(--muted);
+.controls {
   display: flex;
   align-items: center;
-  position: relative;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.filter-group select {
-  padding: 8px 24px 8px 4px;
-  font-weight: 700;
-  cursor: pointer;
-  background: transparent;
-  border: none;
-  font-size: 0.75rem;
-  color: var(--ink);
-  outline: none;
+.filter-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.inbox-select {
+  min-width: 140px;
 }
 
 .inbox-stats {
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
-
-.header-actions { display: flex; gap: 12px; }
 
 .inbox-layout {
   display: flex;
-  gap: 32px;
+  gap: 28px;
   flex: 1;
-  min-height: 400px;
+  min-height: 0;
 }
 
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   min-height: 0;
   min-width: 0;
 }
@@ -574,20 +582,20 @@ const getStatusClass = (status: string) => {
 .processing-banner {
   background: var(--accent-soft);
   border: 1px solid var(--accent);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: var(--radius-md, 8px);
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .progress-info {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-weight: 700;
+  gap: 10px;
+  font-weight: 600;
   color: var(--accent);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
 .progress-bar {
@@ -606,18 +614,40 @@ const getStatusClass = (status: string) => {
 .inbox-list {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 16px;
+  gap: 14px;
   overflow-y: auto;
-  padding-right: 8px;
+  padding-right: 6px;
+  padding-bottom: 16px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.inbox-list::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.inbox-list::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px 0;
+}
+
+.inbox-list::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
+.inbox-list::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
 
 .inbox-card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 20px;
+  border-radius: var(--radius-lg, 12px);
+  padding: 18px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
   position: relative;
   min-width: 0;
   overflow: hidden;
@@ -634,40 +664,45 @@ const getStatusClass = (status: string) => {
 }
 
 .inbox-card.processed {
-  opacity: 0.7;
+  opacity: 0.75;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
+  gap: 8px;
 }
 
 .card-header .left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  min-width: 0;
 }
 
 .card-header .right {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
+  gap: 5px;
+  font-size: 0.72rem;
   color: var(--muted);
   font-family: monospace;
+  flex-shrink: 0;
 }
 
 .checkbox {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border: 2px solid var(--line);
   border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--bg);
+  flex-shrink: 0;
+  transition: all 0.15s ease;
 }
 
 .checkbox.checked {
@@ -680,17 +715,27 @@ const getStatusClass = (status: string) => {
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 0.65rem;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.status-badge.pending { background: var(--accent-soft); color: var(--accent); }
-.status-badge.processed { background: var(--surface-soft); color: var(--muted); }
+.status-badge.pending {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.status-badge.processed {
+  background: var(--surface-soft);
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
 
 .card-body {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .url-line {
@@ -713,61 +758,85 @@ const getStatusClass = (status: string) => {
 }
 
 .description-preview {
-  font-size: 0.85rem;
+  font-size: 0.84rem;
   color: var(--muted);
   line-height: 1.5;
   display: -webkit-box;
-  -webkit-line-clamp: 1;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
 }
 
 .card-footer {
-  margin-top: 16px;
-  padding-top: 12px;
+  margin-top: 14px;
+  padding-top: 10px;
   border-top: 1px solid var(--line);
 }
 
-.actions {
+.card-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
+}
+
+.card-action-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .process-btn {
   background: var(--accent);
   color: white;
   border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 700;
+  padding: 7px 13px;
+  border-radius: var(--radius-md, 6px);
+  font-size: 0.78rem;
+  font-weight: 600;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.process-btn:hover:not(:disabled) {
+  background: var(--accent-hover, #2ea043);
+}
+
+.process-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.process-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .done-indicator {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--muted);
+  white-space: nowrap;
 }
 
 .config-sidebar {
-  width: 300px;
+  width: 320px;
   flex-shrink: 0;
 }
 
 .config-card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 24px;
+  border-radius: var(--radius-lg, 12px);
+  padding: 20px;
   position: sticky;
   top: 0;
 }
@@ -775,31 +844,36 @@ const getStatusClass = (status: string) => {
 .config-card .card-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 10px;
   color: var(--accent);
 }
 
-.config-card h3 { margin: 0; font-size: 1.1rem; color: var(--ink); }
+.config-card h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+}
 
 .config-desc {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--muted);
   line-height: 1.5;
-  margin-bottom: 24px;
+  margin: 0 0 18px 0;
 }
 
 .config-item {
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .config-item label {
   display: block;
   font-size: 0.65rem;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
   color: var(--accent);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   letter-spacing: 0.05em;
 }
 
@@ -809,28 +883,37 @@ const getStatusClass = (status: string) => {
   border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
+  align-items: stretch;
 }
 
 .value-row code {
   flex: 1;
-  padding: 8px 12px;
+  padding: 8px 10px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  display: flex;
+  align-items: center;
 }
 
 .copy-btn {
   background: var(--surface-soft);
   border: none;
   border-left: 1px solid var(--line);
-  padding: 0 12px;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0 10px;
   color: var(--muted);
   cursor: pointer;
-  transition: 0.2s;
+  transition: all 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0; /* Let parent overflow: hidden handle corners */
+  flex-shrink: 0;
 }
 
 .copy-btn:hover {
@@ -838,18 +921,22 @@ const getStatusClass = (status: string) => {
   color: white;
 }
 
+.copy-btn:active {
+  transform: scale(0.92);
+}
+
 .setup-tip {
-  margin-top: 24px;
+  margin-top: 18px;
   display: flex;
-  gap: 10px;
+  gap: 8px;
   background: var(--bg-accent);
-  padding: 12px;
+  padding: 10px 12px;
   border-radius: 8px;
   border: 1px solid var(--line);
 }
 
 .setup-tip p {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   margin: 0;
   color: var(--muted);
   line-height: 1.4;
@@ -858,6 +945,7 @@ const getStatusClass = (status: string) => {
 .setup-tip svg {
   color: var(--accent);
   flex-shrink: 0;
+  margin-top: 1px;
 }
 
 .empty-state {
@@ -868,37 +956,102 @@ const getStatusClass = (status: string) => {
   justify-content: center;
   color: var(--muted);
   text-align: center;
-  gap: 16px;
+  gap: 14px;
+  padding: 48px 16px;
 }
 
-.empty-icon { opacity: 0.2; }
+.empty-icon {
+  opacity: 0.3;
+}
 
 .btn-primary, .btn-secondary, .btn-danger-outline {
   width: 40px;
   height: 40px;
+  min-width: 40px;
+  min-height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: var(--radius-md, 8px);
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.btn-primary { background: var(--accent); color: white; border: none; }
-.btn-secondary { background: var(--surface-soft); border: 1px solid var(--line); color: var(--ink); }
-.btn-danger-outline { background: transparent; border: 1px solid var(--warning); color: var(--warning); }
+.btn-primary {
+  background: var(--accent);
+  color: white;
+  border: none;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover, #2ea043);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.btn-secondary {
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--surface);
+  border-color: var(--accent);
+}
+
+.btn-secondary:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.btn-danger-outline {
+  background: transparent;
+  border: 1px solid var(--warning);
+  color: var(--warning);
+}
+
+.btn-danger-outline:hover:not(:disabled) {
+  background: rgba(248, 81, 73, 0.12);
+}
+
+.btn-danger-outline:active:not(:disabled) {
+  transform: scale(0.95);
+}
 
 .icon-btn {
   background: none;
-  border: none;
+  border: 1px solid transparent;
   color: var(--muted);
   cursor: pointer;
-  padding: 6px;
-  border-radius: 6px;
-  transition: 0.2s;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: var(--radius-md, 6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
 }
 
-.icon-btn:hover { background: var(--surface-soft); color: var(--ink); }
-.icon-btn.danger:hover { color: var(--warning); background: rgba(248, 51, 73, 0.1); }
+.icon-btn:hover {
+  background: var(--surface-soft);
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.icon-btn.danger:hover {
+  color: var(--warning);
+  background: rgba(248, 81, 73, 0.12);
+  border-color: rgba(248, 81, 73, 0.3);
+}
+
+.icon-btn:active {
+  transform: scale(0.92);
+}
 
 .spinner {
   animation: spin 1s linear infinite;
@@ -909,43 +1062,237 @@ const getStatusClass = (status: string) => {
   to { transform: rotate(360deg); }
 }
 
-@media (max-width: 900px) {
-  .inbox-layout { flex-direction: column; }
-  .config-sidebar { width: 100%; }
-}
-
-@media (max-width: 768px) {
-  .inbox-container { padding: 16px; }
-  .page-header { flex-direction: column; gap: 16px; align-items: stretch; margin-bottom: 20px; }
-  .filters-bar { flex-direction: column; gap: 16px; align-items: stretch; padding: 16px; margin-bottom: 16px; }
-  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .inbox-stats { text-align: center; margin-top: 8px; }
-  .btn-primary, .btn-secondary, .btn-danger-outline { width: 36px; height: 36px; }
-  .header-actions { justify-content: flex-end; }
-}
-
-@media (max-width: 500px) {
-  .inbox-card {
-    padding: 16px;
+/* =======================================================================
+   Tablet Styles (601px - 959px)
+   ======================================================================= */
+@media (max-width: 959px) and (min-width: 601px) {
+  .inbox-container {
+    padding: 20px 24px;
   }
-  .card-footer {
-    margin-top: 12px;
-    padding-top: 12px;
+
+  .page-header {
+    margin-bottom: 18px;
   }
-  .actions {
+
+  .page-header h1 {
+    font-size: 1.6rem;
+  }
+
+  .filters-bar {
+    padding: 10px 14px;
+    margin-bottom: 18px;
     gap: 12px;
   }
+
+  .inbox-layout {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .config-sidebar {
+    width: 100%;
+  }
+
+  .config-card {
+    position: static;
+  }
+
+  .inbox-list {
+    overflow-y: visible;
+    padding-right: 0;
+  }
+}
+
+/* =======================================================================
+   Mobile Styles (<= 600px):
+   Touch targets min 38px, full-width inputs, clean stacking, bounds safety
+   ======================================================================= */
+@media (max-width: 600px) {
+  .inbox-container {
+    padding: 14px 12px;
+  }
+
+  .page-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .page-header h1 {
+    font-size: 1.35rem;
+    line-height: 1.2;
+  }
+
+  .subtitle {
+    font-size: 0.76rem;
+    margin: 2px 0 0 0;
+  }
+
+  .header-actions {
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .btn-primary, .btn-secondary, .btn-danger-outline {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
+  }
+
+  .filters-bar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 10px;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .filter-group {
+    width: 100%;
+  }
+
+  .inbox-select {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .inbox-stats {
+    text-align: center;
+    font-size: 0.72rem;
+    padding-top: 2px;
+  }
+
+  .inbox-layout {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .inbox-list {
+    overflow-y: visible;
+    padding-right: 0;
+    gap: 12px;
+  }
+
+  .inbox-card {
+    padding: 14px 12px;
+    border-radius: var(--radius-md, 8px);
+  }
+
+  .card-header {
+    margin-bottom: 8px;
+  }
+
+  .card-body {
+    gap: 6px;
+  }
+
+  .description-preview {
+    font-size: 0.8rem;
+    -webkit-line-clamp: 2;
+  }
+
+  .card-footer {
+    margin-top: 12px;
+    padding-top: 10px;
+  }
+
+  .card-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .card-action-right {
+    gap: 8px;
+    flex: 1;
+    justify-content: flex-end;
+  }
+
   .process-btn {
     flex: 1;
     justify-content: center;
-    padding: 10px 12px;
-    font-size: 0.8rem;
+    min-height: 38px;
+    padding: 8px 12px;
+    font-size: 0.78rem;
   }
+
   .icon-btn {
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
+  }
+
+  .config-sidebar {
+    width: 100%;
+  }
+
+  .config-card {
+    padding: 14px 12px;
+    border-radius: var(--radius-md, 8px);
+    position: static;
+  }
+
+  .value-row code {
+    padding: 8px 10px;
+    font-size: 0.76rem;
+  }
+
+  .copy-btn {
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
+
+/* =======================================================================
+   Ultra-compact Mobile (<= 340px):
+   Bounds safety for tiny screens (e.g. 300x400)
+   ======================================================================= */
+@media (max-width: 340px) {
+  .inbox-container {
+    padding: 10px 8px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .page-header h1 {
+    font-size: 1.18rem;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .card-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .card-action-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .process-btn {
+    width: 100%;
     justify-content: center;
   }
 }

@@ -127,8 +127,8 @@ const deleteJob = async () => {
 <template>
   <div class="detail-container">
     <header class="detail-header">
-      <button class="back-btn" @click="goBack">
-        <ArrowLeft :size="20" />
+      <button class="back-btn" @click="goBack" title="Back to Inbox" aria-label="Back to Inbox">
+        <ArrowLeft :size="18" />
       </button>
       <div class="header-main">
         <h1>Capture Details</h1>
@@ -138,18 +138,21 @@ const deleteJob = async () => {
         </div>
       </div>
       <div class="header-actions" v-if="job">
-        <button class="action-btn danger" @click="deleteJob" title="Delete Capture">
-          <Trash2 :size="18" />
+        <button class="action-btn danger" @click="deleteJob" title="Delete Capture" aria-label="Delete Capture">
+          <Trash2 :size="16" />
+          <span class="btn-text">Delete</span>
         </button>
         <button 
           v-if="job.status === 'Pending'"
           class="action-btn primary" 
           @click="processJob"
           :disabled="isProcessing"
+          title="Process with AI"
+          aria-label="Process with AI"
         >
-          <RefreshCw v-if="isProcessing" :size="18" class="spinner" />
-          <Cpu v-else :size="18" />
-          <span>{{ isProcessing ? 'Processing...' : 'Process with AI' }}</span>
+          <RefreshCw v-if="isProcessing" :size="16" class="spinner" />
+          <Cpu v-else :size="16" />
+          <span class="btn-text">{{ isProcessing ? 'Processing...' : 'Process with AI' }}</span>
         </button>
       </div>
     </header>
@@ -216,11 +219,11 @@ const deleteJob = async () => {
 }
 
 .detail-header {
-  height: 80px;
+  height: 72px;
   padding: 0 40px;
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 20px;
   background: var(--bg-accent);
   border-bottom: 1px solid var(--line);
   flex-shrink: 0;
@@ -230,60 +233,158 @@ const deleteJob = async () => {
   background: var(--surface-soft);
   border: 1px solid var(--line);
   color: var(--ink);
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  border-radius: var(--radius-md, 8px);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: 0.2s;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
-.back-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--bg); }
+.back-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--bg);
+}
 
-.header-main { flex: 1; }
-.header-main h1 { margin: 0; font-size: 1.5rem; color: var(--ink); font-weight: 800; }
+.back-btn:active {
+  transform: scale(0.95);
+}
 
-.badge-row { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+.header-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.header-main h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: var(--ink);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.badge-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
 
 .status-badge {
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 0.65rem;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-.status-badge.pending { background: var(--accent-soft); color: var(--accent); }
-.status-badge.processed { background: var(--surface-soft); color: var(--muted); }
-
-.timestamp { font-size: 0.75rem; color: var(--muted); font-family: monospace; display: flex; align-items: center; gap: 4px; }
-
-.header-actions { display: flex; gap: 12px; }
-
-.action-btn {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 20px;
-  height: 44px;
-  border-radius: 12px;
   font-weight: 700;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.pending {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.status-badge.processed {
+  background: var(--surface-soft);
+  color: var(--muted);
   border: 1px solid var(--line);
 }
 
-.action-btn.primary { background: var(--accent); color: white; border: none; }
-.action-btn.danger { background: transparent; color: var(--warning); border: 1px solid var(--warning); padding: 0 14px; }
-.action-btn.danger:hover { background: var(--warning); color: white; }
-.action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.timestamp {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-family: monospace;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  height: 42px;
+  min-height: 42px;
+  border-radius: var(--radius-md, 8px);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.action-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.action-btn.primary {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.action-btn.primary:hover:not(:disabled) {
+  background: var(--accent-hover, #2ea043);
+  transform: translateY(-1px);
+}
+
+.action-btn.danger {
+  background: transparent;
+  color: var(--warning);
+  border-color: var(--warning);
+}
+
+.action-btn.danger:hover:not(:disabled) {
+  background: rgba(248, 81, 73, 0.12);
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .detail-content {
   flex: 1;
   overflow-y: auto;
-  padding: 40px;
+  padding: 32px 40px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.detail-content::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.detail-content::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px 0;
+}
+
+.detail-content::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
+.detail-content::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
 
 .info-section {
@@ -291,14 +392,14 @@ const deleteJob = async () => {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
 .section-card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 20px;
-  padding: 24px;
+  border-radius: var(--radius-lg, 14px);
+  padding: 22px;
   box-shadow: var(--shadow);
 }
 
@@ -307,24 +408,45 @@ const deleteJob = async () => {
   justify-content: space-between;
   align-items: center;
   color: var(--accent);
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  gap: 12px;
 }
 
-.header-left { display: flex; align-items: center; gap: 12px; }
-.header-right { display: flex; align-items: center; gap: 12px; }
+.card-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 
 .stat-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
+  gap: 5px;
+  font-size: 0.72rem;
   color: var(--muted);
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
 }
 
-.stat-divider { width: 1px; height: 12px; background: var(--line); }
+.stat-divider {
+  width: 1px;
+  height: 12px;
+  background: var(--line);
+}
 
 .copy-small-btn {
   background: var(--surface-soft);
@@ -332,23 +454,31 @@ const deleteJob = async () => {
   color: var(--muted);
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: var(--radius-md, 6px);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: 0.2s;
-  margin-left: 8px;
+  transition: all 0.15s ease;
+  margin-left: 4px;
 }
 
-.copy-small-btn:hover { border-color: var(--accent); color: var(--accent); }
+.copy-small-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--surface);
+}
 
-.card-header h3 { margin: 0; font-size: 1.1rem; color: var(--ink); }
+.copy-small-btn:active {
+  transform: scale(0.92);
+}
 
 .url-box {
   background: var(--bg);
-  padding: 16px;
-  border-radius: 12px;
+  padding: 14px;
+  border-radius: var(--radius-md, 8px);
   border: 1px solid var(--line);
 }
 
@@ -356,32 +486,67 @@ const deleteJob = async () => {
   color: var(--accent);
   text-decoration: none;
   font-weight: 600;
-  display: flex;
+  font-size: 0.85rem;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
   word-break: break-all;
 }
 
-.no-url { color: var(--muted); font-style: italic; }
+.job-link:hover {
+  text-decoration: underline;
+}
 
-.description-card { flex: 1; }
+.no-url {
+  color: var(--muted);
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+.description-card {
+  flex: 1;
+}
 
 .content-box {
   background: var(--bg);
-  border-radius: 12px;
+  border-radius: var(--radius-md, 8px);
   border: 1px solid var(--line);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.content-box::-webkit-scrollbar {
+  height: 4px;
+}
+
+.content-box::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 0 4px;
+}
+
+.content-box::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
+.content-box::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
 
 .raw-text {
   margin: 0;
-  padding: 24px;
+  padding: 20px;
   font-family: inherit;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   line-height: 1.6;
   color: var(--ink);
   white-space: pre-wrap;
   word-break: break-word;
+  user-select: text !important;
+  -webkit-user-select: text !important;
 }
 
 .loading-state {
@@ -391,16 +556,159 @@ const deleteJob = async () => {
   align-items: center;
   justify-content: center;
   color: var(--muted);
-  gap: 16px;
+  gap: 14px;
 }
 
-.spinner { animation: spin 1s linear infinite; }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.spinner {
+  animation: spin 1s linear infinite;
+}
 
-@media (max-width: 768px) {
-  .detail-header { padding: 0 20px; }
-  .detail-content { padding: 20px; }
-  .action-btn span { display: none; }
-  .action-btn { padding: 0 14px; }
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* =======================================================================
+   Tablet Styles (601px - 959px)
+   ======================================================================= */
+@media (max-width: 959px) and (min-width: 601px) {
+  .detail-header {
+    height: 64px;
+    padding: 0 20px;
+    gap: 16px;
+  }
+
+  .header-main h1 {
+    font-size: 1.3rem;
+  }
+
+  .detail-content {
+    padding: 20px 18px;
+  }
+
+  .section-card {
+    padding: 18px;
+    border-radius: 12px;
+  }
+
+  .raw-text {
+    padding: 16px;
+    font-size: 0.88rem;
+  }
+}
+
+/* =======================================================================
+   Mobile Styles (<= 600px):
+   Touch targets min 38px, bounds safety, responsive wrapping
+   ======================================================================= */
+@media (max-width: 600px) {
+  .detail-header {
+    height: auto;
+    min-height: 56px;
+    padding: 12px 14px;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  .back-btn {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
+  }
+
+  .header-main {
+    flex: 1;
+    min-width: 140px;
+  }
+
+  .header-main h1 {
+    font-size: 1.2rem;
+  }
+
+  .header-actions {
+    gap: 8px;
+  }
+
+  .action-btn {
+    height: 38px;
+    min-height: 38px;
+    padding: 0 12px;
+    font-size: 0.8rem;
+    gap: 6px;
+  }
+
+  .detail-content {
+    padding: 14px 12px;
+  }
+
+  .info-section {
+    gap: 14px;
+  }
+
+  .section-card {
+    padding: 14px 12px;
+    border-radius: var(--radius-md, 8px);
+  }
+
+  .card-header {
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .header-right {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .stat-item {
+    font-size: 0.68rem;
+  }
+
+  .copy-small-btn {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    min-height: 34px;
+  }
+
+  .raw-text {
+    padding: 14px 10px;
+    font-size: 0.82rem;
+  }
+}
+
+/* =======================================================================
+   Ultra-compact Mobile (<= 340px):
+   Icon-only action buttons and tighter padding for 300x400 screens
+   ======================================================================= */
+@media (max-width: 340px) {
+  .detail-header {
+    padding: 10px 8px;
+    gap: 8px;
+  }
+
+  .header-main h1 {
+    font-size: 1.05rem;
+  }
+
+  .action-btn .btn-text {
+    display: none;
+  }
+
+  .action-btn {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .detail-content {
+    padding: 10px 6px;
+  }
 }
 </style>

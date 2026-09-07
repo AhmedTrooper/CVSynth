@@ -454,7 +454,7 @@ const getTaskBadgeClass = (task: string): string => {
   background: var(--bg);
   border: 1px solid var(--line);
   border-radius: 6px;
-  padding: 0 8px;
+  padding: 0 10px;
 }
 
 .search-icon {
@@ -467,8 +467,8 @@ const getTaskBadgeClass = (task: string): string => {
   background: transparent;
   border: none;
   color: var(--ink);
-  font-size: 0.82rem;
-  padding: 6px 6px;
+  font-size: 0.9rem;
+  padding: 10px 8px;
   outline: none;
 }
 
@@ -502,12 +502,32 @@ const getTaskBadgeClass = (task: string): string => {
 }
 
 .filter-select {
-  background: transparent;
+  background-color: transparent;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%238b949e'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 14px;
   border: none;
   color: var(--ink);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 8px 30px 8px 4px;
+  min-height: 38px;
   outline: none;
   cursor: pointer;
+  max-width: 100%;
+}
+
+.filter-select:focus {
+  border: none;
+  outline: none;
+}
+
+.filter-select option {
+  background-color: var(--surface);
+  color: var(--ink);
+  font-size: 0.85rem;
+  padding: 8px 10px;
 }
 
 .toolbar-right {
@@ -926,6 +946,47 @@ const getTaskBadgeClass = (task: string): string => {
   animation: spin 1s linear infinite;
 }
 
+/* Sleek scrollbars: 4px idle expanding to 6px on hover/focus.
+   Track keeps an 8px top/bottom margin so the thumb never slides
+   under the card action icons (copy/delete) when it grows on focus. */
+.audit-list-container::-webkit-scrollbar,
+.details-pre::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+  transition: all 0.15s ease;
+}
+
+.audit-list-container:hover::-webkit-scrollbar,
+.audit-list-container:focus-within::-webkit-scrollbar,
+.details-pre:hover::-webkit-scrollbar,
+.details-pre:focus-within::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.audit-list-container::-webkit-scrollbar-track,
+.details-pre::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 8px 0;
+}
+
+.audit-list-container::-webkit-scrollbar-thumb,
+.details-pre::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
+.audit-list-container::-webkit-scrollbar-thumb:hover,
+.details-pre::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+.audit-list-container,
+.details-pre {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -993,6 +1054,7 @@ const getTaskBadgeClass = (task: string): string => {
   .filter-select {
     flex: 1;
     width: 100%;
+    min-height: 40px;
   }
 
   /* Horizontal scroll tray for toolbar buttons */
@@ -1120,8 +1182,13 @@ const getTaskBadgeClass = (task: string): string => {
   }
 
   .search-box input {
-    font-size: 0.78rem;
-    padding: 5px 4px;
+    font-size: 0.85rem;
+    padding: 8px 6px;
+  }
+
+  .filter-select {
+    font-size: 0.82rem;
+    min-height: 40px;
   }
 
   .card-message {

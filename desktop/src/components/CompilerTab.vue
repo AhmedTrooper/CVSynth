@@ -93,6 +93,20 @@ const splitPaneRef = ref<HTMLElement | null>(null);
 const fileTreeContainerRef = ref<HTMLElement | null>(null);
 const compilerContainerRef = ref<HTMLElement | null>(null);
 
+const isMobile = ref(false);
+
+const checkMobile = () => {
+  const wasMobile = isMobile.value;
+  isMobile.value = window.innerWidth <= 768;
+  if (!wasMobile && isMobile.value) {
+    isSidebarVisible.value = false;
+    isPreviewVisible.value = false;
+  } else if (wasMobile && !isMobile.value) {
+    isSidebarVisible.value = true;
+    isPreviewVisible.value = true;
+  }
+};
+
 const pdfUrl = ref<any>(null);
 const pdfBytesBuffer = ref<Uint8Array | null>(null);
 const isCompiling = ref(false);
@@ -381,6 +395,13 @@ const useTemplate = async (template: typeof resumeTemplates[0]) => {
 
 // Persistence & Initialization
 onMounted(async () => {
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+  if (isMobile.value) {
+    isSidebarVisible.value = false;
+    isPreviewVisible.value = false;
+  }
+
   try {
     const savedWorkspace = await invoke<string | null>('get_workspace_path');
     if (savedWorkspace && await exists(savedWorkspace)) {
@@ -406,6 +427,7 @@ onMounted(async () => {
 });
 
 onUnmounted(async () => {
+  window.removeEventListener('resize', checkMobile);
   pdfUrl.value = null; // Reset on unmount
   if (isDirty.value && settingsStore.isAutoCompileEnabled) {
     await saveActiveFile();
@@ -529,6 +551,10 @@ const toggleFolder = async (item: FileItem) => {
 const selectFile = async (item: FileItem) => {
   if (item.isDir) return;
   
+  if (isMobile.value) {
+    isSidebarVisible.value = false;
+  }
+
   if (isDirty.value && activeFilePath.value) {
     await saveActiveFile();
   }
@@ -872,6 +898,9 @@ const compilePdf = async () => {
     };
     
     compilationError.value = null;
+    if (isMobile.value) {
+      isPreviewVisible.value = true;
+    }
   } catch (err: any) {
     console.error("Compilation Error:", err);
     compilationError.value = err.message || err.toString();
@@ -963,14 +992,24 @@ const activeFileName = computed(() => {
   <div class="compiler-container" ref="compilerContainerRef">
     <header class="compiler-header">
       <div class="header-left">
-        <button class="toggle-sidebar-btn" @click="toggleSidebar" title="Toggle Sidebar">
+        <button 
+          class="toggle-sidebar-btn" 
+          :class="{ active: isSidebarVisible }"
+          @click="toggleSidebar" 
+          :title="isSidebarVisible ? 'Close Workspace' : 'Open Workspace'"
+        >
           <Layout :size="18" />
         </button>
-        <button class="toggle-sidebar-btn" @click="togglePreview" title="Toggle PDF Preview">
+        <button 
+          class="toggle-sidebar-btn" 
+          :class="{ active: isPreviewVisible }"
+          @click="togglePreview" 
+          :title="isPreviewVisible ? 'Close PDF Preview' : 'Open PDF Preview'"
+        >
           <PanelRight :size="18" />
         </button>
         <Files :size="20" class="header-icon" />
-        <h1>LaTeX IDE</h1>
+        <h1 class="header-title">LaTeX IDE</h1>
         <span v-if="workspacePath" class="workspace-label">
           {{ workspacePath.split(/[/\\]/).pop() }}
         </span>
@@ -1113,14 +1152,27 @@ const activeFileName = computed(() => {
 
     <main class="compiler-main">
       <div class="split-pane" ref="splitPaneRef" :class="{ 'is-resizing': isResizing || isResizingPreview }">
+        <!-- Sidebar Backdrop for Mobile Drawer -->
+        <div 
+          v-if="isMobile && isSidebarVisible" 
+          class="sidebar-mobile-backdrop" 
+          @click="isSidebarVisible = false"
+        ></div>
+
         <!-- Sidebar File Explorer -->
-        <aside v-if="isSidebarVisible" class="workspace-sidebar" :style="{ width: sidebarWidth + 'px' }">
+        <aside 
+          v-if="isSidebarVisible" 
+          class="workspace-sidebar" 
+          :class="{ 'mobile-sidebar': isMobile }"
+          :style="isMobile ? {} : { width: sidebarWidth + 'px' }"
+        >
           <div class="sidebar-header">
             <div class="sidebar-header-top" :title="workspacePath || 'Workspace'">
               <div class="workspace-name-row">
                 <FolderOpen :size="14" class="workspace-folder-icon" />
                 <span class="workspace-title">{{ workspaceName || 'EXPLORER' }}</span>
                 <button v-if="workspacePath" @click="closeWorkspace" title="Close Workspace" class="close-workspace-btn"><X :size="14" /></button>
+                <button v-if="isMobile" @click="isSidebarVisible = false" title="Close Workspace" class="mobile-close-sidebar-btn"><X :size="16" /></button>
               </div>
               <span v-if="workspacePath" class="workspace-path-subtext">{{ workspacePath }}</span>
             </div>
@@ -1169,7 +1221,7 @@ const activeFileName = computed(() => {
         </aside>
 
         <!-- Sidebar Resizer -->
-        <div v-if="isSidebarVisible" class="sidebar-resizer" @mousedown="startResizing"></div>
+        <div v-if="isSidebarVisible && !isMobile" class="sidebar-resizer" @mousedown="startResizing"></div>
 
         <!-- Editor Section -->
         <section class="editor-section">
@@ -1206,10 +1258,15 @@ const activeFileName = computed(() => {
         </section>
 
         <!-- Preview Resizer -->
-        <div v-if="isPreviewVisible" class="preview-resizer" @mousedown="startResizingPreview"></div>
+        <div v-if="isPreviewVisible && !isMobile" class="preview-resizer" @mousedown="startResizingPreview"></div>
 
         <!-- Preview Section -->
-        <section v-if="isPreviewVisible" class="preview-section" :style="{ width: previewWidth + 'px', flex: 'none' }">
+        <section 
+          v-if="isPreviewVisible" 
+          class="preview-section" 
+          :class="{ 'mobile-preview': isMobile }"
+          :style="isMobile ? {} : { width: previewWidth + 'px', flex: 'none' }"
+        >
           <!-- Loading Overlay (Scoped to Preview) -->
           <AnimatePresence>
             <Motion
@@ -1227,8 +1284,28 @@ const activeFileName = computed(() => {
           </AnimatePresence>
 
           <div class="pane-header">
-            <Terminal :size="14" />
-            <span>PDF PREVIEW</span>
+            <div class="pane-header-left">
+              <Terminal :size="14" />
+              <span>PDF PREVIEW</span>
+            </div>
+            <div class="pane-header-actions">
+              <button 
+                v-if="pdfUrl" 
+                class="action-btn-inline download-btn-sm" 
+                @click="downloadPdf" 
+                :disabled="isDownloading" 
+                title="Download PDF"
+              >
+                <Download :size="14" />
+              </button>
+              <button 
+                class="action-btn-inline close-preview-btn" 
+                @click="togglePreview" 
+                title="Close Preview"
+              >
+                <X :size="14" />
+              </button>
+            </div>
           </div>
           <div v-if="pdfUrl" class="pdf-viewer">
             <VirtualizedPdfViewer :source="pdfUrl" @error="onPdfError" />
@@ -1372,6 +1449,11 @@ const activeFileName = computed(() => {
 .toggle-sidebar-btn:hover {
   background: var(--surface-soft);
   color: var(--ink);
+}
+
+.toggle-sidebar-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .header-icon {
@@ -2167,21 +2249,200 @@ const activeFileName = computed(() => {
   }
 }
 
+/* Mobile Backdrop for Workspace Drawer */
+.sidebar-mobile-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 45;
+  animation: fadeInBackdrop 0.15s ease-out;
+}
+
+@keyframes fadeInBackdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.mobile-close-sidebar-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  transition: 0.15s;
+}
+
+.mobile-close-sidebar-btn:hover {
+  color: var(--warning) !important;
+  background: rgba(248, 81, 73, 0.1);
+}
+
+.close-preview-btn:hover {
+  color: var(--warning);
+}
+
+/* Custom sleek scrollbars: 2-unit (4px/2px) default expanding to 5-unit (6px/5px) on focus/hover with track margins */
+.file-tree::-webkit-scrollbar,
+.error-logs-container::-webkit-scrollbar,
+.pdf-viewer::-webkit-scrollbar,
+:deep(.cm-scroller)::-webkit-scrollbar {
+  width: 4px;
+  height: 2px;
+  transition: all 0.15s ease;
+}
+
+.file-tree:hover::-webkit-scrollbar,
+.file-tree:focus-within::-webkit-scrollbar,
+.error-logs-container:hover::-webkit-scrollbar,
+.error-logs-container:focus-within::-webkit-scrollbar,
+.pdf-viewer:hover::-webkit-scrollbar,
+.pdf-viewer:focus-within::-webkit-scrollbar,
+:deep(.cm-scroller:hover)::-webkit-scrollbar,
+:deep(.cm-scroller:focus-within)::-webkit-scrollbar {
+  width: 6px;
+  height: 5px;
+}
+
+.file-tree::-webkit-scrollbar-track,
+.error-logs-container::-webkit-scrollbar-track,
+.pdf-viewer::-webkit-scrollbar-track,
+:deep(.cm-scroller)::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px 0;
+}
+
+.file-tree::-webkit-scrollbar-thumb,
+.error-logs-container::-webkit-scrollbar-thumb,
+.pdf-viewer::-webkit-scrollbar-thumb,
+:deep(.cm-scroller)::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
+.file-tree::-webkit-scrollbar-thumb:hover,
+.error-logs-container::-webkit-scrollbar-thumb:hover,
+.pdf-viewer::-webkit-scrollbar-thumb:hover,
+:deep(.cm-scroller)::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
 @media (max-width: 768px) {
+  .compiler-header {
+    padding: 0 10px;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .compiler-header::-webkit-scrollbar {
+    display: none;
+  }
+
+  .header-left {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .header-icon,
+  .workspace-label {
+    display: none;
+  }
+
+  .header-title {
+    font-size: 0.8rem;
+  }
+
+  .header-actions {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .action-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+  }
+
+  .divider-v {
+    display: none;
+  }
+
   .split-pane {
-    flex-direction: column;
-  }
-  
-  .workspace-sidebar {
+    position: relative;
     width: 100%;
-    height: 200px;
-    border-right: none;
-    border-bottom: 1px solid var(--line);
+    height: 100%;
+    overflow: hidden;
   }
-  
+
+  .sidebar-resizer,
+  .preview-resizer {
+    display: none !important;
+  }
+
+  /* Workspace Drawer on Mobile */
+  .workspace-sidebar.mobile-sidebar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 85%;
+    max-width: 320px;
+    z-index: 50;
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    animation: slideInDrawer 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes slideInDrawer {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+
+  /* Editor takes full screen */
   .editor-section {
+    flex: 1;
+    width: 100%;
+    height: 100%;
     border-right: none;
-    border-bottom: 1px solid var(--line);
+    border-bottom: none;
+  }
+
+  /* Preview positioned on top of editor, closable */
+  .preview-section.mobile-preview {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100% !important;
+    height: 100%;
+    z-index: 40;
+    background: var(--bg);
+    border-left: none;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 24px rgba(0, 0, 0, 0.5);
+    animation: slideUpPreview 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes slideUpPreview {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .refinement-bar {
+    top: 40px;
+    width: calc(100% - 20px);
+    max-width: calc(100% - 20px);
   }
 }
 </style>

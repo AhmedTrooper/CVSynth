@@ -24,7 +24,8 @@ const routes = [
   {
     path: '/compiler',
     name: 'Compiler',
-    component: CompilerTab
+    component: CompilerTab,
+    alias: ['/latex', '/ide', '/latex-ide']
   },
   {
     path: '/diagrams',

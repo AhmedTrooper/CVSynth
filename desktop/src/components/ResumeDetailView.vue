@@ -187,8 +187,8 @@ const hasLatexContent = () => {
 
 <template>
   <div class="detail-container" v-if="!isLoading">
-    <header class="detail-header">
-      <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'back'" @mouseleave="activeTooltip = null">
+    <header class="detail-header" :class="{ 'is-editing': isEditing }">
+      <div class="btn-tooltip-wrapper back-btn-wrapper" @mouseenter="activeTooltip = 'back'" @mouseleave="activeTooltip = null">
         <button class="back-btn" @click="goBack"><ArrowLeft :size="16" /></button>
         <AnimatePresence>
           <Motion
@@ -204,19 +204,15 @@ const hasLatexContent = () => {
         </AnimatePresence>
       </div>
       
-      <div class="header-main">
-        <div class="title-group" v-if="!isEditing">
-          <h1>{{ resume?.name }}</h1>
-          <span class="category-tag">{{ resume?.category }}</span>
+      <template v-if="!isEditing">
+        <div class="header-main">
+          <div class="title-group">
+            <h1>{{ resume?.name }}</h1>
+            <span class="category-tag">{{ resume?.category }}</span>
+          </div>
         </div>
-        <div class="edit-group" v-else>
-          <input v-model="editedName" class="edit-input name-input" placeholder="Template Name" />
-          <input v-model="editedCategory" class="edit-input category-input" placeholder="Category" />
-        </div>
-      </div>
 
-      <div class="header-actions">
-        <template v-if="!isEditing">
+        <div class="header-actions">
           <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'edit-tpl'" @mouseleave="activeTooltip = null">
             <button class="action-btn" @click="toggleEditMode"><Edit :size="16" /></button>
             <AnimatePresence>
@@ -250,45 +246,48 @@ const hasLatexContent = () => {
               </Motion>
             </AnimatePresence>
           </div>
-        </template>
-        <template v-else>
-          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'cancel-edit'" @mouseleave="activeTooltip = null">
-            <button type="button" class="action-btn cancel-btn" @click="toggleEditMode">
-              <X :size="16" />
-            </button>
-            <AnimatePresence>
-              <Motion
-                v-if="activeTooltip === 'cancel-edit'"
-                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
-                :animate="{ opacity: 1, y: 0, scale: 1 }"
-                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
-                :transition="{ duration: 0.15 }"
-                class="flying-message header-tooltip"
-              >
-                Cancel
-              </Motion>
-            </AnimatePresence>
-          </div>
+        </div>
+      </template>
 
-          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'save-edit'" @mouseleave="activeTooltip = null">
-            <button type="button" class="action-btn save-btn" @click="handleSave" :disabled="isSaving">
-              <RotateCw v-if="isSaving" :size="16" class="spinner" />
-              <Save v-else :size="16" />
-            </button>
-            <AnimatePresence>
-              <Motion
-                v-if="activeTooltip === 'save-edit'"
-                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
-                :animate="{ opacity: 1, y: 0, scale: 1 }"
-                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
-                :transition="{ duration: 0.15 }"
-                class="flying-message header-tooltip"
-              >
-                {{ isSaving ? 'Saving...' : 'Save Changes' }}
-              </Motion>
-            </AnimatePresence>
-          </div>
-        </template>
+      <div class="edit-section-col" v-else>
+        <input v-model="editedName" class="edit-input name-input" placeholder="Template Name" />
+        <input v-model="editedCategory" class="edit-input category-input" placeholder="Category" />
+        <div class="btn-tooltip-wrapper edit-action-btn-wrapper" @mouseenter="activeTooltip = 'cancel-edit'" @mouseleave="activeTooltip = null">
+          <button type="button" class="action-btn cancel-btn" @click="toggleEditMode">
+            <X :size="16" />
+          </button>
+          <AnimatePresence>
+            <Motion
+              v-if="activeTooltip === 'cancel-edit'"
+              :initial="{ opacity: 0, x: -5, scale: 0.9 }"
+              :animate="{ opacity: 1, x: 0, scale: 1 }"
+              :exit="{ opacity: 0, x: -5, scale: 0.9 }"
+              :transition="{ duration: 0.15 }"
+              class="flying-message tooltip-right"
+            >
+              Cancel
+            </Motion>
+          </AnimatePresence>
+        </div>
+
+        <div class="btn-tooltip-wrapper edit-action-btn-wrapper" @mouseenter="activeTooltip = 'save-edit'" @mouseleave="activeTooltip = null">
+          <button type="button" class="action-btn save-btn" @click="handleSave" :disabled="isSaving">
+            <RotateCw v-if="isSaving" :size="16" class="spinner" />
+            <Save v-else :size="16" />
+          </button>
+          <AnimatePresence>
+            <Motion
+              v-if="activeTooltip === 'save-edit'"
+              :initial="{ opacity: 0, x: -5, scale: 0.9 }"
+              :animate="{ opacity: 1, x: 0, scale: 1 }"
+              :exit="{ opacity: 0, x: -5, scale: 0.9 }"
+              :transition="{ duration: 0.15 }"
+              class="flying-message tooltip-right"
+            >
+              {{ isSaving ? 'Saving...' : 'Save Changes' }}
+            </Motion>
+          </AnimatePresence>
+        </div>
       </div>
     </header>
 
@@ -383,6 +382,31 @@ const hasLatexContent = () => {
   gap: 20px;
 }
 
+.detail-header.is-editing {
+  height: auto;
+  min-height: 56px;
+  align-items: flex-start;
+  padding: 16px 24px;
+  gap: 16px;
+}
+
+.back-btn-wrapper {
+  flex-shrink: 0;
+}
+
+.edit-section-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  max-width: 650px;
+}
+
+.edit-action-btn-wrapper {
+  align-self: flex-start;
+}
+
 .back-btn {
   background: none;
   border: none;
@@ -418,20 +442,20 @@ const hasLatexContent = () => {
   flex-shrink: 0;
 }
 
-.edit-group { display: flex; gap: 12px; }
 .edit-input {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 6px;
   color: var(--ink);
-  padding: 6px 12px;
+  padding: 8px 12px;
   min-height: 38px;
   font-size: 0.9rem;
   outline: none;
   box-sizing: border-box;
+  width: 100%;
 }
-.name-input { font-weight: 700; flex: 1; min-width: 0; }
-.category-input { width: fit-content; min-width: 120px; }
+.name-input { font-weight: 700; }
+.category-input { font-weight: 500; }
 
 .edit-input:focus {
   border-color: var(--accent);
@@ -746,6 +770,22 @@ const hasLatexContent = () => {
 .delete-tooltip { background: var(--warning); left: auto; right: 0; transform: none; }
 .delete-tooltip::after { border-bottom-color: var(--warning); left: auto; right: 8px; transform: none; }
 
+.tooltip-right {
+  left: 130%;
+  top: 50%;
+  transform: translateY(-50%);
+  bottom: auto;
+}
+.tooltip-right::after {
+  top: 50%;
+  bottom: auto;
+  left: auto;
+  right: 100%;
+  transform: translateY(-50%);
+  border: 4px solid transparent;
+  border-right-color: var(--accent);
+}
+
 .loading {
   height: 100%;
   display: flex;
@@ -782,16 +822,19 @@ const hasLatexContent = () => {
     gap: 10px;
     flex-wrap: wrap;
   }
+  .detail-header.is-editing {
+    padding: 12px 10px;
+    gap: 12px;
+  }
   .title-group h1 {
     font-size: 0.95rem;
   }
   .category-tag {
     font-size: 0.58rem;
   }
-  .edit-group {
-    flex-direction: column;
-    gap: 6px;
-    width: 100%;
+  .edit-section-col {
+    max-width: 100%;
+    gap: 8px;
   }
   .name-input,
   .category-input {

@@ -68,10 +68,19 @@ const copyIdentifier = async () => {
       </div>
 
       <div class="specs-grid">
-        <div class="spec-item" @click="copyIdentifier">
+        <div 
+          class="spec-item clickable" 
+          @click="copyIdentifier"
+          @keydown.enter="copyIdentifier"
+          @keydown.space.prevent="copyIdentifier"
+          role="button"
+          tabindex="0"
+          title="Click to copy identifier"
+          aria-label="Click to copy identifier"
+        >
           <div class="spec-header">
             <span class="spec-label">IDENTIFIER</span>
-            <component :is="copied ? Check : Copy" :size="10" :class="{ 'text-accent': copied }" />
+            <component :is="copied ? Check : Copy" :size="12" :class="{ 'text-accent': copied }" />
           </div>
           <span class="spec-value mono">{{ identifier }}</span>
         </div>
@@ -103,8 +112,13 @@ const copyIdentifier = async () => {
       </div>
 
       <div class="action-row">
-        <button class="btn-premium" @click="openLink('https://github.com/AhmedTrooper/roletect-app')">
-          <Code :size="14" />
+        <button 
+          class="btn-premium" 
+          @click="openLink('https://github.com/AhmedTrooper/roletect-app')"
+          title="Open Community, Releases & Documentation in browser"
+          aria-label="Open Community, Releases & Documentation in browser"
+        >
+          <Code :size="16" />
           <span>Community, Releases &amp; Documentation</span>
         </button>
       </div>
@@ -121,24 +135,48 @@ const copyIdentifier = async () => {
 
 <style scoped>
 .about-container {
-  height: 100%;
+  min-height: 100%;
+  width: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 20px;
+  justify-content: flex-start;
+  padding: 32px 20px;
   background: radial-gradient(circle at 50% -20%, rgba(35, 134, 54, 0.05), transparent 70%);
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.about-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.about-container::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px 0;
+}
+
+.about-container::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
+.about-container::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
 
 .about-card {
   width: 100%;
   max-width: 480px;
+  margin: auto 0;
   background: rgba(22, 25, 35, 0.7);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 32px;
-  padding: 48px;
+  border-radius: var(--radius-lg, 24px);
+  padding: 36px 32px;
   position: relative;
   box-shadow: 
     0 24px 64px rgba(0, 0, 0, 0.4),
@@ -161,14 +199,14 @@ const copyIdentifier = async () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
-  margin-bottom: 32px;
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
 .app-icon-container {
   position: relative;
-  width: 80px;
-  height: 80px;
+  width: 72px;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -178,16 +216,16 @@ const copyIdentifier = async () => {
   position: absolute;
   inset: 0;
   border: 1px solid var(--line);
-  border-radius: 24px;
+  border-radius: 22px;
   transform: rotate(45deg);
 }
 
 .app-icon-inner {
-  width: 56px;
-  height: 56px;
+  width: 50px;
+  height: 50px;
   background: var(--bg-accent);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -199,7 +237,7 @@ const copyIdentifier = async () => {
   height: 12px;
   background: var(--accent);
   border-radius: 50%;
-  box-shadow: 0 0 20px var(--accent);
+  box-shadow: 0 0 16px var(--accent);
 }
 
 .hero-text {
@@ -207,12 +245,12 @@ const copyIdentifier = async () => {
 }
 
 .app-title {
-  font-size: 2rem;
-  font-weight: 900;
+  font-size: 1.85rem;
+  font-weight: 800;
   color: var(--ink);
   margin: 0;
-  letter-spacing: -0.04em;
-  background: linear-gradient(to bottom, #fff, #888);
+  letter-spacing: -0.03em;
+  background: linear-gradient(to bottom, #ffffff, #999999);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -222,15 +260,15 @@ const copyIdentifier = async () => {
   align-items: center;
   gap: 6px;
   background: rgba(35, 134, 54, 0.1);
-  border: 1px solid rgba(35, 134, 54, 0.2);
-  padding: 4px 10px;
+  border: 1px solid rgba(35, 134, 54, 0.25);
+  padding: 3px 10px;
   border-radius: 100px;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .badge span {
-  font-size: 0.6rem;
-  font-weight: 800;
+  font-size: 0.62rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--accent);
@@ -238,11 +276,11 @@ const copyIdentifier = async () => {
 
 .tagline-section {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .tagline {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--muted);
   line-height: 1.5;
   margin: 0;
@@ -251,42 +289,53 @@ const copyIdentifier = async () => {
 .specs-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 32px;
+  gap: 10px;
+  margin-bottom: 24px;
 }
 
 .spec-item {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 16px;
-  transition: all 0.2s ease;
+  border-radius: var(--radius-md, 10px);
+  padding: 12px 14px;
+  transition: all 0.15s ease;
   cursor: default;
+  min-height: 52px;
 }
 
-.spec-item:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: var(--muted);
+.spec-item.clickable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.spec-item.clickable:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--accent);
+}
+
+.spec-item.clickable:active {
+  transform: scale(0.98);
 }
 
 .spec-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   color: var(--muted);
 }
 
 .spec-label {
-  font-size: 0.6rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
 
 .spec-value {
   font-size: 0.8rem;
   color: var(--ink);
   display: block;
+  word-break: break-all;
 }
 
 .mono {
@@ -295,47 +344,53 @@ const copyIdentifier = async () => {
 
 .description-box {
   background: var(--bg-accent);
-  border-radius: 20px;
-  padding: 20px;
-  margin-bottom: 32px;
+  border-radius: var(--radius-md, 12px);
+  padding: 14px 16px;
+  margin-bottom: 24px;
   border-left: 3px solid var(--accent);
 }
 
 .description-box p {
-  font-size: 0.8rem;
-  line-height: 1.6;
+  font-size: 0.78rem;
+  line-height: 1.55;
   color: var(--muted);
   margin: 0;
 }
 
 .action-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 40px;
+  display: flex;
+  width: 100%;
+  margin-bottom: 28px;
 }
 
 .btn-premium {
-  display: flex;
+  width: 100%;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 12px;
+  gap: 8px;
+  padding: 10px 14px;
+  min-height: 42px;
   background: var(--surface-soft);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-md, 8px);
   color: var(--ink);
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
+  text-align: center;
 }
 
 .btn-premium:hover {
   border-color: var(--accent);
   background: var(--surface);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.btn-premium:active {
+  transform: scale(0.97);
 }
 
 .about-footer {
@@ -345,31 +400,129 @@ const copyIdentifier = async () => {
 .footer-line {
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--line), transparent);
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .footer-content {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
 }
 
 .footer-content p {
-  font-size: 0.6rem;
-  font-weight: 800;
+  font-size: 0.62rem;
+  font-weight: 600;
   color: var(--muted);
-  letter-spacing: 0.2em;
+  letter-spacing: 0.08em;
   margin: 0;
+  line-height: 1.4;
 }
 
 .text-accent {
   color: var(--accent);
 }
 
-@media (max-width: 480px) {
-  .specs-grid { grid-template-columns: 1fr; }
-  .action-row { grid-template-columns: 1fr; }
-  .about-card { padding: 32px; }
+/* =======================================================================
+   Tablet Styles (601px - 959px)
+   ======================================================================= */
+@media (max-width: 959px) and (min-width: 601px) {
+  .about-container {
+    padding: 24px 16px;
+  }
+
+  .about-card {
+    padding: 32px 28px;
+  }
+}
+
+/* =======================================================================
+   Mobile Styles (<= 600px):
+   1-column specs grid, bounds safety, compact padding for small screens
+   ======================================================================= */
+@media (max-width: 600px) {
+  .about-container {
+    padding: 16px 12px;
+  }
+
+  .about-card {
+    padding: 22px 16px;
+    border-radius: var(--radius-md, 16px);
+  }
+
+  .app-title {
+    font-size: 1.5rem;
+  }
+
+  .app-icon-container {
+    width: 60px;
+    height: 60px;
+  }
+
+  .app-icon-ring {
+    border-radius: 18px;
+  }
+
+  .app-icon-inner {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+  }
+
+  .specs-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .spec-item {
+    padding: 10px 12px;
+  }
+
+  .description-box {
+    padding: 12px 14px;
+    margin-bottom: 20px;
+  }
+
+  .action-row {
+    margin-bottom: 20px;
+  }
+
+  .btn-premium {
+    min-height: 42px;
+    font-size: 0.75rem;
+    padding: 10px 12px;
+  }
+
+  .footer-content p {
+    font-size: 0.58rem;
+    letter-spacing: 0.04em;
+  }
+}
+
+/* =======================================================================
+   Ultra-compact Mobile (<= 340px):
+   Fits 300x400 viewports comfortably
+   ======================================================================= */
+@media (max-width: 340px) {
+  .about-container {
+    padding: 12px 8px;
+  }
+
+  .about-card {
+    padding: 16px 10px;
+    border-radius: 12px;
+  }
+
+  .app-title {
+    font-size: 1.3rem;
+  }
+
+  .tagline {
+    font-size: 0.78rem;
+  }
+
+  .btn-premium span {
+    font-size: 0.72rem;
+  }
 }
 </style>

@@ -457,7 +457,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px;
+  padding: 8px 10px;
+  min-height: 36px;
   background: transparent;
   border: none;
   border-radius: 6px;
@@ -469,7 +470,8 @@ onUnmounted(() => {
   transition: background-color 0.12s ease;
 }
 
-.dropdown-item:hover {
+.dropdown-item:hover,
+.dropdown-item:active {
   background: var(--surface-soft);
   color: var(--accent);
 }
@@ -493,6 +495,11 @@ onUnmounted(() => {
 
 .titlebar-button:hover {
   background: var(--surface-soft);
+  color: var(--ink);
+}
+
+.titlebar-button:active {
+  background: var(--surface);
   color: var(--ink);
 }
 
@@ -528,6 +535,11 @@ onUnmounted(() => {
   color: var(--ink) !important;
 }
 
+.close-button:active {
+  background: var(--warning) !important;
+  color: #fff !important;
+}
+
 .titlebar::before {
   content: '';
   position: absolute;
@@ -538,7 +550,45 @@ onUnmounted(() => {
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
 }
 
-/* Responsive Styles */
+/* =======================================================================
+   Tablet Styles (601px - 959px)
+   ======================================================================= */
+@media (max-width: 959px) and (min-width: 601px) {
+  .titlebar-left {
+    padding-left: 12px;
+    gap: 10px;
+  }
+
+  .app-title {
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+  }
+
+  .titlebar-button {
+    width: 40px;
+  }
+
+  .error-audit-titlebar-btn {
+    width: 38px;
+  }
+
+  .badge-label {
+    max-width: 110px;
+  }
+
+  .profile-dropdown {
+    position: absolute;
+    top: 34px;
+    right: 0;
+    width: 240px;
+  }
+}
+
+/* =======================================================================
+   Mobile Styles (<= 600px):
+   Touch-friendly buttons (min 36px), readable icons (13-14px),
+   bounds-safe dropdown, icon-only license badge.
+   ======================================================================= */
 @media (max-width: 600px) {
   .desktop-only {
     display: none !important;
@@ -549,6 +599,16 @@ onUnmounted(() => {
     gap: 8px;
   }
 
+  .logo-dot {
+    width: 5px;
+    height: 5px;
+  }
+
+  .app-title {
+    font-size: 0.62rem;
+    letter-spacing: 0.07em;
+  }
+
   .titlebar-button {
     width: 36px;
   }
@@ -557,31 +617,53 @@ onUnmounted(() => {
     width: 36px;
   }
 
+  .audit-counter-badge {
+    top: 4px;
+    right: 3px;
+    font-size: 0.58rem;
+    padding: 1.5px 3.5px;
+    min-width: 13px;
+  }
+
   .profile-wrapper {
     margin-right: 4px;
   }
 
   .license-badge-btn {
-    padding: 3px 6px;
+    padding: 4px 8px;
     margin-right: 4px;
   }
 
   .license-badge-btn.free {
     margin-right: 4px;
-    padding: 3px 6px;
+    padding: 4px 8px;
   }
 
+  /* Fixed popover with screen-edge guards: never clips on mobile */
   .profile-dropdown {
-    width: 220px;
-    top: 34px;
-    right: 4px;
+    position: fixed;
+    top: 40px;
+    right: 8px;
+    left: 8px;
+    width: auto;
+    max-width: 280px;
+    margin-left: auto;
   }
 }
 
+/* =======================================================================
+   Ultra-compact Mobile (<= 340px width):
+   Ensure >80px clear draggable window region on 300px viewports
+   ======================================================================= */
 @media (max-width: 340px) {
   .titlebar-left {
     padding-left: 8px;
     gap: 6px;
+  }
+
+  .app-title {
+    font-size: 0.58rem;
+    letter-spacing: 0.05em;
   }
 
   .titlebar-button {
@@ -594,7 +676,7 @@ onUnmounted(() => {
 
   .license-badge-btn,
   .license-badge-btn.free {
-    padding: 3px 5px;
+    padding: 3px 6px;
     margin-right: 2px;
   }
 

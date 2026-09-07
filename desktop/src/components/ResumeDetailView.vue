@@ -97,9 +97,7 @@ watch(
 
 const goBack = () => {
   if (isEditing.value) {
-    router.push(`/resume/${props.id}`);
-  } else if (window.history.length > 1) {
-    router.back();
+    router.replace(`/resume/${props.id}`);
   } else {
     router.push('/templates/resumes');
   }
@@ -111,7 +109,7 @@ const toggleEditMode = () => {
     editedName.value = resume.value?.name || '';
     editedCategory.value = resume.value?.category || '';
     editedLatex.value = resume.value?.latex_content || '';
-    router.push(`/resume/${props.id}`);
+    router.replace(`/resume/${props.id}`);
     return;
   }
   router.push(`/resume/${props.id}/edit`);
@@ -139,7 +137,7 @@ const handleSave = async () => {
     const updated = await resumesStore.getResumeById(props.id);
     resume.value = updated;
     await dialog.showAlert('Template saved successfully.', 'Success');
-    router.push(`/resume/${props.id}`);
+    router.replace(`/resume/${props.id}`);
   } catch (err: any) {
     error.value = err.toString();
     await dialog.showAlert(`Failed to save template: ${err.message || err.toString()}`, 'Save Error');
@@ -173,7 +171,7 @@ const handleDelete = async () => {
 
     await resumesStore.deleteResume(resume.value.id);
     await dialog.showAlert('Template deleted successfully.', 'Success');
-    router.push('/resumes');
+    router.push('/templates/resumes');
   } catch (err: any) {
     error.value = err.toString();
     await dialog.showAlert(`Failed to delete template: ${err.message || err.toString()}`, 'Error');
@@ -202,7 +200,7 @@ const hasLatexContent = () => {
             :transition="{ duration: 0.15 }"
             class="flying-message header-tooltip"
           >
-            Back to Templates
+            {{ isEditing ? 'Back to Details' : 'Back to Templates' }}
           </Motion>
         </AnimatePresence>
       </div>

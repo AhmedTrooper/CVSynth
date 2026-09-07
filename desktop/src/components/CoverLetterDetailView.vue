@@ -97,9 +97,7 @@ watch(
 
 const goBack = () => {
   if (isEditing.value) {
-    router.push(`/cover-letter/${props.id}`);
-  } else if (window.history.length > 1) {
-    router.back();
+    router.replace(`/cover-letter/${props.id}`);
   } else {
     router.push('/templates/cover-letters');
   }
@@ -111,7 +109,7 @@ const toggleEditMode = () => {
     editedName.value = cl.value?.name || '';
     editedCategory.value = cl.value?.category || '';
     editedLatex.value = cl.value?.latex_content || '';
-    router.push(`/cover-letter/${props.id}`);
+    router.replace(`/cover-letter/${props.id}`);
     return;
   }
   router.push(`/cover-letter/${props.id}/edit`);
@@ -138,7 +136,7 @@ const handleSave = async () => {
     const updated = await clStore.getCoverLetterById(props.id);
     cl.value = updated;
     await dialog.showAlert('Template saved successfully.', 'Success');
-    router.push(`/cover-letter/${props.id}`);
+    router.replace(`/cover-letter/${props.id}`);
   } catch (err: any) {
     error.value = err.toString();
     await dialog.showAlert(`Failed to save template: ${err.message || err.toString()}`, 'Save Error');
@@ -172,7 +170,7 @@ const handleDelete = async () => {
 
     await clStore.deleteCoverLetter(cl.value.id);
     await dialog.showAlert('Template deleted successfully.', 'Success');
-    router.push('/cover-letters');
+    router.push('/templates/cover-letters');
   } catch (err: any) {
     error.value = err.toString();
     await dialog.showAlert(`Failed to delete template: ${err.message || err.toString()}`, 'Error');
@@ -201,7 +199,7 @@ const hasLatexContent = () => {
             :transition="{ duration: 0.15 }"
             class="flying-message header-tooltip"
           >
-            Back to Templates
+            {{ isEditing ? 'Back to Details' : 'Back to Templates' }}
           </Motion>
         </AnimatePresence>
       </div>

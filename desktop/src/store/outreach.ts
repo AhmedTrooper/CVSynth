@@ -35,12 +35,17 @@ export const useOutreachStore = defineStore('outreach', () => {
     error.value = null;
     try {
       const raw = await invoke<any[]>('get_all_outreach_leads');
+      if (!Array.isArray(raw)) {
+        leads.value = [];
+        return [];
+      }
       const validated = safeValidate(OutreachLeadListSchema, raw, [], 'outreach leads');
-      leads.value = validated;
-      return validated;
+      leads.value = Array.isArray(validated) ? validated : [];
+      return leads.value;
     } catch (err: any) {
       console.error('Failed to load outreach leads:', err);
       error.value = err?.message || err?.toString() || 'Failed to load leads';
+      leads.value = [];
       return [];
     } finally {
       isLoading.value = false;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useOutreachStore, OutreachLead } from '../store/outreach';
 import { useHrMessagesStore } from '../store/hr_messages';
 import { useDialogStore } from '../store/dialog';
@@ -20,7 +20,9 @@ import {
   ExternalLink, 
   Sparkles, 
   User, 
-  Edit3
+  Edit3,
+  ChevronLeft,
+  ChevronRight
 } from '@lucide/vue';
 import { Motion, AnimatePresence } from 'motion-v';
 import CustomSelect from './CustomSelect.vue';
@@ -85,9 +87,25 @@ onMounted(async () => {
   ]);
 });
 
+// Pagination State
+const currentPage = ref(1);
+const pageSize = ref(20);
+const pageSizeOptions = [
+  { value: 10, label: '10 per page' },
+  { value: 20, label: '20 per page' },
+  { value: 50, label: '50 per page' },
+  { value: 100, label: '100 per page' },
+];
+
+watch([searchQuery, statusFilter, pageSize], () => {
+  currentPage.value = 1;
+});
+
 // Filtered Leads
 const filteredLeads = computed(() => {
-  let list = outreachStore.leads;
+  const rawList = outreachStore.leads;
+  if (!Array.isArray(rawList)) return [];
+  let list = rawList.filter(l => l && typeof l === 'object' && typeof l.id === 'string');
 
   if (statusFilter.value !== 'ALL') {
     list = list.filter(l => l.status === statusFilter.value);
@@ -96,14 +114,24 @@ const filteredLeads = computed(() => {
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.toLowerCase().trim();
     list = list.filter(l => 
-      l.person_name.toLowerCase().includes(q) ||
+      (l.person_name || '').toLowerCase().includes(q) ||
       (l.headline && l.headline.toLowerCase().includes(q)) ||
-      l.raw_bio.toLowerCase().includes(q) ||
+      (l.raw_bio || '').toLowerCase().includes(q) ||
       (l.tailored_message && l.tailored_message.toLowerCase().includes(q))
     );
   }
 
   return list;
+});
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(filteredLeads.value.length / pageSize.value));
+});
+
+const paginatedLeads = computed(() => {
+  if (!Array.isArray(filteredLeads.value)) return [];
+  const start = (currentPage.value - 1) * pageSize.value;
+  return filteredLeads.value.slice(start, start + pageSize.value);
 });
 
 // Selection helpers
@@ -116,10 +144,10 @@ const toggleSelection = (id: string) => {
 };
 
 const toggleSelectAll = () => {
-  if (selectedIds.value.size === filteredLeads.value.length) {
+  if (selectedIds.value.size === paginatedLeads.value.length) {
     selectedIds.value.clear();
   } else {
-    selectedIds.value = new Set(filteredLeads.value.map(l => l.id));
+    selectedIds.value = new Set(paginatedLeads.value.map(l => l.id));
   }
 };
 
@@ -427,7 +455,7 @@ const characterCountClass = computed(() => {
         <template v-else>
           <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'select-all'" @mouseleave="activeTooltip = null">
             <button class="btn-action" @click="toggleSelectAll">
-              <component :is="selectedIds.size === filteredLeads.length ? CheckSquare : Square" :size="16" />
+              <component :is="selectedIds.size === paginatedLeads.length ? CheckSquare : Square" :size="16" />
             </button>
             <AnimatePresence>
               <Motion
@@ -438,7 +466,7 @@ const characterCountClass = computed(() => {
                 :transition="{ duration: 0.15 }"
                 class="floating-message tooltip-top"
               >
-                {{ selectedIds.size === filteredLeads.length ? 'Deselect All' : 'Select All' }}
+                {{ selectedIds.size === paginatedLeads.length ? 'Deselect All' : 'Select All' }}
               </Motion>
             </AnimatePresence>
           </div>
@@ -813,7 +841,7 @@ const characterCountClass = computed(() => {
     <!-- Leads Grid -->
     <div v-else class="leads-grid">
       <div 
-        v-for="lead in filteredLeads" 
+        v-for="lead in paginatedLeads" 
         :key="lead.id" 
         class="lead-card"
         :class="{ 'is-selected': selectedIds.has(lead.id) }"
@@ -899,6 +927,46 @@ const characterCountClass = computed(() => {
               <Trash2 :size="13" />
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pagination Controls -->
+    <div v-if="totalPages > 1" class="pagination-bar">
+      <div class="pagination-info">
+        Showing <strong>{{ (currentPage - 1) * pageSize + 1 }}</strong> - 
+        <strong>{{ Math.min(currentPage * pageSize, filteredLeads.length) }}</strong> of 
+        <strong>{{ filteredLeads.length }}</strong> leads
+      </div>
+      <div class="pagination-controls">
+        <button 
+          type="button"
+          class="btn-pagination" 
+          :disabled="currentPage <= 1" 
+          @click="currentPage--" 
+          title="Previous Page"
+        >
+          <ChevronLeft :size="16" />
+        </button>
+        <span class="page-indicator">
+          Page <strong>{{ currentPage }}</strong> of <strong>{{ totalPages }}</strong>
+        </span>
+        <button 
+          type="button"
+          class="btn-pagination" 
+          :disabled="currentPage >= totalPages" 
+          @click="currentPage++" 
+          title="Next Page"
+        >
+          <ChevronRight :size="16" />
+        </button>
+        <div class="page-size-selector">
+          <CustomSelect
+            v-model="pageSize"
+            :options="pageSizeOptions"
+            placement="top"
+            class="page-size-select"
+          />
         </div>
       </div>
     </div>
@@ -2173,5 +2241,84 @@ h2 {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* Pagination Bar */
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 4px 8px 4px;
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.pagination-info {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.pagination-info strong {
+  color: var(--ink);
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-pagination {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm, 6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-pagination:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-pagination:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.page-indicator {
+  font-size: 0.85rem;
+  color: var(--muted);
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+.page-indicator strong {
+  color: var(--ink);
+}
+
+.page-size-select {
+  min-width: 120px;
+}
+
+@media (max-width: 600px) {
+  .pagination-bar {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+  }
+  .pagination-controls {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
 }
 </style>

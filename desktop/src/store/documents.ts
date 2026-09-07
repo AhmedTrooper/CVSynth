@@ -29,10 +29,16 @@ export const useDocumentsStore = defineStore('documents', () => {
     error.value = null;
     try {
       const raw = await invoke('get_all_documents');
-      documents.value = safeValidate(DocumentListSchema, raw, [], 'get_all_documents');
+      if (!Array.isArray(raw)) {
+        documents.value = [];
+        return;
+      }
+      const validated = safeValidate(DocumentListSchema, raw, [], 'get_all_documents');
+      documents.value = Array.isArray(validated) ? validated : [];
     } catch (err: any) {
       error.value = err.toString();
       recordAppError('fetching', 'DatabaseError', 'Failed to load documents list', err.toString(), 'loadAllDocuments');
+      documents.value = [];
     } finally {
       isLoading.value = false;
     }

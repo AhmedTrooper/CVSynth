@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useJobsStore, Job } from '../store/jobs';
 import { Motion, AnimatePresence } from 'motion-v';
@@ -15,6 +15,7 @@ import {
   X, 
   FolderOpen, 
   ChevronRight,
+  ChevronLeft,
   Filter,
   ArrowUpDown
 } from '@lucide/vue';
@@ -37,12 +38,31 @@ const selectedJobs = ref<Set<string>>(new Set());
 const statuses = ['All', 'Drafting', 'Applied', 'Interviewing', 'Offer', 'Rejected'];
 
 const loadJobs = async () => {
-  allJobs.value = await jobsStore.loadAllJobs();
+  try {
+    const res = await jobsStore.loadAllJobs();
+    allJobs.value = Array.isArray(res) ? res : [];
+  } catch {
+    allJobs.value = [];
+  }
   selectedJobs.value = new Set();
 };
 
 onMounted(() => {
   loadJobs();
+});
+
+// Pagination State
+const currentPage = ref(1);
+const pageSize = ref(20);
+const pageSizeOptions = [
+  { value: 10, label: '10 / page' },
+  { value: 20, label: '20 / page' },
+  { value: 50, label: '50 / page' },
+  { value: 100, label: '100 / page' },
+];
+
+watch([searchQuery, statusFilter, sortBy, pageSize], () => {
+  currentPage.value = 1;
 });
 
 const handleCardClick = (id: string) => {
@@ -95,7 +115,7 @@ const deleteAllJobs = async () => {
 };
 
 const selectAllVisible = () => {
-  selectedJobs.value = new Set(filteredAndSortedJobs.value.map(job => job.id));
+  selectedJobs.value = new Set(paginatedJobs.value.map(job => job.id));
 };
 
 const exitSelectionMode = () => {
@@ -104,7 +124,8 @@ const exitSelectionMode = () => {
 };
 
 const filteredAndSortedJobs = computed(() => {
-  let result = [...allJobs.value];
+  if (!Array.isArray(allJobs.value)) return [];
+  let result = allJobs.value.filter(j => j && typeof j === 'object' && typeof j.id === 'string');
 
   // Search Filter
   if (searchQuery.value) {
@@ -124,19 +145,29 @@ const filteredAndSortedJobs = computed(() => {
   result.sort((a, b) => {
     switch (sortBy.value) {
       case 'date-desc':
-        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+        return new Date(b?.created_at || 0).getTime() - new Date(a?.created_at || 0).getTime();
       case 'date-asc':
-        return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+        return new Date(a?.created_at || 0).getTime() - new Date(b?.created_at || 0).getTime();
       case 'title':
-        return (a.job_title || '').localeCompare(b.job_title || '');
+        return (a?.job_title || '').localeCompare(b?.job_title || '');
       case 'company':
-        return (a.company_name || '').localeCompare(b.company_name || '');
+        return (a?.company_name || '').localeCompare(b?.company_name || '');
       default:
         return 0;
     }
   });
 
   return result;
+});
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(filteredAndSortedJobs.value.length / pageSize.value));
+});
+
+const paginatedJobs = computed(() => {
+  if (!Array.isArray(filteredAndSortedJobs.value)) return [];
+  const start = (currentPage.value - 1) * pageSize.value;
+  return filteredAndSortedJobs.value.slice(start, start + pageSize.value);
 });
 
 const getStatusClass = (status: string) => {
@@ -349,7 +380,7 @@ const getStatusClass = (status: string) => {
       
       <div v-else class="jobs-grid">
         <Motion
-          v-for="(job, idx) in filteredAndSortedJobs"
+          v-for="(job, idx) in paginatedJobs"
           :key="job.id"
           :initial="{ opacity: 0, y: 12 }"
           :animate="{ opacity: 1, y: 0 }"
@@ -378,6 +409,44 @@ const getStatusClass = (status: string) => {
             <span class="view-link">View Details <ChevronRight :size="14" /></span>
           </div>
         </Motion>
+      </div>
+
+      <!-- Pagination Controls -->
+      <div v-if="totalPages > 1" class="pagination-bar">
+        <div class="pagination-info">
+          Showing <strong>{{ (currentPage - 1) * pageSize + 1 }}</strong> - 
+          <strong>{{ Math.min(currentPage * pageSize, filteredAndSortedJobs.length) }}</strong> of 
+          <strong>{{ filteredAndSortedJobs.length }}</strong>
+        </div>
+        <div class="pagination-controls">
+          <button 
+            class="btn-pagination" 
+            :disabled="currentPage <= 1" 
+            @click="currentPage--" 
+            title="Previous Page"
+          >
+            <ChevronLeft :size="16" />
+          </button>
+          <span class="page-indicator">
+            Page <strong>{{ currentPage }}</strong> of <strong>{{ totalPages }}</strong>
+          </span>
+          <button 
+            class="btn-pagination" 
+            :disabled="currentPage >= totalPages" 
+            @click="currentPage++" 
+            title="Next Page"
+          >
+            <ChevronRight :size="16" />
+          </button>
+          <div class="page-size-selector">
+            <CustomSelect
+              v-model="pageSize"
+              :options="pageSizeOptions"
+              placement="top"
+              class="page-size-select"
+            />
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -680,7 +749,83 @@ const getStatusClass = (status: string) => {
 
 .empty-icon { margin-bottom: 16px; opacity: 0.3; color: var(--muted); }
 
+/* Pagination Bar */
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 4px 8px 4px;
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.pagination-info {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.pagination-info strong {
+  color: var(--text-primary);
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-pagination {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-pagination:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-pagination:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.page-indicator {
+  font-size: 0.85rem;
+  color: var(--muted);
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+.page-indicator strong {
+  color: var(--text-primary);
+}
+
+.page-size-select {
+  min-width: 120px;
+}
+
 @media (max-width: 768px) {
+  .pagination-bar {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+  }
+  .pagination-controls {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
   .jobs-container {
     padding: 16px;
   }

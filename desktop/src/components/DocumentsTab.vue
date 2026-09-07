@@ -21,7 +21,9 @@ import {
   Check,
   ArrowRight,
   Copy,
-  Settings2
+  Settings2,
+  ChevronLeft,
+  ChevronRight
 } from '@lucide/vue';
 import { copyToClipboard } from '../utils/clipboard';
 
@@ -39,6 +41,20 @@ const isSubmitting = ref(false);
 const isErrorCopied = ref(false);
 const activeTooltip = ref<string | null>(null);
 
+// Pagination
+const currentPage = ref(1);
+const pageSize = ref(20);
+const pageSizeOptions = [
+  { value: 10, label: '10 / page' },
+  { value: 20, label: '20 / page' },
+  { value: 50, label: '50 / page' },
+  { value: 100, label: '100 / page' },
+];
+
+watch([search, sortMode, pageSize], () => {
+  currentPage.value = 1;
+});
+
 const handleCopyError = async () => {
   if (!documentsStore.error) return;
   const ok = await copyToClipboard(documentsStore.error);
@@ -54,11 +70,14 @@ const newDescription = ref('');
 const newTags = ref('');
 
 const filteredDocs = computed(() => {
-  const list = documentsStore.documents ?? [];
+  if (!Array.isArray(documentsStore.documents)) return [];
+  const list = documentsStore.documents.filter(
+    (d) => d && typeof d === 'object' && typeof d.id === 'string',
+  );
   const q = search.value.trim().toLowerCase();
   let result = q
     ? list.filter((d) =>
-        (d.title + ' ' + (d.description ?? '') + ' ' + (d.tags ?? ''))
+        ((d.title || '') + ' ' + (d.description || '') + ' ' + (d.tags || ''))
           .toLowerCase()
           .includes(q),
       )
@@ -66,22 +85,32 @@ const filteredDocs = computed(() => {
 
   const sorted = [...result];
   if (sortMode.value === 'title') {
-    sorted.sort((a, b) => a.title.localeCompare(b.title));
+    sorted.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
   } else if (sortMode.value === 'starred') {
     sorted.sort((a, b) => {
       if (a.starred === b.starred) {
-        return (b.updated_at ?? '').localeCompare(a.updated_at ?? '');
+        return (b.updated_at || '').localeCompare(a.updated_at || '');
       }
       return a.starred ? -1 : 1;
     });
   } else {
     sorted.sort(
       (a, b) =>
-        (b.updated_at ?? '').localeCompare(a.updated_at ?? '') ||
+        (b.updated_at || '').localeCompare(a.updated_at || '') ||
         (a.starred === b.starred ? 0 : a.starred ? -1 : 1),
     );
   }
   return sorted;
+});
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(filteredDocs.value.length / pageSize.value));
+});
+
+const paginatedDocs = computed(() => {
+  if (!Array.isArray(filteredDocs.value)) return [];
+  const start = (currentPage.value - 1) * pageSize.value;
+  return filteredDocs.value.slice(start, start + pageSize.value);
 });
 
 const refreshData = async () => {
@@ -306,11 +335,11 @@ const formatRelative = (s: string | null) => {
 
       <div v-else class="grid">
         <Motion
-          v-for="(doc, idx) in filteredDocs"
+          v-for="(doc, idx) in paginatedDocs"
           :key="doc.id"
           :initial="{ opacity: 0, y: 12 }"
           :animate="{ opacity: 1, y: 0 }"
-          :transition="{ duration: 0.2, delay: idx * 0.02 }"
+          :transition="{ duration: 0.2, delay: Math.min(idx * 0.02, 0.3) }"
           :class="['card', { selected: isSelectionMode && selectedIds.has(doc.id) }]"
           @click="isSelectionMode ? toggleSelection($event, doc.id) : navigateToDoc(doc.id)"
           @contextmenu.prevent="startSelection($event, doc.id)"
@@ -375,6 +404,44 @@ const formatRelative = (s: string | null) => {
             </button>
           </footer>
         </Motion>
+      </div>
+
+      <!-- Pagination Controls -->
+      <div v-if="totalPages > 1" class="pagination-bar">
+        <div class="pagination-info">
+          Showing <strong>{{ (currentPage - 1) * pageSize + 1 }}</strong> - 
+          <strong>{{ Math.min(currentPage * pageSize, filteredDocs.length) }}</strong> of 
+          <strong>{{ filteredDocs.length }}</strong>
+        </div>
+        <div class="pagination-controls">
+          <button 
+            class="btn-pagination" 
+            :disabled="currentPage <= 1" 
+            @click="currentPage--" 
+            title="Previous Page"
+          >
+            <ChevronLeft :size="16" />
+          </button>
+          <span class="page-indicator">
+            Page <strong>{{ currentPage }}</strong> of <strong>{{ totalPages }}</strong>
+          </span>
+          <button 
+            class="btn-pagination" 
+            :disabled="currentPage >= totalPages" 
+            @click="currentPage++" 
+            title="Next Page"
+          >
+            <ChevronRight :size="16" />
+          </button>
+          <div class="page-size-selector">
+            <CustomSelect
+              v-model="pageSize"
+              :options="pageSizeOptions"
+              placement="top"
+              class="page-size-select"
+            />
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1136,5 +1203,84 @@ textarea.field-control {
 
 .banner-close-btn:hover {
   color: var(--ink);
+}
+
+/* Pagination Bar */
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 4px 8px 4px;
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.pagination-info {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.pagination-info strong {
+  color: var(--ink);
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-pagination {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm, 6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-pagination:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-pagination:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.page-indicator {
+  font-size: 0.85rem;
+  color: var(--muted);
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+.page-indicator strong {
+  color: var(--ink);
+}
+
+.page-size-select {
+  min-width: 120px;
+}
+
+@media (max-width: 600px) {
+  .pagination-bar {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+  }
+  .pagination-controls {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
 }
 </style>

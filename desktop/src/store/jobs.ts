@@ -92,6 +92,9 @@ export const useJobsStore = defineStore('jobs', () => {
     error.value = null;
     try {
       const rawJobs = await invoke('get_all_jobs');
+      if (!Array.isArray(rawJobs)) {
+        return [];
+      }
       return safeValidate(JobListSchema, rawJobs, [], 'loadAllJobs');
     } catch (err: any) {
       error.value = err.toString();

@@ -77,6 +77,19 @@ fn provider_error(provider: &str, feature: &str, err: impl std::fmt::Display) ->
     }
 }
 
+fn normalize_openai_base_url(raw: &str) -> String {
+    let trimmed = raw.trim().trim_end_matches('/');
+    if let Some(without_scheme) = trimmed
+        .strip_prefix("http://")
+        .or_else(|| trimmed.strip_prefix("https://"))
+    {
+        if !without_scheme.contains('/') {
+            return format!("{trimmed}/v1");
+        }
+    }
+    trimmed.to_string()
+}
+
 /// Run a free-text completion against any configured provider.
 /// `feature` only names the error context (e.g. "Tailoring", "Parsing",
 /// "Outreach", "Refinement", "Fix", or "" for a bare "<Provider> Error").
@@ -121,23 +134,36 @@ pub async fn complete(
         }
         "openai" => {
             let is_custom = custom_base_url.is_some_and(|u| !u.trim().is_empty());
-            let client = match custom_base_url {
-                Some(url) if !url.trim().is_empty() => openai::Client::builder()
-                    .api_key(api_key)
-                    .base_url(url)
-                    .build()
-                    .map_err(|e| e.to_string())?,
-                _ => openai::Client::new(api_key).map_err(|e| e.to_string())?,
-            };
-            let mut builder = client.agent(model).preamble(system_prompt);
             if is_custom {
-                builder = builder.max_tokens(131072);
+                let raw_url = custom_base_url.unwrap();
+                let norm_url = normalize_openai_base_url(raw_url);
+                let effective_key = if api_key.trim().is_empty() {
+                    "sk-no-key-required"
+                } else {
+                    api_key
+                };
+                let client = openai::CompletionsClient::builder()
+                    .api_key(effective_key)
+                    .base_url(&norm_url)
+                    .build()
+                    .map_err(|e| e.to_string())?;
+                let agent = client
+                    .agent(model)
+                    .preamble(system_prompt)
+                    .max_tokens(131072)
+                    .build();
+                agent
+                    .prompt(user_prompt)
+                    .await
+                    .map_err(|e| provider_error(provider, feature, e))
+            } else {
+                let client = openai::Client::new(api_key).map_err(|e| e.to_string())?;
+                let agent = client.agent(model).preamble(system_prompt).build();
+                agent
+                    .prompt(user_prompt)
+                    .await
+                    .map_err(|e| provider_error(provider, feature, e))
             }
-            let agent = builder.build();
-            agent
-                .prompt(user_prompt)
-                .await
-                .map_err(|e| provider_error(provider, feature, e))
         }
         "groq" => {
             let client = groq::Client::new(api_key).map_err(|e| e.to_string())?;
@@ -256,25 +282,39 @@ pub async fn extract_job_details(
         }
         "openai" => {
             let is_custom = custom_base_url.is_some_and(|u| !u.trim().is_empty());
-            let client = match custom_base_url {
-                Some(url) if !url.trim().is_empty() => openai::Client::builder()
-                    .api_key(api_key)
-                    .base_url(url)
-                    .build()
-                    .map_err(|e| e.to_string())?,
-                _ => openai::Client::new(api_key).map_err(|e| e.to_string())?,
-            };
-            let mut builder = client
-                .extractor::<JobDetails>(model)
-                .preamble(system_prompt);
             if is_custom {
-                builder = builder.max_tokens(131072);
+                let raw_url = custom_base_url.unwrap();
+                let norm_url = normalize_openai_base_url(raw_url);
+                let effective_key = if api_key.trim().is_empty() {
+                    "sk-no-key-required"
+                } else {
+                    api_key
+                };
+                let client = openai::CompletionsClient::builder()
+                    .api_key(effective_key)
+                    .base_url(&norm_url)
+                    .build()
+                    .map_err(|e| e.to_string())?;
+                let extractor = client
+                    .extractor::<JobDetails>(model)
+                    .preamble(system_prompt)
+                    .max_tokens(131072)
+                    .build();
+                extractor
+                    .extract(user_prompt)
+                    .await
+                    .map_err(|e| provider_error(provider, feature, e))
+            } else {
+                let client = openai::Client::new(api_key).map_err(|e| e.to_string())?;
+                let extractor = client
+                    .extractor::<JobDetails>(model)
+                    .preamble(system_prompt)
+                    .build();
+                extractor
+                    .extract(user_prompt)
+                    .await
+                    .map_err(|e| provider_error(provider, feature, e))
             }
-            let extractor = builder.build();
-            extractor
-                .extract(user_prompt)
-                .await
-                .map_err(|e| provider_error(provider, feature, e))
         }
         "groq" => {
             let client = groq::Client::new(api_key).map_err(|e| e.to_string())?;
@@ -354,5 +394,54 @@ pub async fn extract_job_details(
                 .map_err(|e| provider_error(provider, feature, e))
         }
         _ => Err(format!("Unsupported provider: {}", provider)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_normalize_openai_base_url_bare_host() {
+        assert_eq!(
+            normalize_openai_base_url("http://localhost:11434"),
+            "http://localhost:11434/v1"
+        );
+        assert_eq!(
+            normalize_openai_base_url("http://localhost:11434/"),
+            "http://localhost:11434/v1"
+        );
+        assert_eq!(
+            normalize_openai_base_url("https://api.deepseek.com"),
+            "https://api.deepseek.com/v1"
+        );
+    }
+
+    #[test]
+    fn test_normalize_openai_base_url_with_v1() {
+        assert_eq!(
+            normalize_openai_base_url("http://localhost:11434/v1"),
+            "http://localhost:11434/v1"
+        );
+        assert_eq!(
+            normalize_openai_base_url("http://localhost:11434/v1/"),
+            "http://localhost:11434/v1"
+        );
+        assert_eq!(
+            normalize_openai_base_url("https://api.openai.com/v1/"),
+            "https://api.openai.com/v1"
+        );
+    }
+
+    #[test]
+    fn test_normalize_openai_base_url_custom_path() {
+        assert_eq!(
+            normalize_openai_base_url("https://api.groq.com/openai/v1"),
+            "https://api.groq.com/openai/v1"
+        );
+        assert_eq!(
+            normalize_openai_base_url("http://127.0.0.1:8080/custom/api"),
+            "http://127.0.0.1:8080/custom/api"
+        );
     }
 }

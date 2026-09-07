@@ -34,6 +34,64 @@ const dialog = useDialogStore();
 // Tooltip State
 const activeTooltip = ref<string | null>(null);
 
+// Calculated Viewport-Bounded Tooltip State
+interface CalculatedTooltipState {
+  visible: boolean;
+  text: string;
+  x: number;
+  y: number;
+}
+
+const calculatedTooltip = ref<CalculatedTooltipState>({
+  visible: false,
+  text: '',
+  x: 0,
+  y: 0,
+});
+
+const showCalculatedTooltip = (event: MouseEvent | FocusEvent, text: string) => {
+  if (!text) return;
+  const target = event.currentTarget as HTMLElement | null;
+  if (!target) return;
+  const rect = target.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  // Approximate tooltip width based on characters (7.2px per char + 20px padding)
+  const estimatedWidth = Math.min(vw - 16, Math.max(60, text.length * 7.2 + 20));
+  const estimatedHeight = 28;
+
+  // Calculate centered X, strictly clamped so it never exceeds viewport [8, vw - estimatedWidth - 8]
+  let left = rect.left + (rect.width / 2) - (estimatedWidth / 2);
+  if (left < 8) left = 8;
+  if (left + estimatedWidth > vw - 8) {
+    left = Math.max(8, vw - estimatedWidth - 8);
+  }
+
+  // Calculate Y: Titlebar sits at top 0..36px.
+  // Prefer placing above target if there's enough room (rect.top - estimatedHeight - 6 >= 42).
+  // Otherwise place below target (rect.bottom + 6).
+  let top = rect.top - estimatedHeight - 6;
+  if (top < 42) {
+    top = rect.bottom + 6;
+  }
+  // Clamp Y so tooltip never exceeds viewport bottom
+  if (top + estimatedHeight > vh - 6) {
+    top = Math.max(42, vh - estimatedHeight - 6);
+  }
+
+  calculatedTooltip.value = {
+    visible: true,
+    text,
+    x: Math.round(left),
+    y: Math.round(top),
+  };
+};
+
+const hideCalculatedTooltip = () => {
+  calculatedTooltip.value.visible = false;
+};
+
 // Selection State
 const isSelectionMode = ref(false);
 const selectedIds = ref<Set<string>>(new Set());
@@ -586,7 +644,16 @@ const characterCountClass = computed(() => {
               <Sparkles :size="18" class="sparkle-icon" />
               <span>{{ editingLeadId ? 'Edit Outreach Lead' : 'Tailor Direct Outreach' }}</span>
             </div>
-            <button type="button" class="icon-btn-close" @click="closeForm" title="Close dialog">
+            <button 
+              type="button" 
+              class="icon-btn-close" 
+              @click="closeForm"
+              @mouseenter="showCalculatedTooltip($event, 'Close Dialog')"
+              @mouseleave="hideCalculatedTooltip"
+              @focus="showCalculatedTooltip($event, 'Close Dialog')"
+              @blur="hideCalculatedTooltip"
+              aria-label="Close dialog"
+            >
               <X :size="18" />
             </button>
           </div>
@@ -618,8 +685,12 @@ const characterCountClass = computed(() => {
                     v-if="formProfileUrl" 
                     type="button" 
                     class="field-action-btn"
-                    title="Open Link in Browser"
                     @click="openProfile(formProfileUrl)"
+                    @mouseenter="showCalculatedTooltip($event, 'Open Profile in Browser')"
+                    @mouseleave="hideCalculatedTooltip"
+                    @focus="showCalculatedTooltip($event, 'Open Profile in Browser')"
+                    @blur="hideCalculatedTooltip"
+                    aria-label="Open Link in Browser"
                   >
                     <ExternalLink :size="14" />
                   </button>
@@ -659,10 +730,15 @@ const characterCountClass = computed(() => {
                   <button 
                     v-if="formPosts.length < 3" 
                     type="button" 
-                    class="btn-add-post" 
+                    class="btn-add-post btn-icon-only" 
                     @click="addPostSlot"
+                    @mouseenter="showCalculatedTooltip($event, 'Add Post Slot')"
+                    @mouseleave="hideCalculatedTooltip"
+                    @focus="showCalculatedTooltip($event, 'Add Post Slot')"
+                    @blur="hideCalculatedTooltip"
+                    aria-label="Add Post Slot"
                   >
-                    <Plus :size="12" /> Add Post
+                    <Plus :size="13" />
                   </button>
                 </div>
 
@@ -674,7 +750,11 @@ const characterCountClass = computed(() => {
                       type="button" 
                       class="btn-remove-post" 
                       @click="removePostSlot(index)"
-                      title="Remove post"
+                      @mouseenter="showCalculatedTooltip($event, `Remove Post #${index + 1}`)"
+                      @mouseleave="hideCalculatedTooltip"
+                      @focus="showCalculatedTooltip($event, `Remove Post #${index + 1}`)"
+                      @blur="hideCalculatedTooltip"
+                      aria-label="Remove post"
                     >
                       <X :size="12" />
                     </button>
@@ -752,12 +832,16 @@ const characterCountClass = computed(() => {
               <div class="tailor-action-bar">
                 <button 
                   type="button" 
-                  class="btn-tailor-ai" 
+                  class="btn-tailor-ai btn-icon-only" 
                   :disabled="isGenerating || !formName || !formRawBio"
                   @click="generateMessage"
+                  @mouseenter="showCalculatedTooltip($event, isGenerating ? 'Crafting Tailored Outreach...' : 'Tailor Message with AI')"
+                  @mouseleave="hideCalculatedTooltip"
+                  @focus="showCalculatedTooltip($event, isGenerating ? 'Crafting Tailored Outreach...' : 'Tailor Message with AI')"
+                  @blur="hideCalculatedTooltip"
+                  aria-label="Tailor Message with AI"
                 >
-                  <Sparkles :size="16" :class="{ 'spinner': isGenerating }" />
-                  <span>{{ isGenerating ? 'Crafting Tailored Outreach...' : 'Tailor Message with AI' }}</span>
+                  <Sparkles :size="18" :class="{ 'spinner': isGenerating }" />
                 </button>
               </div>
 
@@ -781,9 +865,13 @@ const characterCountClass = computed(() => {
                   <button
                     type="button"
                     class="btn-result-action"
-                    :title="formCopied ? 'Copied!' : 'Copy to Clipboard'"
                     :disabled="!formTailoredMessage"
                     @click="copyText(formTailoredMessage)"
+                    @mouseenter="showCalculatedTooltip($event, formCopied ? 'Copied to Clipboard!' : 'Copy to Clipboard')"
+                    @mouseleave="hideCalculatedTooltip"
+                    @focus="showCalculatedTooltip($event, formCopied ? 'Copied to Clipboard!' : 'Copy to Clipboard')"
+                    @blur="hideCalculatedTooltip"
+                    aria-label="Copy to Clipboard"
                   >
                     <component :is="formCopied ? Check : Copy" :size="14" />
                   </button>
@@ -800,51 +888,38 @@ const characterCountClass = computed(() => {
                 </div>
               </div>
 
-              <!-- Form Submit Actions -->
-              <div class="form-actions">
-                <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'form-cancel'" @mouseleave="activeTooltip = null">
-                  <button type="button" class="btn-cancel btn-icon-action" @click="closeForm">
-                    <X :size="16" />
-                  </button>
-                  <AnimatePresence>
-                    <Motion
-                      v-if="activeTooltip === 'form-cancel'"
-                      :initial="{ opacity: 0, y: 5, scale: 0.9 }"
-                      :animate="{ opacity: 1, y: 0, scale: 1 }"
-                      :exit="{ opacity: 0, y: 5, scale: 0.9 }"
-                      :transition="{ duration: 0.15 }"
-                      class="floating-message tooltip-top"
-                    >
-                      Cancel
-                    </Motion>
-                  </AnimatePresence>
-                </div>
-                <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'form-save'" @mouseleave="activeTooltip = null">
-                  <button
-                    type="button"
-                    class="btn-save btn-icon-action"
-                    :disabled="isSaving || !formName || !formProfileUrl"
-                    @click="handleSave"
-                  >
-                    <RotateCw v-if="isSaving" :size="16" class="spinner" />
-                    <Save v-else :size="16" />
-                  </button>
-                  <AnimatePresence>
-                    <Motion
-                      v-if="activeTooltip === 'form-save'"
-                      :initial="{ opacity: 0, y: 5, scale: 0.9 }"
-                      :animate="{ opacity: 1, y: 0, scale: 1 }"
-                      :exit="{ opacity: 0, y: 5, scale: 0.9 }"
-                      :transition="{ duration: 0.15 }"
-                      class="floating-message tooltip-top"
-                    >
-                      {{ isSaving ? 'Saving...' : (editingLeadId ? 'Update Lead' : 'Save Lead') }}
-                    </Motion>
-                  </AnimatePresence>
-                </div>
-              </div>
+              <!-- Pinned Modal Footer -->
             </div>
           </div>
+        </div>
+
+        <div class="form-modal-footer">
+          <button 
+            type="button" 
+            class="btn-cancel btn-icon-only" 
+            @click="closeForm"
+            @mouseenter="showCalculatedTooltip($event, 'Cancel')"
+            @mouseleave="hideCalculatedTooltip"
+            @focus="showCalculatedTooltip($event, 'Cancel')"
+            @blur="hideCalculatedTooltip"
+            aria-label="Cancel"
+          >
+            <X :size="16" />
+          </button>
+          <button
+            type="button"
+            class="btn-save btn-icon-only"
+            :disabled="isSaving || !formName || !formProfileUrl"
+            @click="handleSave"
+            @mouseenter="showCalculatedTooltip($event, isSaving ? 'Saving...' : (editingLeadId ? 'Update Lead' : 'Save Lead'))"
+            @mouseleave="hideCalculatedTooltip"
+            @focus="showCalculatedTooltip($event, isSaving ? 'Saving...' : (editingLeadId ? 'Update Lead' : 'Save Lead'))"
+            @blur="hideCalculatedTooltip"
+            :aria-label="editingLeadId ? 'Update Lead' : 'Save Lead'"
+          >
+            <RotateCw v-if="isSaving" :size="16" class="spinner" />
+            <Save v-else :size="16" />
+          </button>
         </div>
       </Motion>
     </Motion>
@@ -1000,6 +1075,22 @@ const characterCountClass = computed(() => {
         </div>
       </div>
     </div>
+
+    <!-- Teleported Viewport-Bounded Calculated Tooltip -->
+    <Teleport to="body">
+      <Transition name="tooltip-pop">
+        <div
+          v-if="calculatedTooltip.visible"
+          class="calculated-viewport-tooltip"
+          :style="{
+            left: `${calculatedTooltip.x}px`,
+            top: `${calculatedTooltip.y}px`,
+          }"
+        >
+          {{ calculatedTooltip.text }}
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -1239,10 +1330,13 @@ h2 {
 /* Modal Backdrop & Form Card */
 .modal-backdrop {
   position: fixed;
-  top: 0;
+  top: 36px;
   left: 0;
-  width: 100vw;
-  height: 100vh;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: calc(100vh - 36px);
+  height: calc(100dvh - 36px);
   background: rgba(0, 0, 0, 0.72);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
@@ -1250,7 +1344,13 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 24px 20px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.modal-backdrop,
+.modal-backdrop * {
   box-sizing: border-box;
 }
 
@@ -1260,11 +1360,13 @@ h2 {
   border-radius: var(--radius-lg, 16px);
   width: 100%;
   max-width: 960px;
-  max-height: calc(100vh - 48px);
+  max-height: calc(100vh - 36px - 48px);
+  height: auto;
   display: flex;
   flex-direction: column;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .form-header {
@@ -1272,20 +1374,24 @@ h2 {
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  padding: 18px 24px;
+  padding: 16px 22px;
   border-bottom: 1px solid var(--line);
   margin-bottom: 0;
   flex-shrink: 0;
+  background: var(--surface);
 }
 
 .form-modal-body {
-  padding: 24px;
+  padding: 22px;
   overflow-y: auto;
   overflow-x: hidden;
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
+  -webkit-overflow-scrolling: touch;
 }
 
 .form-modal-body::-webkit-scrollbar {
@@ -1328,39 +1434,119 @@ h2 {
 }
 
 .icon-btn-close {
-  background: none;
-  border: none;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
   color: var(--muted);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
+  padding: 6px;
+  border-radius: 8px;
   transition: all 0.15s;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
 }
 
 .icon-btn-close:hover {
   color: var(--ink);
-  background: var(--surface-soft);
+  background: var(--surface);
+  border-color: var(--accent);
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .form-col,
 .field-group {
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
-/* Tablet (<= 900px): single-column form */
-@media (max-width: 900px) {
+/* Tablet (<= 900px) or short viewport (<= 700px):
+   Modal becomes a full-screen sheet that strictly fits inside the viewport,
+   never overflowing or exiting height, width, padding, or margin,
+   and clearing the 36px titlebar with a dedicated top margin */
+@media (max-width: 900px), (max-height: 700px) {
   .outreach-container {
     padding: 24px 20px;
   }
 
+  .modal-backdrop {
+    top: 36px !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: calc(100vh - 36px) !important;
+    height: calc(100dvh - 36px) !important;
+    padding: 0 !important;
+    padding-top: 14px !important;
+    padding-bottom: 0 !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    align-items: stretch !important;
+    justify-content: center !important;
+  }
+
+  .form-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    border-radius: 14px 14px 0 0 !important;
+    border: 1px solid var(--line) !important;
+    border-bottom: none !important;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4) !important;
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+
   .form-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 16px !important;
+  }
+
+  .form-header {
+    padding: 12px 14px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .form-modal-body {
+    padding: 14px 12px !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .form-modal-footer {
+    padding: 10px 14px !important;
+    flex-shrink: 0 !important;
+    gap: 10px !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+  }
+
+  .form-modal-footer .btn-cancel,
+  .form-modal-footer .btn-save {
+    flex: 0 0 auto !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    padding: 0 !important;
+    justify-content: center !important;
   }
 }
 
@@ -1460,35 +1646,6 @@ h2 {
     grid-template-columns: 1fr;
   }
 
-  .modal-backdrop {
-    padding: 12px;
-  }
-
-  .form-card {
-    max-height: calc(100vh - 24px);
-    border-radius: 12px;
-    padding: 0;
-  }
-
-  .form-header {
-    padding: 14px 16px;
-  }
-
-  .form-modal-body {
-    padding: 16px;
-  }
-
-  .form-actions {
-    flex-direction: column-reverse;
-  }
-
-  .btn-cancel,
-  .btn-save {
-    width: 100%;
-    justify-content: center;
-    min-height: 40px;
-  }
-
   .custom-limit-box {
     margin-left: 0;
   }
@@ -1513,19 +1670,70 @@ h2 {
   }
 
   .modal-backdrop {
-    padding: 8px;
-  }
-
-  .form-card {
-    max-height: calc(100vh - 16px);
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    padding-top: 12px !important;
+    padding-bottom: 0 !important;
   }
 
   .form-header {
-    padding: 12px 14px;
+    padding: 10px 12px;
   }
 
   .form-modal-body {
-    padding: 12px;
+    padding: 12px 10px;
+  }
+
+  .form-modal-footer {
+    padding: 8px 12px;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .form-modal-footer .btn-cancel,
+  .form-modal-footer .btn-save {
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 0;
+  }
+
+  .limit-buttons-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+  }
+
+  .btn-preset {
+    padding: 6px 2px;
+    font-size: 0.7rem;
+    justify-content: center;
+    min-width: 0;
+    gap: 2px;
+  }
+
+  .default-badge {
+    font-size: 0.55rem;
+    padding: 0 2px;
+  }
+
+  .custom-limit-box {
+    grid-column: 1 / -1;
+    margin-left: 0;
+    margin-top: 4px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .custom-limit-input {
+    flex: 1;
+    max-width: 100px;
+    min-height: 32px;
+    padding: 4px 8px;
   }
 }
 
@@ -1588,28 +1796,156 @@ h2 {
   }
 
   .modal-backdrop {
-    padding: 4px;
-  }
-
-  .form-card {
-    max-height: calc(100vh - 8px);
-    padding: 0;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+    padding-top: 10px !important;
+    padding-bottom: 0 !important;
   }
 
   .form-header {
-    padding: 10px 12px;
+    padding: 8px 10px;
   }
 
   .form-modal-body {
-    padding: 10px 8px;
+    padding: 8px 6px;
   }
 
   .form-title {
-    font-size: 0.95rem;
+    font-size: 0.85rem;
+  }
+
+  .label-hint {
+    display: block;
+    margin-left: 0;
+    margin-top: 2px;
+    font-size: 0.65rem;
+  }
+
+  .text-input,
+  .select-input,
+  .text-area {
+    padding: 7px 8px;
+    font-size: 0.78rem;
+  }
+
+  .btn-tailor-ai {
+    width: 44px;
+    height: 36px;
+    min-width: 44px;
+    min-height: 36px;
+    padding: 0;
+  }
+
+  .result-actions {
+    gap: 6px;
+  }
+
+  .btn-result-action {
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
+    padding: 4px;
+  }
+
+  .status-selector-box {
+    gap: 4px;
+  }
+
+  .status-selector-box .custom-select-container {
+    min-width: 100px;
+  }
+
+  .form-modal-footer {
+    padding: 6px 10px;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .form-modal-footer .btn-cancel,
+  .form-modal-footer .btn-save {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    min-height: 34px;
+    padding: 0;
   }
 
   .card-btn {
     min-height: 34px;
+  }
+}
+
+/* Short viewport height (<= 500px, down to 400px minimum): compact header,
+   footer and body margins so fields scroll smoothly and buttons stay visible */
+@media (max-height: 500px) {
+  .modal-backdrop {
+    padding-top: 8px !important;
+  }
+
+  .form-header {
+    padding: 6px 10px;
+  }
+
+  .form-title {
+    font-size: 0.85rem;
+  }
+
+  .form-modal-body {
+    padding: 8px 8px;
+  }
+
+  .field-group {
+    margin-bottom: 8px;
+  }
+
+  .posts-group {
+    margin-top: 10px;
+  }
+
+  .post-slot {
+    padding: 4px 6px;
+    margin-bottom: 6px;
+  }
+
+  .tailor-action-bar {
+    margin: 8px 0;
+  }
+
+  .btn-tailor-ai {
+    width: 44px;
+    height: 34px;
+    min-width: 44px;
+    min-height: 34px;
+    padding: 0;
+  }
+
+  .result-group {
+    margin-top: 6px;
+  }
+
+  .text-area {
+    min-height: 48px;
+  }
+
+  textarea.result-textarea {
+    min-height: 60px;
+  }
+
+  .form-modal-footer {
+    padding: 6px 10px;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .form-modal-footer .btn-cancel,
+  .form-modal-footer .btn-save {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    padding: 0;
   }
 }
 
@@ -1730,19 +2066,23 @@ h2 {
 .btn-add-post {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
   background: var(--surface-soft);
   border: 1px solid var(--line);
   color: var(--accent);
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 3px 8px;
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0;
   border-radius: 6px;
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .btn-add-post:hover {
   border-color: var(--accent);
+  background: var(--surface);
 }
 
 .post-slot {
@@ -1880,34 +2220,40 @@ h2 {
 
 /* Tailor AI action */
 .tailor-action-bar {
-  margin: 16px 0;
+  margin: 14px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .btn-tailor-ai {
-  width: 100%;
-  height: 42px;
+  width: 48px;
+  height: 40px;
+  min-width: 48px;
+  min-height: 40px;
   background: var(--accent);
   color: white;
   border: none;
   border-radius: var(--radius-md, 8px);
-  font-size: 0.85rem;
-  font-weight: 700;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
+  box-shadow: 0 4px 12px rgba(35, 134, 54, 0.25);
 }
 
 .btn-tailor-ai:hover:not(:disabled) {
   opacity: 0.92;
   transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(35, 134, 54, 0.35);
 }
 
 .btn-tailor-ai:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 /* Result Area */
@@ -2002,61 +2348,91 @@ h2 {
   min-width: 132px;
 }
 
-/* Form Footer Actions */
-.form-actions {
+/* Form Modal Footer Actions */
+.form-modal-footer {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 10px;
-  margin-top: 24px;
-  padding-top: 16px;
+  padding: 12px 20px;
   border-top: 1px solid var(--line);
+  background: var(--surface);
+  flex-shrink: 0;
 }
 
-.btn-cancel {
-  padding: 8px 16px;
-  background: none;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md, 8px);
-  color: var(--muted);
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
-.btn-cancel.btn-icon-action,
-.btn-save.btn-icon-action {
-  width: 38px;
-  min-width: 38px;
-  height: 38px;
-  padding: 0;
+.form-modal-footer .btn-cancel,
+.form-modal-footer .btn-save {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 10px;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.btn-cancel:hover {
+.form-modal-footer .btn-cancel {
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.form-modal-footer .btn-cancel:hover {
   color: var(--ink);
   border-color: var(--muted);
+  background: var(--surface);
 }
 
-.btn-save {
-  padding: 8px 20px;
+.form-modal-footer .btn-save {
   background: var(--accent);
   color: white;
   border: none;
-  border-radius: var(--radius-md, 8px);
-  font-size: 0.8rem;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
 }
 
-.btn-save:hover:not(:disabled) {
+.form-modal-footer .btn-save:hover:not(:disabled) {
   opacity: 0.92;
+  transform: translateY(-1px);
 }
 
-.btn-save:disabled {
-  opacity: 0.5;
+.form-modal-footer .btn-save:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
+  transform: none;
+}
+
+/* Teleported Viewport-Bounded Tooltip */
+.calculated-viewport-tooltip {
+  position: fixed;
+  pointer-events: none;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--accent);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: calc(100vw - 16px);
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: 999999;
+}
+
+.tooltip-pop-enter-active,
+.tooltip-pop-leave-active {
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.tooltip-pop-enter-from,
+.tooltip-pop-leave-to {
+  opacity: 0;
+  transform: scale(0.92);
 }
 
 /* Empty State */

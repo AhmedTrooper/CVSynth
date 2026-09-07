@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useOutreachStore, OutreachLead } from '../store/outreach';
 import { useHrMessagesStore } from '../store/hr_messages';
 import { useDialogStore } from '../store/dialog';
@@ -128,6 +128,12 @@ const totalPages = computed(() => {
   return Math.max(1, Math.ceil(filteredLeads.value.length / pageSize.value));
 });
 
+watch(totalPages, (newTotal) => {
+  if (currentPage.value > newTotal) {
+    currentPage.value = Math.max(1, newTotal);
+  }
+});
+
 const paginatedLeads = computed(() => {
   if (!Array.isArray(filteredLeads.value)) return [];
   const start = (currentPage.value - 1) * pageSize.value;
@@ -199,9 +205,24 @@ const openNewForm = () => {
 };
 
 const closeForm = () => {
+  if (isSaving.value || isGenerating.value) return;
   showForm.value = false;
   resetForm();
 };
+
+const handleKeyDown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && showForm.value) {
+    closeForm();
+  }
+};
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown);
+});
 
 const editLead = (lead: OutreachLead) => {
   editingLeadId.value = lead.id;
@@ -542,28 +563,36 @@ const characterCountClass = computed(() => {
       </div>
     </div>
 
-    <!-- Sliding Inline Creator & Editor Form -->
+    <!-- Outreach Lead Creator & Editor Modal Dialog -->
     <AnimatePresence>
       <Motion
         v-if="showForm"
-        :initial="{ opacity: 0, height: 0, y: -10 }"
-        :animate="{ opacity: 1, height: 'auto', y: 0 }"
-        :exit="{ opacity: 0, height: 0, y: -10 }"
-        :transition="{ duration: 0.22, ease: 'easeOut' }"
-        class="form-wrapper"
+        :initial="{ opacity: 0 }"
+        :animate="{ opacity: 1 }"
+        :exit="{ opacity: 0 }"
+        class="modal-backdrop"
+        @click.self="closeForm"
       >
-        <div class="form-card">
+        <Motion
+          :initial="{ opacity: 0, scale: 0.95, y: 20 }"
+          :animate="{ opacity: 1, scale: 1, y: 0 }"
+          :exit="{ opacity: 0, scale: 0.95, y: 20 }"
+          :transition="{ duration: 0.2, ease: 'easeOut' }"
+          class="form-card"
+          @click.stop
+        >
           <div class="form-header">
             <div class="form-title">
               <Sparkles :size="18" class="sparkle-icon" />
               <span>{{ editingLeadId ? 'Edit Outreach Lead' : 'Tailor Direct Outreach' }}</span>
             </div>
-            <button class="icon-btn-close" @click="closeForm">
+            <button type="button" class="icon-btn-close" @click="closeForm" title="Close dialog">
               <X :size="18" />
             </button>
           </div>
 
-          <div class="form-grid">
+          <div class="form-modal-body">
+            <div class="form-grid">
             <!-- Left Column: Recipient Data & Bio -->
             <div class="form-col">
               <div class="field-group">
@@ -818,7 +847,8 @@ const characterCountClass = computed(() => {
           </div>
         </div>
       </Motion>
-    </AnimatePresence>
+    </Motion>
+  </AnimatePresence>
 
     <!-- Empty State -->
     <div v-if="filteredLeads.length === 0 && !outreachStore.isLoading" class="empty-state">
@@ -1206,18 +1236,35 @@ h2 {
   font-weight: 600;
 }
 
-/* Form Card */
-.form-wrapper {
-  margin-bottom: 32px;
-  overflow: hidden;
+/* Modal Backdrop & Form Card */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 9990;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
 }
 
 .form-card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-lg, 12px);
-  padding: 24px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-radius: var(--radius-lg, 16px);
+  width: 100%;
+  max-width: 960px;
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
 }
 
 .form-header {
@@ -1225,9 +1272,37 @@ h2 {
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  margin-bottom: 20px;
-  padding-bottom: 14px;
+  padding: 18px 24px;
   border-bottom: 1px solid var(--line);
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+.form-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.form-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.form-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.form-modal-body::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
+.form-modal-body::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
 
 .form-title {
@@ -1385,7 +1460,21 @@ h2 {
     grid-template-columns: 1fr;
   }
 
+  .modal-backdrop {
+    padding: 12px;
+  }
+
   .form-card {
+    max-height: calc(100vh - 24px);
+    border-radius: 12px;
+    padding: 0;
+  }
+
+  .form-header {
+    padding: 14px 16px;
+  }
+
+  .form-modal-body {
     padding: 16px;
   }
 
@@ -1421,6 +1510,22 @@ h2 {
 
   .person-headline {
     max-width: 150px;
+  }
+
+  .modal-backdrop {
+    padding: 8px;
+  }
+
+  .form-card {
+    max-height: calc(100vh - 16px);
+  }
+
+  .form-header {
+    padding: 12px 14px;
+  }
+
+  .form-modal-body {
+    padding: 12px;
   }
 }
 
@@ -1482,8 +1587,21 @@ h2 {
     max-width: 110px;
   }
 
+  .modal-backdrop {
+    padding: 4px;
+  }
+
   .form-card {
-    padding: 12px;
+    max-height: calc(100vh - 8px);
+    padding: 0;
+  }
+
+  .form-header {
+    padding: 10px 12px;
+  }
+
+  .form-modal-body {
+    padding: 10px 8px;
   }
 
   .form-title {

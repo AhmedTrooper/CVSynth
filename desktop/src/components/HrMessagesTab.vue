@@ -99,14 +99,21 @@ const handleBatchDelete = async () => {
   }
 };
 
-const toggleNewForm = () => {
-  showNewForm.value = !showNewForm.value;
-  if (!showNewForm.value) {
+const toggleNewForm = async () => {
+  if (showNewForm.value) {
+    if (formName.value.trim() || formCategory.value.trim() || formContent.value.trim()) {
+      const confirmed = await dialog.showConfirm('Discard changes to template?', 'Discard Changes');
+      if (!confirmed) return;
+    }
+    showNewForm.value = false;
     editingTemplateId.value = null;
     formName.value = '';
     formCategory.value = '';
     formContent.value = '';
+    await dialog.showAlert('Action cancelled.', 'Cancelled');
+    return;
   }
+  showNewForm.value = true;
 };
 
 const openEditForm = (template: HrMessageTemplate) => {
@@ -126,6 +133,7 @@ const handleSaveTemplate = async () => {
   }
   
   isSaving.value = true;
+  const isUpdating = !!editingTemplateId.value;
   try {
     if (editingTemplateId.value) {
       await hrStore.updateTemplate(
@@ -146,6 +154,7 @@ const handleSaveTemplate = async () => {
     formName.value = '';
     formCategory.value = '';
     formContent.value = '';
+    await dialog.showAlert(isUpdating ? 'Template updated successfully.' : 'Template created successfully.', 'Success');
   } catch (err: any) {
     console.error(err);
     await dialog.showAlert(`Failed to save template: ${err.message || err}`, 'Error');
@@ -363,7 +372,7 @@ const insertVariable = (variable: string) => {
           </div>
 
           <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'save-template'" @mouseleave="activeTooltip = null">
-            <button class="btn-icon btn-icon-primary" @click="handleSaveTemplate" :disabled="isSaving || !formName || !formCategory || !formContent">
+            <button class="btn-icon btn-icon-primary" @click="handleSaveTemplate" :disabled="isSaving">
               <RotateCw v-if="isSaving" :size="16" class="spinner" />
               <Save v-else :size="16" />
             </button>

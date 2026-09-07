@@ -104,16 +104,24 @@ const handleBatchDelete = async () => {
   }
 };
 
-const toggleNewForm = () => {
-  showNewClForm.value = !showNewClForm.value;
-  if (!showNewClForm.value) {
+const toggleNewForm = async () => {
+  if (showNewClForm.value) {
+    if (newClName.value.trim() || newClCategory.value.trim()) {
+      const confirmed = await dialog.showConfirm('Discard new template?', 'Discard Changes');
+      if (!confirmed) return;
+    }
+    showNewClForm.value = false;
     newClName.value = '';
     newClCategory.value = '';
+    await dialog.showAlert('Template creation cancelled.', 'Cancelled');
+    return;
   }
+  showNewClForm.value = true;
 };
 
 const handleCreateCl = async () => {
   if (!newClName.value.trim() || !newClCategory.value.trim()) {
+    await dialog.showAlert('Template name and category are required.', 'Input Required');
     return;
   }
   
@@ -127,9 +135,11 @@ const handleCreateCl = async () => {
     showNewClForm.value = false;
     newClName.value = '';
     newClCategory.value = '';
+    await dialog.showAlert('Template created successfully! Redirecting to editor...', 'Success');
     router.push(`/cover-letter/${clId}`);
   } catch (err: any) {
     console.error(err);
+    await dialog.showAlert(`Failed to create template: ${err.message || err.toString()}`, 'Error');
   } finally {
     isCreating.value = false;
   }
@@ -299,7 +309,7 @@ const handleCreateCl = async () => {
           </div>
 
           <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'initialize-template'" @mouseleave="activeTooltip = null">
-            <button class="btn-icon btn-icon-primary" @click="handleCreateCl" :disabled="isCreating || !newClName || !newClCategory">
+            <button class="btn-icon btn-icon-primary" @click="handleCreateCl" :disabled="isCreating">
               <RotateCw v-if="isCreating" :size="16" class="spinner" />
               <Save v-else :size="16" />
             </button>

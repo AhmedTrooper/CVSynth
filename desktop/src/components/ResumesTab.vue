@@ -104,16 +104,24 @@ const handleBatchDelete = async () => {
   }
 };
 
-const toggleNewForm = () => {
-  showNewResumeForm.value = !showNewResumeForm.value;
-  if (!showNewResumeForm.value) {
+const toggleNewForm = async () => {
+  if (showNewResumeForm.value) {
+    if (newResumeName.value.trim() || newResumeCategory.value.trim()) {
+      const confirmed = await dialog.showConfirm('Discard new template?', 'Discard Changes');
+      if (!confirmed) return;
+    }
+    showNewResumeForm.value = false;
     newResumeName.value = '';
     newResumeCategory.value = '';
+    await dialog.showAlert('Template creation cancelled.', 'Cancelled');
+    return;
   }
+  showNewResumeForm.value = true;
 };
 
 const handleCreateResume = async () => {
   if (!newResumeName.value.trim() || !newResumeCategory.value.trim()) {
+    await dialog.showAlert('Template name and category are required.', 'Input Required');
     return;
   }
   
@@ -127,9 +135,11 @@ const handleCreateResume = async () => {
     showNewResumeForm.value = false;
     newResumeName.value = '';
     newResumeCategory.value = '';
+    await dialog.showAlert('Template created successfully! Redirecting to editor...', 'Success');
     router.push(`/resume/${resumeId}`);
   } catch (err: any) {
     console.error(err);
+    await dialog.showAlert(`Failed to create template: ${err.message || err.toString()}`, 'Error');
   } finally {
     isCreating.value = false;
   }
@@ -299,7 +309,7 @@ const handleCreateResume = async () => {
           </div>
 
           <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'initialize-template'" @mouseleave="activeTooltip = null">
-            <button class="btn-icon btn-icon-primary" @click="handleCreateResume" :disabled="isCreating || !newResumeName || !newResumeCategory">
+            <button class="btn-icon btn-icon-primary" @click="handleCreateResume" :disabled="isCreating">
               <RotateCw v-if="isCreating" :size="16" class="spinner" />
               <Save v-else :size="16" />
             </button>

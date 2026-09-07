@@ -2,8 +2,8 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useCoverLettersStore, type CoverLetterDetail } from '../store/cover_letters';
+import { useDialogStore } from '../store/dialog';
 import { Motion, AnimatePresence } from 'motion-v';
-import { ask, message } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 import { 
   ArrowLeft, 
@@ -25,6 +25,7 @@ import { EditorView } from '@codemirror/view';
 
 const router = useRouter();
 const clStore = useCoverLettersStore();
+const dialog = useDialogStore();
 
 // Codemirror Extensions
 const extensions = [
@@ -87,18 +88,35 @@ const goBack = () => {
   }
 };
 
-const toggleEditMode = () => {
+const toggleEditMode = async () => {
   if (isEditing.value) {
+    const hasChanges =
+      editedName.value !== (cl.value?.name || '') ||
+      editedCategory.value !== (cl.value?.category || '') ||
+      editedLatex.value !== (cl.value?.latex_content || '');
+
+    if (hasChanges) {
+      const confirmed = await dialog.showConfirm(
+        'Are you sure you want to discard your unsaved changes?',
+        'Discard Changes'
+      );
+      if (!confirmed) return;
+    }
+
     editedName.value = cl.value?.name || '';
     editedCategory.value = cl.value?.category || '';
     editedLatex.value = cl.value?.latex_content || '';
+    isEditing.value = false;
+    await dialog.showAlert('Editing cancelled.', 'Cancelled');
+    return;
   }
-  isEditing.value = !isEditing.value;
+  isEditing.value = true;
 };
 
 const handleSave = async () => {
   if (!cl.value || !editedName.value.trim() || !editedCategory.value.trim()) {
     error.value = 'Name and category are required';
+    await dialog.showAlert('Name and category are required to save the template.', 'Input Required');
     return;
   }
 
@@ -116,8 +134,10 @@ const handleSave = async () => {
     const updated = await clStore.getCoverLetterById(props.id);
     cl.value = updated;
     isEditing.value = false;
+    await dialog.showAlert('Template saved successfully.', 'Success');
   } catch (err: any) {
     error.value = err.toString();
+    await dialog.showAlert(`Failed to save template: ${err.message || err.toString()}`, 'Save Error');
   } finally {
     isSaving.value = false;
   }
@@ -132,27 +152,26 @@ const handleDelete = async () => {
 
     if (usages.length > 0) {
       const jobList = usages.map(u => `• ${u.company_name} (${u.job_title})`).join('\n');
-      await message(
+      await dialog.showAlert(
         `This template cannot be deleted because it is currently used by tailored cover letters for the following jobs:\n\n${jobList}\n\nPlease delete these tailored versions or the jobs themselves before deleting this base template.`,
-        { title: 'Template In Use', kind: 'error' }
+        'Template In Use'
       );
       return;
     }
 
     // 2. Proceed with normal confirmation
-    const confirmed = await ask('Delete this cover letter template? This cannot be undone.', {
-      title: 'Confirm Deletion',
-      kind: 'warning'
-    });
+    const confirmed = await dialog.showConfirm('Delete this cover letter template? This cannot be undone.', 'Confirm Deletion');
     if (!confirmed) return;
 
     isDeleting.value = true;
     error.value = null;
 
     await clStore.deleteCoverLetter(cl.value.id);
+    await dialog.showAlert('Template deleted successfully.', 'Success');
     router.push('/cover-letters');
   } catch (err: any) {
     error.value = err.toString();
+    await dialog.showAlert(`Failed to delete template: ${err.message || err.toString()}`, 'Error');
   } finally {
     isDeleting.value = false;
   }

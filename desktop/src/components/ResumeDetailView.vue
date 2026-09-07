@@ -196,49 +196,40 @@ const hasLatexContent = () => {
         </div>
       </div>
 
-      <div class="header-actions">
-        <template v-if="!isEditing">
-          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'edit-tpl'" @mouseleave="activeTooltip = null">
-            <button class="action-btn" @click="toggleEditMode"><Edit :size="16" /></button>
-            <AnimatePresence>
-              <Motion
-                v-if="activeTooltip === 'edit-tpl'"
-                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
-                :animate="{ opacity: 1, y: 0, scale: 1 }"
-                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
-                :transition="{ duration: 0.15 }"
-                class="flying-message header-tooltip"
-              >
-                Edit Template
-              </Motion>
-            </AnimatePresence>
-          </div>
-          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'delete-tpl'" @mouseleave="activeTooltip = null">
-            <button class="action-btn delete-btn" @click="handleDelete" :disabled="isDeleting">
-              <RotateCw v-if="isDeleting" :size="16" class="spinner" />
-              <Trash2 v-else :size="16" />
-            </button>
-            <AnimatePresence>
-              <Motion
-                v-if="activeTooltip === 'delete-tpl'"
-                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
-                :animate="{ opacity: 1, y: 0, scale: 1 }"
-                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
-                :transition="{ duration: 0.15 }"
-                class="flying-message header-tooltip delete-tooltip"
-              >
-                Delete Template
-              </Motion>
-            </AnimatePresence>
-          </div>
-        </template>
-        <template v-else>
-          <button class="action-btn cancel-btn" @click="toggleEditMode"><X :size="16" /></button>
-          <button class="action-btn save-btn" @click="handleSave" :disabled="isSaving">
-            <RotateCw v-if="isSaving" :size="16" class="spinner" />
-            <Save v-else :size="16" />
+      <div class="header-actions" v-if="!isEditing">
+        <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'edit-tpl'" @mouseleave="activeTooltip = null">
+          <button class="action-btn" @click="toggleEditMode"><Edit :size="16" /></button>
+          <AnimatePresence>
+            <Motion
+              v-if="activeTooltip === 'edit-tpl'"
+              :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+              :animate="{ opacity: 1, y: 0, scale: 1 }"
+              :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+              :transition="{ duration: 0.15 }"
+              class="flying-message header-tooltip"
+            >
+              Edit Template
+            </Motion>
+          </AnimatePresence>
+        </div>
+        <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'delete-tpl'" @mouseleave="activeTooltip = null">
+          <button class="action-btn delete-btn" @click="handleDelete" :disabled="isDeleting">
+            <RotateCw v-if="isDeleting" :size="16" class="spinner" />
+            <Trash2 v-else :size="16" />
           </button>
-        </template>
+          <AnimatePresence>
+            <Motion
+              v-if="activeTooltip === 'delete-tpl'"
+              :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+              :animate="{ opacity: 1, y: 0, scale: 1 }"
+              :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+              :transition="{ duration: 0.15 }"
+              class="flying-message header-tooltip delete-tooltip"
+            >
+              Delete Template
+            </Motion>
+          </AnimatePresence>
+        </div>
       </div>
     </header>
 
@@ -274,6 +265,45 @@ const hasLatexContent = () => {
           :extensions="extensions"
           class="latex-editor-cm"
         />
+
+        <div v-if="isEditing" class="editor-bottom-bar">
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'cancel-edit'" @mouseleave="activeTooltip = null">
+            <button type="button" class="action-btn cancel-btn" @click="toggleEditMode">
+              <X :size="16" />
+            </button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'cancel-edit'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                :transition="{ duration: 0.15 }"
+                class="flying-message"
+              >
+                Cancel
+              </Motion>
+            </AnimatePresence>
+          </div>
+
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'save-edit'" @mouseleave="activeTooltip = null">
+            <button type="button" class="action-btn save-btn" @click="handleSave" :disabled="isSaving">
+              <RotateCw v-if="isSaving" :size="16" class="spinner" />
+              <Save v-else :size="16" />
+            </button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'save-edit'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                :transition="{ duration: 0.15 }"
+                class="flying-message"
+              >
+                {{ isSaving ? 'Saving...' : 'Save Changes' }}
+              </Motion>
+            </AnimatePresence>
+          </div>
+        </div>
         <div v-else-if="hasLatexContent()" class="latex-preview">
           <pre><code>{{ resume?.latex_content }}</code></pre>
         </div>
@@ -413,6 +443,7 @@ const hasLatexContent = () => {
 .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .delete-btn:hover:not(:disabled) { border-color: var(--warning); color: var(--warning); }
+.cancel-btn:hover:not(:disabled) { border-color: var(--muted); color: var(--ink); }
 .save-btn { background: var(--accent); color: white; border: none; }
 .save-btn:hover:not(:disabled) { background: var(--accent-hover); color: white; }
 
@@ -426,15 +457,22 @@ const hasLatexContent = () => {
   box-sizing: border-box;
 }
 
-/* Content wrapper scrollbar track clearance margins */
+/* Content wrapper scrollbar: 2 units default to 5 units on focus with 18px clearance */
 .content-wrapper::-webkit-scrollbar {
+  width: 4px;
+  height: 2px;
+  transition: all 0.15s ease;
+}
+
+.content-wrapper:hover::-webkit-scrollbar,
+.content-wrapper:focus-within::-webkit-scrollbar {
   width: 6px;
-  height: 6px;
+  height: 5px;
 }
 
 .content-wrapper::-webkit-scrollbar-track {
   background: transparent;
-  margin: 10px 0;
+  margin: 18px 0;
 }
 
 .content-wrapper::-webkit-scrollbar-thumb {
@@ -560,6 +598,16 @@ const hasLatexContent = () => {
   color: #abb2bf !important;
 }
 
+.editor-bottom-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
 .latex-preview {
   width: 100%;
   box-sizing: border-box;
@@ -576,15 +624,22 @@ const hasLatexContent = () => {
   overflow: auto;
 }
 
-/* Latex preview scrollbar track clearance */
+/* Latex preview scrollbar track clearance: 2 units default to 5 units on focus */
 .latex-preview::-webkit-scrollbar {
+  width: 4px;
+  height: 2px;
+  transition: all 0.15s ease;
+}
+
+.latex-preview:hover::-webkit-scrollbar,
+.latex-preview:focus-within::-webkit-scrollbar {
   width: 6px;
-  height: 6px;
+  height: 5px;
 }
 
 .latex-preview::-webkit-scrollbar-track {
   background: transparent;
-  margin: 6px;
+  margin: 8px;
 }
 
 .latex-preview::-webkit-scrollbar-thumb {
@@ -758,6 +813,10 @@ const hasLatexContent = () => {
     gap: 12px;
     padding-top: 16px;
   }
+  .editor-bottom-bar {
+    justify-content: flex-end;
+    gap: 10px;
+  }
   .error-banner {
     flex-direction: column;
     align-items: flex-start;
@@ -781,6 +840,10 @@ const hasLatexContent = () => {
   }
   .latex-preview {
     font-size: 0.72rem;
+  }
+  .editor-bottom-bar {
+    justify-content: flex-end;
+    gap: 8px;
   }
 }
 </style>

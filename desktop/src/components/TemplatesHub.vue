@@ -84,11 +84,11 @@ const isActive = (tab: SubTab) => {
 }
 
 .hub-header {
-  height: 48px;
+  height: 52px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  padding: 0 24px;
+  padding: 0 24px 6px 24px;
   background: var(--bg-accent);
   border-bottom: 1px solid var(--line);
   user-select: none;
@@ -98,14 +98,20 @@ const isActive = (tab: SubTab) => {
   scrollbar-width: thin;
 }
 
-/* Horizontal scrollbar styling with clearance margins */
+/* Horizontal scrollbar: 2 unit default, expands to 5 unit on hover/focus */
 .hub-header::-webkit-scrollbar {
-  height: 3px;
+  height: 2px;
+  transition: height 0.15s ease;
+}
+
+.hub-header:hover::-webkit-scrollbar,
+.hub-header:focus-within::-webkit-scrollbar {
+  height: 5px;
 }
 
 .hub-header::-webkit-scrollbar-track {
   background: transparent;
-  margin: 0 8px;
+  margin: 0 16px;
 }
 
 .hub-header::-webkit-scrollbar-thumb {
@@ -122,6 +128,7 @@ const isActive = (tab: SubTab) => {
   align-items: center;
   gap: 8px;
   min-width: max-content;
+  margin-bottom: 2px;
 }
 
 .hub-nav-item {

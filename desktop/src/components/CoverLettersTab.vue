@@ -280,11 +280,28 @@ const handleCreateCl = async () => {
         </div>
 
         <div class="form-actions">
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'cancel-form'" @mouseleave="activeTooltip = null">
+            <button type="button" class="btn-icon" @click="toggleNewForm">
+              <X :size="16" />
+            </button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'cancel-form'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                :transition="{ duration: 0.15 }"
+                class="floating-message tooltip-top-left"
+              >
+                Cancel
+              </Motion>
+            </AnimatePresence>
+          </div>
+
           <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'initialize-template'" @mouseleave="activeTooltip = null">
-            <button class="btn-save" @click="handleCreateCl" :disabled="isCreating || !newClName || !newClCategory">
+            <button class="btn-icon btn-icon-primary" @click="handleCreateCl" :disabled="isCreating || !newClName || !newClCategory">
               <RotateCw v-if="isCreating" :size="16" class="spinner" />
               <Save v-else :size="16" />
-              <span>{{ isCreating ? 'Initializing...' : 'Initialize Template' }}</span>
             </button>
             <AnimatePresence>
               <Motion
@@ -295,7 +312,7 @@ const handleCreateCl = async () => {
                 :transition="{ duration: 0.15 }"
                 class="floating-message tooltip-top-left"
               >
-                Create and Start Editing
+                {{ isCreating ? 'Initializing...' : 'Initialize Template' }}
               </Motion>
             </AnimatePresence>
           </div>
@@ -380,15 +397,22 @@ const handleCreateCl = async () => {
   height: 100%;
 }
 
-/* Scrollbar track clearance margins */
+/* Scrollbar track clearance margins: 2 units default to 5 units on focus */
 .cl-container::-webkit-scrollbar {
+  width: 4px;
+  height: 2px;
+  transition: all 0.15s ease;
+}
+
+.cl-container:hover::-webkit-scrollbar,
+.cl-container:focus-within::-webkit-scrollbar {
   width: 6px;
-  height: 6px;
+  height: 5px;
 }
 
 .cl-container::-webkit-scrollbar-track {
   background: transparent;
-  margin: 10px 0;
+  margin: 18px 0;
 }
 
 .cl-container::-webkit-scrollbar-thumb {
@@ -653,26 +677,12 @@ const handleCreateCl = async () => {
   border-color: var(--accent);
 }
 
-.form-actions { display: flex; justify-content: flex-end; }
-.btn-save {
-  background: var(--accent);
-  color: white;
-  border: none;
-  padding: 12px 32px;
-  min-height: 44px;
-  border-radius: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: 0.2s;
+.form-actions {
   display: flex;
+  justify-content: flex-end;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-width: 180px;
-  white-space: nowrap;
+  gap: 12px;
 }
-
-.btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .spinner {
   animation: spin 1s linear infinite;
@@ -849,14 +859,8 @@ const handleCreateCl = async () => {
     margin-bottom: 20px;
   }
   .form-actions {
-    width: 100%;
-  }
-  .form-actions .btn-tooltip-wrapper {
-    width: 100%;
-  }
-  .btn-save {
-    width: 100%;
-    min-width: 0;
+    justify-content: flex-end;
+    gap: 10px;
   }
   .resumes-grid {
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
@@ -892,6 +896,10 @@ const handleCreateCl = async () => {
   .form-card {
     padding: 12px 10px;
     border-radius: 12px;
+  }
+  .form-actions {
+    justify-content: flex-end;
+    gap: 8px;
   }
   .resumes-grid {
     grid-template-columns: 1fr;

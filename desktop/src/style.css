@@ -67,11 +67,18 @@ body {
 
 /* Scrollbar Styles */
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 6px;
+    width: 5px;
+    height: 2px;
+    transition: all 0.15s ease;
+}
+::-webkit-scrollbar:hover,
+*:hover::-webkit-scrollbar {
+    height: 5px;
+    width: 6px;
 }
 ::-webkit-scrollbar-track {
     background: transparent;
+    margin: 14px 0;
 }
 ::-webkit-scrollbar-thumb {
     background: #30363d;
@@ -85,7 +92,15 @@ body {
 @media (max-width: 600px), (max-height: 500px) {
     ::-webkit-scrollbar {
         width: 4px;
-        height: 4px;
+        height: 2px;
+    }
+    ::-webkit-scrollbar:hover,
+    *:hover::-webkit-scrollbar {
+        height: 5px;
+        width: 5px;
+    }
+    ::-webkit-scrollbar-track {
+        margin: 12px 0;
     }
     ::-webkit-scrollbar-thumb {
         border: none;
@@ -124,15 +139,25 @@ body {
 .scroll-tray-x::-webkit-scrollbar,
 .horizontal-scroll-tray::-webkit-scrollbar,
 [data-scroll-tray]::-webkit-scrollbar {
-    height: 4px;
+    height: 2px;
     display: block;
+    transition: height 0.15s ease;
+}
+
+.scroll-tray-x:hover::-webkit-scrollbar,
+.horizontal-scroll-tray:hover::-webkit-scrollbar,
+[data-scroll-tray]:hover::-webkit-scrollbar,
+.scroll-tray-x:focus-within::-webkit-scrollbar,
+.horizontal-scroll-tray:focus-within::-webkit-scrollbar,
+[data-scroll-tray]:focus-within::-webkit-scrollbar {
+    height: 5px;
 }
 
 .scroll-tray-x::-webkit-scrollbar-track,
 .horizontal-scroll-tray::-webkit-scrollbar-track,
 [data-scroll-tray]::-webkit-scrollbar-track {
     background: transparent;
-    margin: 0 4px;
+    margin: 0 8px;
 }
 
 .scroll-tray-x::-webkit-scrollbar-thumb,

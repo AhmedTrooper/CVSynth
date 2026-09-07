@@ -520,20 +520,25 @@ const getTaskBadgeClass = (task: string): string => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
-  border-radius: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
   font-size: 0.78rem;
   font-weight: 500;
   cursor: pointer;
   border: 1px solid var(--line);
-  background: var(--bg);
+  background: var(--surface-soft);
   color: var(--ink);
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .audit-btn:hover:not(:disabled) {
   background: var(--surface);
   border-color: var(--accent);
+}
+
+.audit-btn:active:not(:disabled) {
+  transform: scale(0.95);
 }
 
 .audit-btn:disabled {
@@ -543,11 +548,12 @@ const getTaskBadgeClass = (task: string): string => {
 
 .audit-btn.danger {
   color: var(--warning);
-  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(248, 81, 73, 0.08);
+  border-color: rgba(248, 81, 73, 0.3);
 }
 
 .audit-btn.danger:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(248, 81, 73, 0.16);
   border-color: var(--warning);
 }
 
@@ -562,16 +568,17 @@ const getTaskBadgeClass = (task: string): string => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  border-radius: 14px;
+  padding: 4px 12px;
+  border-radius: 16px;
   font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
   border: 1px solid var(--line);
-  background: var(--surface);
+  background: var(--surface-soft);
   color: var(--muted);
   text-transform: capitalize;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .task-pill:hover {
@@ -579,24 +586,29 @@ const getTaskBadgeClass = (task: string): string => {
   border-color: var(--accent);
 }
 
+.task-pill:active {
+  transform: scale(0.95);
+}
+
 .task-pill.active {
   background: var(--accent);
-  color: var(--bg);
+  color: #ffffff;
   border-color: var(--accent);
+  font-weight: 600;
 }
 
 .pill-count {
   display: inline-block;
-  padding: 1px 5px;
+  padding: 1px 6px;
   border-radius: 10px;
   font-size: 0.7rem;
   background: var(--bg);
-  color: var(--ink);
+  color: var(--muted);
 }
 
 .task-pill.active .pill-count {
-  background: var(--surface-soft);
-  color: var(--ink);
+  background: rgba(0, 0, 0, 0.25);
+  color: #ffffff;
 }
 
 .audit-list-container {
@@ -836,7 +848,8 @@ const getTaskBadgeClass = (task: string): string => {
 
 .card-action-btn.delete-btn:hover {
   color: var(--warning);
-  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(248, 81, 73, 0.12);
+  border-color: rgba(248, 81, 73, 0.3);
 }
 
 .copy-feedback {
@@ -850,7 +863,7 @@ const getTaskBadgeClass = (task: string): string => {
   flex-direction: column;
   gap: 6px;
   padding: 8px 12px 12px 38px;
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--bg-accent);
   border-top: 1px dashed var(--line);
 }
 
@@ -873,9 +886,9 @@ const getTaskBadgeClass = (task: string): string => {
   align-items: center;
   gap: 4px;
   font-size: 0.72rem;
-  padding: 3px 8px;
-  border-radius: 4px;
-  background: var(--surface);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
   border: 1px solid var(--line);
   color: var(--ink);
   cursor: pointer;
@@ -884,6 +897,11 @@ const getTaskBadgeClass = (task: string): string => {
 
 .copy-details-btn:hover {
   border-color: var(--accent);
+  background: var(--surface);
+}
+
+.copy-details-btn:active {
+  transform: scale(0.95);
 }
 
 .details-pre {
@@ -916,5 +934,197 @@ const getTaskBadgeClass = (task: string): string => {
 .select-text {
   user-select: text !important;
   -webkit-user-select: text !important;
+}
+
+/* =======================================================================
+   Tablet Styles (601px - 959px)
+   ======================================================================= */
+@media (max-width: 959px) and (min-width: 601px) {
+  .audit-toolbar {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .toolbar-left {
+    min-width: 220px;
+  }
+
+  .audit-btn {
+    padding: 5px 10px;
+    font-size: 0.76rem;
+  }
+
+  .audit-list-container {
+    max-height: 500px;
+  }
+}
+
+/* =======================================================================
+   Mobile Styles (<= 600px):
+   Horizontal scroll trays for toolbar actions and filter pills,
+   touch targets min 36px, full-width details, and bounds safety.
+   ======================================================================= */
+@media (max-width: 600px) {
+  .audit-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .toolbar-left {
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 0;
+    width: 100%;
+    gap: 6px;
+  }
+
+  .search-box {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .filter-dropdown-wrapper {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .filter-select {
+    flex: 1;
+    width: 100%;
+  }
+
+  /* Horizontal scroll tray for toolbar buttons */
+  .toolbar-right {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    gap: 6px;
+    width: 100%;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+  }
+
+  .toolbar-right::-webkit-scrollbar {
+    height: 3px;
+    display: block;
+  }
+
+  .toolbar-right::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .toolbar-right::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 3px;
+  }
+
+  .toolbar-right::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+  }
+
+  .audit-btn {
+    flex-shrink: 0;
+    min-height: 36px;
+    padding: 6px 12px;
+  }
+
+  /* Horizontal scroll tray for task filter pills */
+  .task-filter-pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    gap: 6px;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+  }
+
+  .task-filter-pills::-webkit-scrollbar {
+    height: 3px;
+    display: block;
+  }
+
+  .task-filter-pills::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .task-filter-pills::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 3px;
+  }
+
+  .task-filter-pills::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+  }
+
+  .task-pill {
+    flex-shrink: 0;
+    min-height: 32px;
+    padding: 4px 10px;
+  }
+
+  .audit-list-container {
+    min-height: 160px;
+    max-height: 50vh;
+  }
+
+  .audit-card-main {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .card-header-line {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .card-action-btn {
+    min-width: 34px;
+    min-height: 34px;
+    padding: 6px;
+  }
+
+  .audit-card-details {
+    padding: 8px 10px 10px 10px;
+  }
+
+  .details-pre {
+    padding: 8px 10px;
+    font-size: 0.72rem;
+    max-height: 180px;
+  }
+}
+
+/* =======================================================================
+   Ultra-compact Mobile (<= 340px width):
+   Tighter padding for 300px viewports
+   ======================================================================= */
+@media (max-width: 340px) {
+  .audit-toolbar {
+    padding: 6px;
+  }
+
+  .search-box input {
+    font-size: 0.78rem;
+    padding: 5px 4px;
+  }
+
+  .card-message {
+    font-size: 0.78rem;
+  }
+
+  .details-pre {
+    font-size: 0.68rem;
+    padding: 6px 8px;
+  }
 }
 </style>

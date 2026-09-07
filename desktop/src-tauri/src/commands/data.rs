@@ -15,12 +15,7 @@ use tauri::{AppHandle, Manager, State};
 
 /// Keys that are sensitive (secrets, credentials) or per-installation
 /// runtime values that must never be exported or overwritten by imports.
-const SENSITIVE_EXACT_KEYS: &[&str] = &[
-    "extension_secret",
-    "active_server_port",
-    "ai_provider",
-    "ai_model",
-];
+const SENSITIVE_EXACT_KEYS: &[&str] = &["extension_secret", "active_server_port"];
 
 /// Prefix patterns — any key starting with one of these is sensitive.
 const SENSITIVE_PREFIXES: &[&str] = &["s3_", "aws_", "cloud_"];
@@ -33,8 +28,6 @@ const SENSITIVE_SUBSTRINGS: &[&str] = &[
     "password",
     "credential",
     "bucket",
-    "custom_base_url",
-    "custom_model",
 ];
 
 pub fn is_sensitive_key(key: &str) -> bool {
@@ -1114,15 +1107,12 @@ mod tests {
     fn exact_keys_are_sensitive() {
         assert!(is_sensitive_key("extension_secret"));
         assert!(is_sensitive_key("active_server_port"));
-        assert!(is_sensitive_key("ai_provider"));
-        assert!(is_sensitive_key("ai_model"));
     }
 
     #[test]
     fn exact_keys_are_case_insensitive() {
         assert!(is_sensitive_key("Extension_Secret"));
-        assert!(is_sensitive_key("AI_PROVIDER"));
-        assert!(is_sensitive_key("AI_MODEL"));
+        assert!(is_sensitive_key("Active_Server_Port"));
     }
 
     #[test]
@@ -1136,10 +1126,6 @@ mod tests {
 
     #[test]
     fn substring_keys_are_sensitive() {
-        assert!(is_sensitive_key("gemini_custom_base_url"));
-        assert!(is_sensitive_key("openai_custom_base_url"));
-        assert!(is_sensitive_key("anthropic_custom_model"));
-        assert!(is_sensitive_key("ollama_custom_base_url"));
         assert!(is_sensitive_key("some_api_key_for_thing"));
         assert!(is_sensitive_key("my_secret_value"));
         assert!(is_sensitive_key("auth_token"));
@@ -1160,6 +1146,12 @@ mod tests {
         assert!(!is_sensitive_key("auto_compile"));
         assert!(!is_sensitive_key("diagram_workspace"));
         assert!(!is_sensitive_key("last_opened_diagram"));
+        assert!(!is_sensitive_key("ai_provider"));
+        assert!(!is_sensitive_key("ai_model"));
+        assert!(!is_sensitive_key("openai_custom_model"));
+        assert!(!is_sensitive_key("openai_custom_base_url"));
+        assert!(!is_sensitive_key("anthropic_custom_model"));
+        assert!(!is_sensitive_key("ollama_custom_base_url"));
     }
 
     // --- snapshot / restore integration tests ---
@@ -1197,6 +1189,11 @@ mod tests {
         )
         .unwrap();
         conn.execute(
+            "INSERT INTO app_settings VALUES ('active_server_port', '1420')",
+            [],
+        )
+        .unwrap();
+        conn.execute(
             "INSERT INTO app_settings VALUES ('active_theme', 'dracula')",
             [],
         )
@@ -1212,9 +1209,10 @@ mod tests {
         let snapshot = snapshot_sensitive_settings(&conn);
         let keys: Vec<&str> = snapshot.iter().map(|(k, _)| k.as_str()).collect();
 
-        assert!(keys.contains(&"ai_provider"));
-        assert!(keys.contains(&"ai_model"));
+        assert!(!keys.contains(&"ai_provider"));
+        assert!(!keys.contains(&"ai_model"));
         assert!(keys.contains(&"extension_secret"));
+        assert!(keys.contains(&"active_server_port"));
         assert!(keys.contains(&"s3_bucket_name"));
         assert!(!keys.contains(&"active_theme"));
         assert!(!keys.contains(&"font_size"));
@@ -1224,7 +1222,7 @@ mod tests {
     fn restore_brings_back_sensitive_keys_after_wipe() {
         let conn = setup_test_db();
         conn.execute(
-            "INSERT INTO app_settings VALUES ('ai_provider', 'gemini')",
+            "INSERT INTO app_settings VALUES ('active_server_port', '1420')",
             [],
         )
         .unwrap();
@@ -1257,14 +1255,14 @@ mod tests {
         restore_sensitive_settings(&conn, &snapshot);
 
         // Sensitive keys restored
-        let provider: String = conn
+        let port: String = conn
             .query_row(
-                "SELECT value FROM app_settings WHERE key = 'ai_provider'",
+                "SELECT value FROM app_settings WHERE key = 'active_server_port'",
                 [],
                 |r| r.get(0),
             )
             .unwrap();
-        assert_eq!(provider, "gemini");
+        assert_eq!(port, "1420");
 
         let secret: String = conn
             .query_row(
@@ -1327,9 +1325,11 @@ mod tests {
             .filter(|s| !is_sensitive_key(&s.key))
             .collect();
 
-        assert_eq!(safe.len(), 2);
+        // active_theme, ai_provider, font_family are allowed; extension_secret and s3_bucket_name are skipped
+        assert_eq!(safe.len(), 3);
         assert_eq!(safe[0].key, "active_theme");
-        assert_eq!(safe[1].key, "font_family");
+        assert_eq!(safe[1].key, "ai_provider");
+        assert_eq!(safe[2].key, "font_family");
     }
 
     // --- Documents backup recursive-nested-path tests ---

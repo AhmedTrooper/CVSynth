@@ -13,7 +13,9 @@ import {
 } from '../schemas';
 import { recordAppError } from '../utils/error_logger';
 
-export const TEXT_BACKUP_EXTENSIONS = ['tex', 'bib', 'cls', 'sty', 'md', 'mmd', 'txt', 'cfg'];
+export const TEXT_BACKUP_EXTENSIONS = [
+  'tex', 'bib', 'cls', 'sty', 'md', 'mmd', 'txt', 'cfg', 'mermaid', 'latex', 'json', 'yaml', 'yml', 'csv', 'tsv'
+];
 
 export type { DocumentSummary, DocumentFileEntry };
 

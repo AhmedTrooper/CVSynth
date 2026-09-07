@@ -26,7 +26,10 @@ import {
   Lock,
   Copy,
   Check,
-  AlertTriangle
+  AlertTriangle,
+  FolderOpen,
+  FileText,
+  X
 } from '@lucide/vue';
 import { copyToClipboard } from '../utils/clipboard';
 import { Motion, AnimatePresence } from 'motion-v';
@@ -261,7 +264,34 @@ const exportData = async () => {
   }
 };
 
+const selectedLocalBackupPath = ref<string>('');
+
+const handleBrowseLocalBackup = async () => {
+  try {
+    const path = await openDialog({
+      filters: [{ name: 'JSON Backup', extensions: ['json'] }],
+      multiple: false
+    });
+    if (path && typeof path === 'string') {
+      selectedLocalBackupPath.value = path;
+    }
+  } catch (error: any) {
+    saveError.value = `File Picker Error: ${error.toString()}`;
+  }
+};
+
 const handleImport = async (mode: 'merge' | 'overwrite') => {
+  let targetPath = selectedLocalBackupPath.value;
+  if (!targetPath) {
+    const path = await openDialog({
+      filters: [{ name: 'JSON Backup', extensions: ['json'] }],
+      multiple: false
+    });
+    if (!path || typeof path !== 'string') return;
+    targetPath = path;
+    selectedLocalBackupPath.value = targetPath;
+  }
+
   if (mode === 'overwrite') {
     const confirmed = await ask(
       'Are you absolutely sure you want to overwrite your entire local vault? This action cannot be undone and will permanently delete any unsaved local changes.',
@@ -270,16 +300,9 @@ const handleImport = async (mode: 'merge' | 'overwrite') => {
     if (!confirmed) return;
   }
 
-  const path = await openDialog({
-    filters: [{ name: 'JSON', extensions: ['json'] }],
-    multiple: false
-  });
-
-  if (!path) return;
-
   isImporting.value = true;
   try {
-    const content = await readTextFile(path as string);
+    const content = await readTextFile(targetPath);
     const data = JSON.parse(content);
     await invoke('import_data', { data, mode });
     await dialog.showAlert(`Successfully ${mode === 'merge' ? 'synchronized' : 'restored'} your vault. The application will now reload to apply changes.`, 'Import Successful');
@@ -1503,6 +1526,31 @@ const handleSave = async () => {
           <h3>Vault Synchronization</h3>
           <p>Import data from a backup file to merge with current data or perform a full restore.</p>
         </div>
+
+        <div class="local-backup-picker-card">
+          <label class="backup-picker-label">Target Backup File</label>
+          <div class="file-picker-row">
+            <div class="selected-file-display" :class="{ 'has-file': !!selectedLocalBackupPath }">
+              <FileText :size="16" class="file-icon" />
+              <span class="file-path-text" :title="selectedLocalBackupPath || 'No backup file selected'">
+                {{ selectedLocalBackupPath || 'No backup file selected (Click Browse or click Restore to choose)' }}
+              </span>
+              <button 
+                v-if="selectedLocalBackupPath" 
+                type="button" 
+                class="btn-clear-file" 
+                @click="selectedLocalBackupPath = ''" 
+                title="Clear selected file"
+              >
+                <X :size="14" />
+              </button>
+            </div>
+            <button type="button" class="btn-browse-file" @click="handleBrowseLocalBackup" :disabled="isImporting">
+              <FolderOpen :size="15" />
+              <span>Browse...</span>
+            </button>
+          </div>
+        </div>
         
         <div class="import-actions">
           <button class="btn-import-option" @click="handleImport('merge')" :disabled="isImporting">
@@ -1549,7 +1597,10 @@ const handleSave = async () => {
           <div class="input-group">
             <label>Path Style Access</label>
             <label class="checkbox-label">
-              <input type="checkbox" v-model="s3ForcePathStyle" class="custom-checkbox" />
+              <input type="checkbox" v-model="s3ForcePathStyle" class="visually-hidden-checkbox" />
+              <div class="custom-checkbox-box" :class="{ checked: s3ForcePathStyle }">
+                <Check v-if="s3ForcePathStyle" :size="13" :stroke-width="3" />
+              </div>
               <span>Enable (Required for MinIO/R2)</span>
             </label>
           </div>
@@ -1674,7 +1725,10 @@ const handleSave = async () => {
         <div class="input-row backup-automation-row">
           <div class="input-group">
             <label class="checkbox-label">
-              <input type="checkbox" v-model="autoLocalBackup" class="custom-checkbox" />
+              <input type="checkbox" v-model="autoLocalBackup" class="visually-hidden-checkbox" />
+              <div class="custom-checkbox-box" :class="{ checked: autoLocalBackup }">
+                <Check v-if="autoLocalBackup" :size="13" :stroke-width="3" />
+              </div>
               <span>Auto Local Backup on Exit</span>
             </label>
             <p class="backup-tip">Automatically exports an unencrypted snapshot to your <strong>Documents/RoleTect-Backups</strong> folder.</p>
@@ -1683,8 +1737,11 @@ const handleSave = async () => {
 
         <div class="input-row backup-automation-row">
           <div class="input-group">
-            <label class="checkbox-label">
-              <input type="checkbox" v-model="autoCloudBackup" class="custom-checkbox" :disabled="!s3SetupOk" />
+            <label class="checkbox-label" :class="{ disabled: !s3SetupOk }">
+              <input type="checkbox" v-model="autoCloudBackup" class="visually-hidden-checkbox" :disabled="!s3SetupOk" />
+              <div class="custom-checkbox-box" :class="{ checked: autoCloudBackup, disabled: !s3SetupOk }">
+                <Check v-if="autoCloudBackup" :size="13" :stroke-width="3" />
+              </div>
               <span>Auto Cloud Backup on Exit</span>
             </label>
             <p class="backup-tip">Automatically uploads an encrypted snapshot to your configured S3 bucket. Requires active S3 setup.</p>
@@ -2495,19 +2552,158 @@ label {
   user-select: none;
 }
 
-.custom-checkbox {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--accent);
-  cursor: pointer;
+.checkbox-label.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.visually-hidden-checkbox {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.custom-checkbox-box {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.custom-checkbox-box.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.checkbox-label:hover .custom-checkbox-box:not(.disabled) {
+  border-color: var(--accent);
+}
+
+.custom-checkbox-box.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  border-color: var(--border);
+}
+
+/* Local backup file picker */
+.local-backup-picker-card {
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.backup-picker-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.file-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selected-file-display {
+  flex: 1;
+  min-height: 38px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  font-size: 0.85rem;
+  color: var(--muted);
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.selected-file-display.has-file {
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+
+.selected-file-display .file-icon {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.selected-file-display .file-path-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+}
+
+.btn-clear-file {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.btn-clear-file:hover {
+  color: var(--error);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.btn-browse-file {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 0 14px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-browse-file:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--bg-card);
 }
 
 .backup-tip {
   font-size: 0.75rem;
   color: var(--muted);
   margin-top: 4px;
-  margin-left: 28px;
+  margin-left: 30px;
   line-height: 1.4;
   word-break: break-word;
 }
@@ -3140,6 +3336,15 @@ label {
     flex-direction: column;
     gap: 14px;
     margin-top: 14px;
+  }
+  .file-picker-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .btn-browse-file {
+    width: 100%;
+    justify-content: center;
   }
   .import-actions {
     grid-template-columns: 1fr;

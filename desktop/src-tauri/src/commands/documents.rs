@@ -7,8 +7,10 @@ use tauri::{AppHandle, Manager, State};
 const MAX_FILENAME_LEN: usize = 100;
 const MAX_REL_PATH_LEN: usize = 256;
 /// File extensions eligible for backup. Binary assets are excluded.
-pub const TEXT_BACKUP_EXTENSIONS: &[&str] =
-    &["tex", "bib", "cls", "sty", "md", "mmd", "txt", "cfg"];
+pub const TEXT_BACKUP_EXTENSIONS: &[&str] = &[
+    "tex", "bib", "cls", "sty", "md", "mmd", "txt", "cfg", "mermaid", "latex", "json", "yaml",
+    "yml", "csv", "tsv",
+];
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DocumentSummary {
@@ -888,6 +890,9 @@ mod tests {
         assert!(is_text_extension("foo.tex"));
         assert!(is_text_extension("foo.bib"));
         assert!(is_text_extension("foo.cls"));
+        assert!(is_text_extension("foo.mermaid"));
+        assert!(is_text_extension("foo.latex"));
+        assert!(is_text_extension("data.json"));
         assert!(is_text_extension("a/b.tex"));
         assert!(!is_text_extension("foo.png"));
         assert!(!is_text_extension("foo.jpg"));

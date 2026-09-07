@@ -10,6 +10,7 @@ import { copyToClipboard } from '../utils/clipboard';
 const store = useDialogStore();
 const inputRef = ref<HTMLInputElement | null>(null);
 const isCopied = ref(false);
+const activeTooltip = ref<string | null>(null);
 
 const isErrorMessage = computed(() => {
   const title = (store.options?.title || '').toLowerCase();
@@ -148,29 +149,88 @@ onUnmounted(() => {
 
         <div class="dialog-footer">
           <div class="footer-left">
-            <button
-              v-if="store.options?.message"
-              type="button"
-              class="btn-copy-dialog"
-              @click="handleCopyMessage"
-              :title="isCopied ? 'Copied!' : (isErrorMessage ? 'Copy Error' : 'Copy Message')"
+            <div 
+              v-if="store.options?.message" 
+              class="btn-tooltip-wrapper" 
+              @mouseenter="activeTooltip = 'copy'" 
+              @mouseleave="activeTooltip = null"
             >
-              <Check v-if="isCopied" :size="14" class="copied-icon" />
-              <Copy v-else :size="14" />
-              <span>{{ isCopied ? 'Copied!' : (isErrorMessage ? 'Copy Error' : 'Copy Message') }}</span>
-            </button>
+              <button
+                type="button"
+                class="btn-icon-dialog btn-copy-dialog"
+                @click="handleCopyMessage"
+                :title="isCopied ? 'Copied!' : (isErrorMessage ? 'Copy Error' : 'Copy Message')"
+              >
+                <Check v-if="isCopied" :size="16" class="copied-icon" />
+                <Copy v-else :size="16" />
+              </button>
+              <AnimatePresence>
+                <Motion
+                  v-if="activeTooltip === 'copy'"
+                  :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                  :animate="{ opacity: 1, y: 0, scale: 1 }"
+                  :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                  :transition="{ duration: 0.15 }"
+                  class="flying-message tooltip-top"
+                >
+                  {{ isCopied ? 'Copied!' : (isErrorMessage ? 'Copy Error' : 'Copy Message') }}
+                </Motion>
+              </AnimatePresence>
+            </div>
           </div>
           <div class="footer-right">
-            <button 
+            <div 
               v-if="store.options?.type !== 'alert'" 
-              class="btn-cancel" 
-              @click="handleCancel"
+              class="btn-tooltip-wrapper" 
+              @mouseenter="activeTooltip = 'cancel'" 
+              @mouseleave="activeTooltip = null"
             >
-              {{ store.options?.cancelText || 'Cancel' }}
-            </button>
-            <button class="btn-confirm" @click="handleConfirm">
-              {{ store.options?.confirmText || (store.options?.type === 'alert' ? 'Got it' : 'Confirm') }}
-            </button>
+              <button 
+                class="btn-icon-dialog btn-cancel" 
+                @click="handleCancel"
+                :title="store.options?.cancelText || 'Cancel'"
+              >
+                <X :size="16" />
+              </button>
+              <AnimatePresence>
+                <Motion
+                  v-if="activeTooltip === 'cancel'"
+                  :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                  :animate="{ opacity: 1, y: 0, scale: 1 }"
+                  :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                  :transition="{ duration: 0.15 }"
+                  class="flying-message tooltip-top"
+                >
+                  {{ store.options?.cancelText || 'Cancel' }}
+                </Motion>
+              </AnimatePresence>
+            </div>
+
+            <div 
+              class="btn-tooltip-wrapper" 
+              @mouseenter="activeTooltip = 'confirm'" 
+              @mouseleave="activeTooltip = null"
+            >
+              <button 
+                class="btn-icon-dialog btn-confirm" 
+                @click="handleConfirm"
+                :title="store.options?.confirmText || (store.options?.type === 'alert' ? 'Got it' : 'Confirm')"
+              >
+                <Check :size="16" />
+              </button>
+              <AnimatePresence>
+                <Motion
+                  v-if="activeTooltip === 'confirm'"
+                  :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                  :animate="{ opacity: 1, y: 0, scale: 1 }"
+                  :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                  :transition="{ duration: 0.15 }"
+                  class="flying-message tooltip-top"
+                >
+                  {{ store.options?.confirmText || (store.options?.type === 'alert' ? 'Got it' : 'Confirm') }}
+                </Motion>
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       </Motion>
@@ -314,6 +374,33 @@ onUnmounted(() => {
   word-break: break-word;
 }
 
+/* Sleek 2-to-5 unit scrollbar for dialog message with track margin */
+.dialog-message::-webkit-scrollbar {
+  width: 4px;
+  height: 2px;
+  transition: all 0.15s ease;
+}
+
+.dialog-message:hover::-webkit-scrollbar,
+.dialog-message:focus-within::-webkit-scrollbar {
+  width: 6px;
+  height: 5px;
+}
+
+.dialog-message::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px 0;
+}
+
+.dialog-message::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
+.dialog-message::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
 .input-wrapper {
   margin-top: 8px;
 }
@@ -352,38 +439,60 @@ onUnmounted(() => {
 .footer-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   margin-left: auto;
 }
 
-.btn-copy-dialog {
-  display: inline-flex;
+.btn-tooltip-wrapper {
+  position: relative;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 9px 14px;
+  justify-content: center;
+}
+
+.flying-message {
+  position: absolute;
+  background: var(--surface-soft);
+  color: var(--ink);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--line);
+}
+
+.tooltip-top {
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.btn-icon-dialog {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-copy-dialog {
   background: var(--surface-soft);
   border: 1px solid var(--line);
   color: var(--ink);
-  border-radius: 8px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
 }
 
 .btn-copy-dialog:hover {
   background: var(--surface);
   border-color: var(--accent);
   color: var(--accent);
-}
-
-.btn-confirm, .btn-cancel {
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: 0.2s;
 }
 
 .btn-confirm {
@@ -394,6 +503,7 @@ onUnmounted(() => {
 
 .btn-confirm:hover {
   filter: brightness(1.1);
+  box-shadow: 0 0 12px var(--accent-soft);
 }
 
 .btn-cancel {
@@ -405,6 +515,7 @@ onUnmounted(() => {
 .btn-cancel:hover {
   background: var(--surface);
   border-color: var(--muted);
+  color: var(--warning);
 }
 
 /* Datepicker Theming Overrides */

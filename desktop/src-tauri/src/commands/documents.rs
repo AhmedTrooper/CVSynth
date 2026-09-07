@@ -825,7 +825,6 @@ pub async fn compile_document_to_pdf(
             .map_err(|e| format!("Failed to record compile status: {}", e))?;
         }
     }
-    state.mark_dirty();
     result
 }
 

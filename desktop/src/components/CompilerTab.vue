@@ -586,6 +586,7 @@ const saveActiveFile = async () => {
   if (!activeFilePath.value) {
     // Fallback to standalone state
     await invoke('save_compiler_state', { latexContent: latexCode.value });
+    isDirty.value = false;
     return;
   }
 
@@ -822,8 +823,10 @@ const compilePdf = async () => {
   compilationError.value = null;
   
   try {
-    // Bulletproof: Force save before compile so the disk is in sync with the editor
-    await saveActiveFile();
+    // Only save before compile if editor buffer has unsaved changes
+    if (isDirty.value) {
+      await saveActiveFile();
+    }
 
     let pdfBytes: number[];
     

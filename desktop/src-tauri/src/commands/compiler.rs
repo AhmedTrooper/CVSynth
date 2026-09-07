@@ -1,4 +1,5 @@
 use crate::AppState;
+use rusqlite::OptionalExtension;
 use tauri::State;
 
 #[tauri::command]
@@ -8,6 +9,21 @@ pub async fn save_compiler_state(
 ) -> Result<(), String> {
     let mut db_guard = state.db.lock().map_err(|e| format!("Mutex error: {}", e))?;
     let conn = db_guard.as_mut().ok_or("Database connection lost")?;
+
+    let existing: Option<String> = conn
+        .query_row(
+            "SELECT latex_content FROM compiler_state WHERE id = 1",
+            [],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    if let Some(ref current) = existing {
+        if current == &latex_content {
+            return Ok(());
+        }
+    }
 
     conn.execute(
         "INSERT INTO compiler_state (id, latex_content) 

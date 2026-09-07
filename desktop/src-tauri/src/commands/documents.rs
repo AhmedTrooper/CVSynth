@@ -16,13 +16,21 @@ pub const TEXT_BACKUP_EXTENSIONS: &[&str] = &[
 pub struct DocumentSummary {
     pub id: String,
     pub title: String,
+    #[serde(default)]
     pub description: String,
+    #[serde(default)]
     pub tags: String,
+    #[serde(default)]
     pub starred: bool,
+    #[serde(default)]
     pub main_file: Option<String>,
+    #[serde(default)]
     pub last_compiled_at: Option<String>,
+    #[serde(default)]
     pub compile_status: Option<String>,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub updated_at: String,
 }
 

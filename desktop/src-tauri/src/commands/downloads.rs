@@ -3,13 +3,16 @@ use nanoid::nanoid;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DownloadRecord {
     pub id: String,
     pub filename: String,
     pub download_type: String,
+    #[serde(default)]
     pub job_id: Option<String>,
+    #[serde(default)]
     pub content_id: Option<String>,
+    #[serde(default)]
     pub created_at: String,
 }
 

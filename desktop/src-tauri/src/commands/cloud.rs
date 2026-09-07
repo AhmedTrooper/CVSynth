@@ -1,4 +1,4 @@
-use crate::commands::data::{export_all_data_core, import_data_core, AppDataExport};
+use crate::commands::data::{export_all_data_core, import_data_core};
 use crate::s3::{self, BackupEntry, S3Config};
 use crate::AppState;
 use tauri::{AppHandle, State};
@@ -125,8 +125,7 @@ pub async fn restore_from_s3(
     let client = s3::build_s3_client(&config).await?;
 
     let json_str = s3::download_backup(&client, &config.bucket_name, &key).await?;
-    let data: AppDataExport = serde_json::from_str(&json_str)
-        .map_err(|e| format!("Failed to parse backup JSON: {}", e))?;
+    let data = crate::commands::data::parse_backup_json(&json_str)?;
 
     import_data_core(&state, &app, data, mode)?;
 

@@ -18,9 +18,12 @@ pub struct CoverLetterItem {
 pub struct CoverLetterDetail {
     pub id: String,
     pub name: String,
+    #[serde(default)]
     pub category: String,
     pub latex_content: String,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub updated_at: String,
 }
 

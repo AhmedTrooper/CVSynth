@@ -303,12 +303,23 @@ const handleImport = async (mode: 'merge' | 'overwrite') => {
   isImporting.value = true;
   try {
     const content = await readTextFile(targetPath);
-    const data = JSON.parse(content);
+    let raw = content;
+    if (raw.charCodeAt(0) === 0xfeff) {
+      raw = raw.slice(1);
+    }
+    let data: any;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      // If client-side JSON.parse failed, pass raw string to Rust backend parser
+      data = raw;
+    }
     await invoke('import_data', { data, mode });
     await dialog.showAlert(`Successfully ${mode === 'merge' ? 'synchronized' : 'restored'} your vault. The application will now reload to apply changes.`, 'Import Successful');
     window.location.reload();
   } catch (error: any) {
     saveError.value = `Import Error: ${error.toString()}`;
+    await dialog.showAlert(`Failed to import vault: ${error.toString()}`, 'Import Error');
   } finally {
     isImporting.value = false;
   }

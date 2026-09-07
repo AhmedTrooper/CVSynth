@@ -7,11 +7,16 @@ use tauri::{command, AppHandle, Manager, State};
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ErrorAuditLog {
     pub id: String,
+    #[serde(default)]
     pub task_type: String, // compiling, creating, fetching, ai_tailoring, ai_refining, ai_fixing, saving, deleting, s3_backup, network, general
+    #[serde(default)]
     pub error_type: String, // TectonicCompilationError, AiError, DatabaseError, FileSystemError, NetworkError, ValidationError, SystemError
     pub message: String,
+    #[serde(default)]
     pub details: Option<String>,
+    #[serde(default)]
     pub source: Option<String>,
+    #[serde(default)]
     pub created_at: String,
 }
 

@@ -4,19 +4,32 @@ use nanoid::nanoid;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
+fn default_char_limit() -> i64 {
+    250
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OutreachLeadItem {
     pub id: String,
     pub person_name: String,
     pub profile_url: String,
+    #[serde(default)]
     pub headline: Option<String>,
+    #[serde(default)]
     pub raw_bio: String,
+    #[serde(default)]
     pub recent_posts: Vec<String>,
+    #[serde(default)]
     pub template_id: Option<String>,
+    #[serde(default = "default_char_limit")]
     pub char_limit: i64,
+    #[serde(default)]
     pub tailored_message: Option<String>,
+    #[serde(default)]
     pub status: String,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub updated_at: String,
 }
 

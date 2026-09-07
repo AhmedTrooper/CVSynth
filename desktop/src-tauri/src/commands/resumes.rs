@@ -16,9 +16,12 @@ pub struct ResumeItem {
 pub struct ResumeDetail {
     pub id: String,
     pub name: String,
+    #[serde(default)]
     pub category: String,
     pub latex_content: String,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub updated_at: String,
 }
 

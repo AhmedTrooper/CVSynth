@@ -5,7 +5,7 @@ use nanoid::nanoid;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct JobPayload {
     pub id: String,
     pub company_name: String,

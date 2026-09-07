@@ -2,12 +2,15 @@ use crate::AppState;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct InboxJob {
     pub id: String,
+    #[serde(default)]
     pub url: Option<String>,
     pub raw_description: String,
+    #[serde(default)]
     pub status: String,
+    #[serde(default)]
     pub created_at: String,
 }
 

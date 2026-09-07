@@ -7,9 +7,12 @@ use tauri::State;
 pub struct HrTemplateItem {
     pub id: String,
     pub name: String,
+    #[serde(default)]
     pub category: String,
     pub content: String,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub updated_at: String,
 }
 

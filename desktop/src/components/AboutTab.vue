@@ -114,7 +114,7 @@ const copyIdentifier = async () => {
       <div class="action-row">
         <button 
           class="btn-premium" 
-          @click="openLink('https://github.com/AhmedTrooper/roletect-app')"
+          @click="openLink('https://github.com/AhmedTrooper/RoleTect')"
           title="Open Community, Releases & Documentation in browser"
           aria-label="Open Community, Releases & Documentation in browser"
         >

@@ -46,7 +46,7 @@ const tabs = [
 
 const externalLinks = [
     {
-        url: "https://github.com/AhmedTrooper/roletect-app",
+        url: "https://github.com/AhmedTrooper/RoleTect",
         label: "Community & Releases",
         icon: Code,
     },

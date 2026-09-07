@@ -1867,7 +1867,7 @@ const handleSave = async () => {
                 <button
                   type="button"
                   class="btn-get-license"
-                  @click="openUrl('https://github.com/AhmedTrooper/roletect-app')"
+                  @click="openUrl('https://github.com/AhmedTrooper/RoleTect')"
                 >
                   <ExternalLink :size="12" />
                   <span>Get License</span>

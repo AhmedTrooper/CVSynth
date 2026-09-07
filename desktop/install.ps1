@@ -1,9 +1,9 @@
 # ==============================================================================
 # RoleTect - Unified Single-Line Installer for Windows PowerShell
-# Repo: https://github.com/AhmedTrooper/roletect-app
+# Repo: https://github.com/AhmedTrooper/RoleTect
 #
 # Usage:
-#   irm https://raw.githubusercontent.com/AhmedTrooper/roletect-app/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/AhmedTrooper/RoleTect/main/desktop/install.ps1 | iex
 # ==============================================================================
 
 $ErrorActionPreference = 'Stop'
@@ -29,7 +29,7 @@ if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64" -or $env:PROCESSOR_ARCHITEW6432 -eq 
 Write-Host "Detected Architecture: $arch" -ForegroundColor Gray
 
 # --- GitHub Release Lookup ---
-$repo = "AhmedTrooper/roletect-app"
+$repo = "AhmedTrooper/RoleTect"
 $apiUrl = "https://api.github.com/repos/$repo/releases/latest"
 
 Write-Host "Fetching latest release from $repo..." -ForegroundColor Cyan

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # RoleTect - Unified Single-Line Installer for Linux and macOS
-# Repo: https://github.com/AhmedTrooper/roletect-app
+# Repo: https://github.com/AhmedTrooper/RoleTect
 # ==============================================================================
 
 set -e
@@ -57,7 +57,7 @@ esac
 echo -e "Detected: ${BOLD}${OS_TYPE}${NC} (${ARCH_TYPE})"
 
 # --- GitHub Release Lookup ---
-REPO="AhmedTrooper/roletect-app"
+REPO="AhmedTrooper/RoleTect"
 API_URL="https://api.github.com/repos/${REPO}/releases/latest"
 
 echo -e "Fetching latest release metadata from ${CYAN}${REPO}${NC}..."
@@ -145,7 +145,7 @@ if [[ "$OS_TYPE" == "linux" ]]; then
 
   # Download desktop icon
   ICON_PATH="${ICON_DIR}/com.ahmedtrooper.roletect.png"
-  curl -sSL -o "$ICON_PATH" "https://raw.githubusercontent.com/${REPO}/main/src-tauri/icons/128x128.png" 2>/dev/null || true
+  curl -sSL -o "$ICON_PATH" "https://raw.githubusercontent.com/${REPO}/main/desktop/src-tauri/icons/128x128.png" 2>/dev/null || true
 
   # Create Desktop Entry
   DESKTOP_FILE="${APP_DIR}/com.ahmedtrooper.roletect.desktop"

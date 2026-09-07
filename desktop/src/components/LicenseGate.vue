@@ -38,7 +38,7 @@ const handleCopyActivationError = async () => {
 };
 
 // Central public repo / website redirect hub for downloads & license purchasing
-const purchaseUrl = 'https://github.com/AhmedTrooper/roletect-app';
+const purchaseUrl = 'https://github.com/AhmedTrooper/RoleTect';
 
 const handleSkip = async (e?: Event) => {
   if (e) {

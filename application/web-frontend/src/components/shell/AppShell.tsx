@@ -395,7 +395,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             {sidebarCollapsed ? (
               <>
                 <a
-                  href="https://github.com/AhmedTrooper/roletect-app"
+                  href="https://github.com/AhmedTrooper/RoleTect"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--surface-soft)] transition-colors mx-auto"
@@ -415,7 +415,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             ) : (
               <>
                 <a
-                  href="https://github.com/AhmedTrooper/roletect-app"
+                  href="https://github.com/AhmedTrooper/RoleTect"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--surface-soft)] transition-colors"

@@ -18,7 +18,9 @@
         "decorations": false,
         "shadow": true,
         "resizable": true,
-        "zoomHotkeysEnabled": false
+        "zoomHotkeysEnabled": false,
+        "minWidth": 400,
+        "minHeight": 400
       }
     ],
     "security": {

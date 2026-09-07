@@ -404,32 +404,84 @@ const characterCountClass = computed(() => {
           </div>
 
           <!-- New Lead Button -->
-          <button class="btn-primary" @click="openNewForm">
-            <Plus :size="16" />
-            <span>New Lead</span>
-          </button>
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'new-lead'" @mouseleave="activeTooltip = null">
+            <button class="btn-primary btn-icon-only" @click="openNewForm">
+              <Plus :size="16" />
+            </button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'new-lead'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                :transition="{ duration: 0.15 }"
+                class="floating-message tooltip-top"
+              >
+                New Lead
+              </Motion>
+            </AnimatePresence>
+          </div>
         </template>
 
         <!-- Selection Mode Actions -->
         <template v-else>
-          <button class="btn-action select-all-btn" @click="toggleSelectAll">
-            <component :is="selectedIds.size === filteredLeads.length ? CheckSquare : Square" :size="16" />
-            <span>{{ selectedIds.size === filteredLeads.length ? 'Deselect All' : 'Select All' }}</span>
-          </button>
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'select-all'" @mouseleave="activeTooltip = null">
+            <button class="btn-action" @click="toggleSelectAll">
+              <component :is="selectedIds.size === filteredLeads.length ? CheckSquare : Square" :size="16" />
+            </button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'select-all'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                :transition="{ duration: 0.15 }"
+                class="floating-message tooltip-top"
+              >
+                {{ selectedIds.size === filteredLeads.length ? 'Deselect All' : 'Select All' }}
+              </Motion>
+            </AnimatePresence>
+          </div>
 
-          <button 
-            class="btn-action btn-danger" 
-            :disabled="selectedIds.size === 0" 
-            @click="handleBatchDelete"
-          >
-            <Trash2 :size="16" />
-            <span>Delete ({{ selectedIds.size }})</span>
-          </button>
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'delete-batch'" @mouseleave="activeTooltip = null">
+            <button
+              class="btn-action btn-danger"
+              :disabled="selectedIds.size === 0"
+              @click="handleBatchDelete"
+            >
+              <Trash2 :size="16" />
+            </button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'delete-batch'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                :transition="{ duration: 0.15 }"
+                class="floating-message tooltip-top"
+              >
+                Delete ({{ selectedIds.size }})
+              </Motion>
+            </AnimatePresence>
+          </div>
 
-          <button class="btn-action" @click="exitSelectionMode">
-            <X :size="16" />
-            <span>Cancel</span>
-          </button>
+          <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'exit-selection'" @mouseleave="activeTooltip = null">
+            <button class="btn-action" @click="exitSelectionMode">
+              <X :size="16" />
+            </button>
+            <AnimatePresence>
+              <Motion
+                v-if="activeTooltip === 'exit-selection'"
+                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                :transition="{ duration: 0.15 }"
+                class="floating-message tooltip-top"
+              >
+                Done
+              </Motion>
+            </AnimatePresence>
+          </div>
         </template>
       </div>
     </div>
@@ -449,7 +501,7 @@ const characterCountClass = computed(() => {
         </button>
       </div>
 
-      <div class="status-filters">
+      <div class="status-filters scroll-tray-x">
         <button 
           v-for="st in ['ALL', 'Draft', 'Sent', 'Connected', 'Replied', 'Archived']" 
           :key="st"
@@ -669,14 +721,14 @@ const characterCountClass = computed(() => {
                 ></textarea>
 
                 <div class="result-actions">
-                  <button 
-                    type="button" 
-                    class="btn-result-action" 
+                  <button
+                    type="button"
+                    class="btn-result-action"
+                    :title="formCopied ? 'Copied!' : 'Copy to Clipboard'"
                     :disabled="!formTailoredMessage"
                     @click="copyText(formTailoredMessage)"
                   >
                     <component :is="formCopied ? Check : Copy" :size="14" />
-                    <span>{{ formCopied ? 'Copied!' : 'Copy to Clipboard' }}</span>
                   </button>
 
                   <div class="status-selector-box">
@@ -685,6 +737,7 @@ const characterCountClass = computed(() => {
                       v-model="formStatus"
                       :options="statusOptions"
                       class="select-status"
+                      placement="top"
                     />
                   </div>
                 </div>
@@ -692,16 +745,46 @@ const characterCountClass = computed(() => {
 
               <!-- Form Submit Actions -->
               <div class="form-actions">
-                <button type="button" class="btn-cancel" @click="closeForm">Cancel</button>
-                <button 
-                  type="button" 
-                  class="btn-save" 
-                  :disabled="isSaving || !formName || !formProfileUrl"
-                  @click="handleSave"
-                >
-                  <Save :size="16" />
-                  <span>{{ isSaving ? 'Saving...' : 'Save Lead' }}</span>
-                </button>
+                <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'form-cancel'" @mouseleave="activeTooltip = null">
+                  <button type="button" class="btn-cancel btn-icon-action" @click="closeForm">
+                    <X :size="16" />
+                  </button>
+                  <AnimatePresence>
+                    <Motion
+                      v-if="activeTooltip === 'form-cancel'"
+                      :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                      :animate="{ opacity: 1, y: 0, scale: 1 }"
+                      :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                      :transition="{ duration: 0.15 }"
+                      class="floating-message tooltip-top"
+                    >
+                      Cancel
+                    </Motion>
+                  </AnimatePresence>
+                </div>
+                <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'form-save'" @mouseleave="activeTooltip = null">
+                  <button
+                    type="button"
+                    class="btn-save btn-icon-action"
+                    :disabled="isSaving || !formName || !formProfileUrl"
+                    @click="handleSave"
+                  >
+                    <RotateCw v-if="isSaving" :size="16" class="spinner" />
+                    <Save v-else :size="16" />
+                  </button>
+                  <AnimatePresence>
+                    <Motion
+                      v-if="activeTooltip === 'form-save'"
+                      :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                      :animate="{ opacity: 1, y: 0, scale: 1 }"
+                      :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+                      :transition="{ duration: 0.15 }"
+                      class="floating-message tooltip-top"
+                    >
+                      {{ isSaving ? 'Saving...' : (editingLeadId ? 'Update Lead' : 'Save Lead') }}
+                    </Motion>
+                  </AnimatePresence>
+                </div>
               </div>
             </div>
           </div>
@@ -797,23 +880,22 @@ const characterCountClass = computed(() => {
         <!-- Card Footer Actions -->
         <div class="lead-card-footer" @click.stop>
           <div class="footer-left">
-            <button 
-              v-if="lead.tailored_message" 
-              type="button" 
+            <button
+              v-if="lead.tailored_message"
+              type="button"
               class="card-btn copy-btn"
+              :title="copiedId === lead.id ? 'Copied to clipboard' : 'Copy message'"
               @click="copyText(lead.tailored_message, lead.id)"
             >
               <component :is="copiedId === lead.id ? Check : Copy" :size="13" />
-              <span>{{ copiedId === lead.id ? 'Copied' : 'Copy' }}</span>
             </button>
           </div>
 
           <div class="footer-right">
-            <button type="button" class="card-btn edit-btn" @click="editLead(lead)">
+            <button type="button" class="card-btn edit-btn" title="Edit / Tailor" @click="editLead(lead)">
               <Edit3 :size="13" />
-              <span>Edit / Tailor</span>
             </button>
-            <button type="button" class="card-btn delete-btn" @click="handleDeleteLead(lead)">
+            <button type="button" class="card-btn delete-btn" title="Delete lead" @click="handleDeleteLead(lead)">
               <Trash2 :size="13" />
             </button>
           </div>
@@ -907,6 +989,12 @@ h2 {
   border: none;
 }
 
+.btn-primary.btn-icon-only {
+  width: 38px;
+  min-width: 38px;
+  padding: 0;
+}
+
 .btn-primary:hover {
   opacity: 0.92;
   transform: translateY(-1px);
@@ -996,12 +1084,12 @@ h2 {
 
 .search-input {
   width: 100%;
-  height: 36px;
+  height: 40px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-md, 8px);
   padding: 0 32px 0 34px;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--ink);
   outline: none;
   transition: border-color 0.15s ease;
@@ -1068,6 +1156,7 @@ h2 {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
   margin-bottom: 20px;
   padding-bottom: 14px;
   border-bottom: 1px solid var(--line);
@@ -1080,10 +1169,19 @@ h2 {
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--ink);
+  min-width: 0;
+  flex: 1;
+}
+
+.form-title span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sparkle-icon {
   color: var(--accent);
+  flex-shrink: 0;
 }
 
 .icon-btn-close {
@@ -1107,9 +1205,225 @@ h2 {
   gap: 24px;
 }
 
+.form-col,
+.field-group {
+  min-width: 0;
+}
+
+/* Tablet (<= 900px): single-column form */
 @media (max-width: 900px) {
+  .outreach-container {
+    padding: 24px 20px;
+  }
+
   .form-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Mobile (<= 768px, same tier as Jobs/Inbox neighbours): header stays in
+   a row with subtitle hidden, filters stack, pills ride the global
+   horizontal scroll tray so nothing clips */
+@media (max-width: 768px) {
+  .outreach-container {
+    padding: 16px;
+  }
+
+  .page-header {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .header-main h2 {
+    font-size: 1.3rem;
+  }
+
+  .subtitle {
+    display: none;
+  }
+
+  .actions {
+    flex-shrink: 0;
+    gap: 8px;
+  }
+
+  .btn-primary.btn-icon-only,
+  .btn-action {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    padding: 0;
+  }
+
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .search-box {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .search-input {
+    padding: 10px 8px;
+    font-size: 0.85rem;
+  }
+
+  .status-filters {
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    padding-bottom: 10px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+  }
+
+  .status-filters::-webkit-scrollbar {
+    height: 4px;
+    display: block;
+  }
+
+  .status-filters::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 0 4px;
+  }
+
+  .status-filters::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 4px;
+  }
+
+  .status-filters::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+  }
+
+  .filter-pill {
+    flex-shrink: 0;
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .leads-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-card {
+    padding: 16px;
+  }
+
+  .form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .btn-cancel,
+  .btn-save {
+    width: 100%;
+    justify-content: center;
+    min-height: 40px;
+  }
+
+  .custom-limit-box {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .outreach-container {
+    padding: 12px 10px;
+  }
+
+  .header-icon-box {
+    display: none;
+  }
+
+  .header-main {
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .person-headline {
+    max-width: 150px;
+  }
+}
+
+/* Ultra-compact (<= 360px, down to the 300x400 minimum): tighter type,
+   scrollable header actions so buttons never clip */
+@media (max-width: 360px) {
+  .outreach-container {
+    padding: 10px 8px;
+  }
+
+  .page-header {
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .header-main {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .header-main h2 {
+    font-size: 1.05rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .actions {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    padding-bottom: 8px;
+    scrollbar-width: none;
+  }
+
+  .actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .actions > * {
+    flex-shrink: 0;
+  }
+
+  .filter-bar {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .leads-grid {
+    gap: 12px;
+  }
+
+  .lead-card {
+    padding: 12px;
+  }
+
+  .person-headline {
+    max-width: 110px;
+  }
+
+  .form-card {
+    padding: 12px;
+  }
+
+  .form-title {
+    font-size: 0.95rem;
+  }
+
+  .card-btn {
+    min-height: 34px;
   }
 }
 
@@ -1121,6 +1435,8 @@ h2 {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
   margin-bottom: 6px;
 }
 
@@ -1148,8 +1464,8 @@ h2 {
   background: var(--surface-soft);
   border: 1px solid var(--line);
   border-radius: var(--radius-md, 8px);
-  padding: 9px 12px;
-  font-size: 0.8rem;
+  padding: 11px 12px;
+  font-size: 0.85rem;
   color: var(--ink);
   outline: none;
   transition: border-color 0.15s ease;
@@ -1158,6 +1474,37 @@ h2 {
 
 .text-input:focus, .select-input:focus, .text-area:focus {
   border-color: var(--accent);
+}
+
+/* Sleek textarea scrollbars: 4px idle expanding to 6px on hover/focus,
+   with track margins so the thumb never touches the edges */
+.text-area::-webkit-scrollbar {
+  width: 4px;
+  transition: all 0.15s ease;
+}
+
+.text-area:hover::-webkit-scrollbar,
+.text-area:focus::-webkit-scrollbar {
+  width: 6px;
+}
+
+.text-area::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px 0;
+}
+
+.text-area::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
+.text-area::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+.text-area {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
 }
 
 .input-with-action {
@@ -1259,6 +1606,7 @@ h2 {
   background: var(--accent-soft);
   padding: 2px 8px;
   border-radius: 10px;
+  white-space: nowrap;
 }
 
 .limit-buttons-bar {
@@ -1316,14 +1664,28 @@ h2 {
 }
 
 .custom-limit-input {
-  width: 70px;
+  width: 84px;
+  min-height: 36px;
   background: var(--surface-soft);
   border: 1px solid var(--line);
   border-radius: 6px;
-  padding: 4px 6px;
-  font-size: 0.75rem;
+  padding: 8px;
+  font-size: 0.8rem;
   color: var(--ink);
   outline: none;
+}
+
+/* Native number spinners are OS-rendered and ignore theme vars entirely,
+   so hide them: typing + arrow keys + min/max/step still work */
+.custom-limit-input::-webkit-outer-spin-button,
+.custom-limit-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.custom-limit-input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .custom-limit-input:focus {
@@ -1372,6 +1734,7 @@ h2 {
   font-weight: 600;
   color: var(--muted);
   font-family: monospace;
+  white-space: nowrap;
 }
 
 .count-safe {
@@ -1401,8 +1764,10 @@ h2 {
 .btn-result-action {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 6px;
   background: var(--surface-soft);
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -1469,6 +1834,15 @@ h2 {
   color: var(--muted);
   font-size: 0.8rem;
   cursor: pointer;
+}
+
+.btn-cancel.btn-icon-action,
+.btn-save.btn-icon-action {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  padding: 0;
+  justify-content: center;
 }
 
 .btn-cancel:hover {
@@ -1542,7 +1916,7 @@ h2 {
 /* Leads Grid */
 .leads-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
   gap: 16px;
 }
 
@@ -1759,8 +2133,10 @@ h2 {
 .card-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
+  justify-content: center;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 4px 6px;
   background: var(--surface-soft);
   border: 1px solid var(--line);
   border-radius: 6px;

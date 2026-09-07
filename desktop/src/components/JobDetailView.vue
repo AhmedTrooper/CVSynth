@@ -25,6 +25,7 @@ import { EditorView } from '@codemirror/view';
 
 import {
   ArrowLeft,
+  PanelLeft,
   Trash2,
   ExternalLink,
   Save,
@@ -47,6 +48,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
+  X,
   MessageSquare,
   Copy,
   Check,
@@ -432,6 +434,24 @@ const previewWidth = ref(450);
 const isResizingPreview = ref(false);
 const splitPaneRef = ref<HTMLElement | null>(null);
 
+// Mobile / drawer state (IDE parity: info panel becomes a drawer, never hidden)
+const isMobile = ref(false);
+const isInfoVisible = ref(true);
+
+const checkMobile = () => {
+  const wasMobile = isMobile.value;
+  isMobile.value = window.innerWidth <= 768;
+  if (!wasMobile && isMobile.value) {
+    isInfoVisible.value = false;
+  } else if (wasMobile && !isMobile.value) {
+    isInfoVisible.value = true;
+  }
+};
+
+const toggleInfo = () => {
+  isInfoVisible.value = !isInfoVisible.value;
+};
+
 const startResizingPreview = (_e: MouseEvent) => {
   isResizingPreview.value = true;
   document.addEventListener('mousemove', handlePreviewMouseMove);
@@ -528,6 +548,11 @@ const parseJsonField = (field: string | undefined | null): string[] => {
 
 // Load job details and base templates on mount
 onMounted(async () => {
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+  if (isMobile.value) {
+    isInfoVisible.value = false;
+  }
   try {
     // 1. Fetch job details from backend
     jobDetails.value = await jobsStore.getJobById(props.id);
@@ -611,6 +636,7 @@ onMounted(async () => {
 
 import { onUnmounted } from 'vue';
 onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile);
   isResumeCompiled.value = false;
   isClCompiled.value = false;
   resumePdfUrl.value = null;
@@ -950,7 +976,7 @@ const openJobUrl = async () => {
   }
 };
 
-const goBack = () => router.push('/');
+const goBack = () => router.push('/jobs');
 
 const updateStatus = async (newStatus: string) => {
   if (jobDetails.value?.status === newStatus) return;
@@ -1041,6 +1067,21 @@ const deleteJob = async () => {
             </Motion>
           </AnimatePresence>
         </div>
+        <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'info-panel'" @mouseleave="activeTooltip = null">
+          <button class="back-btn" :class="{ active: isInfoVisible }" @click="toggleInfo"><PanelLeft :size="16" /></button>
+          <AnimatePresence>
+            <Motion
+              v-if="activeTooltip === 'info-panel'"
+              :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+              :animate="{ opacity: 1, y: 0, scale: 1 }"
+              :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+              :transition="{ duration: 0.15 }"
+              class="flying-message header-tooltip"
+            >
+              {{ isInfoVisible ? 'Hide Details Panel' : 'Show Details Panel' }}
+            </Motion>
+          </AnimatePresence>
+        </div>
         <div class="job-info">
           <h1 class="title">{{ jobDetails?.job_title }}</h1>
           <span class="company">{{ jobDetails?.company_name }}</span>
@@ -1100,7 +1141,20 @@ const deleteJob = async () => {
     </AnimatePresence>
 
     <div class="split-view">
-      <aside class="panel info-panel">
+      <div
+        v-if="isMobile && isInfoVisible"
+        class="info-mobile-backdrop"
+        @click="isInfoVisible = false"
+      ></div>
+      <aside v-if="isInfoVisible" class="panel info-panel" :class="{ 'mobile-info': isMobile }">
+        <button
+          v-if="isMobile"
+          class="mobile-close-info-btn"
+          @click="isInfoVisible = false"
+          title="Close Details Panel"
+        >
+          <X :size="16" />
+        </button>
         <div class="section">
           <div class="section-header-icon" @mouseenter="activeTooltip = 'info-sec'" @mouseleave="activeTooltip = null">
             <Info :size="16" />
@@ -1143,7 +1197,7 @@ const deleteJob = async () => {
               :model-value="jobDetails?.status" 
               @change="updateStatus"
               :options="['Drafting', 'Applied', 'Interviewing', 'Offer', 'Rejected', 'Joined'].map(s => ({ value: s, label: s }))"
-              style="width: 140px;"
+              class="status-select"
             />
           </div>
 
@@ -1762,9 +1816,14 @@ const deleteJob = async () => {
                 placeholder="Ask AI to refine this message (e.g. 'Make it shorter and punchier', 'Emphasize leadership experience')..."
                 @keyup.enter="refineHrWithAi"
               />
-              <button class="hr-refine-btn" @click="refineHrWithAi" :disabled="isRefiningHr || !refinementInstruction.trim()">
+              <button
+                class="hr-refine-btn"
+                @click="refineHrWithAi"
+                :disabled="isRefiningHr || !refinementInstruction.trim()"
+                :title="isRefiningHr ? 'Refining...' : 'Refine with AI'"
+              >
                 <Loader2 v-if="isRefiningHr" :size="14" class="spinner" />
-                <span v-else>Refine</span>
+                <Wand2 v-else :size="14" />
               </button>
             </div>
           </div>
@@ -1833,7 +1892,6 @@ const deleteJob = async () => {
               :initial="{ opacity: 0, y: -10, x: '-50%' }"
               :animate="{ opacity: 1, y: 0, x: '-50%' }"
               :exit="{ opacity: 0, y: -10, x: '-50%' }"
-              style="z-index: 100; position: absolute; left: 50%; top: 20px;"
             >
               <input 
                 v-model="refinementInstruction" 
@@ -1877,13 +1935,14 @@ const deleteJob = async () => {
   border-bottom: 1px solid var(--line);
 }
 
-.header-left { display: flex; align-items: center; gap: 12px; }
-.back-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.2rem; padding: 0 4px; }
+.header-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.back-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.2rem; padding: 0 4px; display: flex; align-items: center; border-radius: 4px; }
 .back-btn:hover { color: var(--ink); }
+.back-btn.active { color: var(--accent); background: var(--accent-soft); }
 
-.job-info { display: flex; align-items: center; gap: 8px; }
-.title { font-size: 0.8rem; font-weight: 600; color: var(--ink); margin: 0; }
-.company { font-size: 0.8rem; color: var(--muted); }
+.job-info { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
+.title { font-size: 0.8rem; font-weight: 600; color: var(--ink); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.company { font-size: 0.8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .link-btn { background: none; border: none; cursor: pointer; padding: 2px; font-size: 0.8rem; opacity: 0.7; }
 .link-btn:hover { opacity: 1; }
 
@@ -2006,8 +2065,20 @@ const deleteJob = async () => {
   gap: 6px;
   font-size: 0.75rem;
 }
+.meta-grid > * {
+  min-width: 0;
+}
 .meta-grid .label { color: var(--muted); }
 .meta-grid .value { color: var(--ink); font-weight: 500; }
+
+/* Keep dropdown triggers tucked inside their parent section/cell */
+.info-panel .custom-select-container {
+  max-width: 100%;
+  min-width: 0;
+}
+.info-panel .custom-select-trigger {
+  max-width: 100%;
+}
 
 .tight-list {
   padding-left: 12px;
@@ -2206,6 +2277,8 @@ const deleteJob = async () => {
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  min-height: 0;
 }
 
 .panel-tabs {
@@ -2411,16 +2484,17 @@ const deleteJob = async () => {
 
 .refinement-bar {
   position: absolute;
-  top: 16px;
+  top: 50px;
   left: 50%;
-  width: 440px;
+  width: 90%;
+  max-width: 440px;
   background: var(--surface-soft);
   border: 1px solid var(--accent-soft);
   border-radius: 20px;
   display: flex;
   padding: 4px 14px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-  z-index: 20;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  z-index: 1000;
   cursor: grab;
   touch-action: none;
 }
@@ -2464,9 +2538,287 @@ const deleteJob = async () => {
 
 .w-full { width: 100%; }
 
-@media (max-width: 960px) {
-  .info-panel { display: none; }
-  .workspace-header { height: 44px; }
+/* Custom sleek scrollbars: 4px idle expanding to 6px on hover/focus.
+   CodeMirror track keeps a 56px top margin so the thumb never slides
+   under the floating refinement-bar (top:50px) or tab icons. */
+.info-panel::-webkit-scrollbar,
+.error-log pre::-webkit-scrollbar,
+.pdf-viewer::-webkit-scrollbar,
+:deep(.cm-scroller)::-webkit-scrollbar {
+  width: 4px;
+  height: 2px;
+  transition: all 0.15s ease;
+}
+
+.info-panel:hover::-webkit-scrollbar,
+.info-panel:focus-within::-webkit-scrollbar,
+.error-log pre:hover::-webkit-scrollbar,
+.error-log pre:focus-within::-webkit-scrollbar,
+.pdf-viewer:hover::-webkit-scrollbar,
+.pdf-viewer:focus-within::-webkit-scrollbar,
+:deep(.cm-scroller:hover)::-webkit-scrollbar,
+:deep(.cm-scroller:focus-within)::-webkit-scrollbar {
+  width: 6px;
+  height: 5px;
+}
+
+.info-panel::-webkit-scrollbar-track,
+.error-log pre::-webkit-scrollbar-track,
+.pdf-viewer::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px 0;
+}
+
+:deep(.cm-scroller)::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 56px 0 6px 0;
+}
+
+.info-panel::-webkit-scrollbar-thumb,
+.error-log pre::-webkit-scrollbar-thumb,
+.pdf-viewer::-webkit-scrollbar-thumb,
+:deep(.cm-scroller)::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
+.info-panel::-webkit-scrollbar-thumb:hover,
+.error-log pre::-webkit-scrollbar-thumb:hover,
+.pdf-viewer::-webkit-scrollbar-thumb:hover,
+:deep(.cm-scroller)::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+.info-panel,
+.error-log pre,
+.pdf-viewer,
+:deep(.cm-scroller) {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+/* Mobile backdrop + close for the details drawer */
+.info-mobile-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 45;
+  animation: fadeInBackdrop 0.15s ease-out;
+}
+
+@keyframes fadeInBackdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.mobile-close-info-btn {
+  display: none;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  z-index: 2;
+}
+
+.mobile-close-info-btn:hover {
+  color: var(--warning);
+  background: rgba(248, 81, 73, 0.1);
+}
+
+/* Tablet (<= 1024px): narrower details panel */
+@media (max-width: 1024px) {
+  .info-panel {
+    width: 220px;
+  }
+}
+
+/* Mobile (<= 768px, IDE parity): details become a drawer instead of
+   disappearing; editor stacks above a scrollable preview */
+@media (max-width: 768px) {
+  .workspace-header {
+    height: 44px;
+    padding: 0 10px;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-shrink: 0;
+  }
+
+  .workspace-header::-webkit-scrollbar {
+    display: none;
+  }
+
+  .header-left {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .company {
+    display: none;
+  }
+
+  .header-actions {
+    flex-shrink: 0;
+  }
+
+  .split-view {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .info-panel.mobile-info {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 85%;
+    max-width: 300px;
+    z-index: 50;
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.6);
+    animation: slideInDrawer 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes slideInDrawer {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+
+  .mobile-close-info-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .panel-tabs {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    justify-content: flex-start;
+    gap: 4px;
+  }
+
+  .panel-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .left-tabs,
+  .right-tabs {
+    flex-shrink: 0;
+  }
+
+  .tab-btn-mode {
+    padding: 0 10px;
+  }
+
+  .split-pane {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .editor-container {
+    min-height: 45%;
+    flex-shrink: 0;
+  }
+
+  .pdf-viewer.tailored-pdf-viewer,
+  .pdf-viewer.base-pdf-viewer {
+    width: 100% !important;
+    flex: none;
+    min-height: 45%;
+    border-top: 1px solid var(--line);
+  }
+
+  .preview-resizer {
+    display: none !important;
+  }
+
+  .refinement-bar {
+    top: 40px;
+    width: calc(100% - 20px);
+    max-width: calc(100% - 20px);
+  }
+
+  :deep(.cm-scroller)::-webkit-scrollbar-track {
+    margin: 46px 0 4px 0;
+  }
+
+  .match-hero {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .hr-editor-bar {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .hr-meta-tags {
+    gap: 6px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .hr-actions {
+    width: 100%;
+  }
+
+  .hr-action-btn {
+    flex: 1;
+    justify-content: center;
+    min-height: 36px;
+  }
+
+  .hr-textarea-container {
+    padding: 10px;
+  }
+
+  .hr-message-editor {
+    padding: 12px;
+    font-size: 0.85rem;
+  }
+
+  .hr-refine-bottom {
+    padding: 10px;
+  }
+
+  .hr-refine-input {
+    padding: 10px 12px;
+    font-size: 0.85rem;
+  }
+
+  .match-panel-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .title {
+    max-width: 110px;
+  }
+
+  .tab-btn-mode span {
+    display: none;
+  }
+
+  .tab-btn-mode {
+    padding: 0 8px;
+  }
+
+  .match-score-circle {
+    width: 56px;
+    height: 56px;
+    font-size: 1.2rem;
+  }
 }
 
 /* Match Score Panel */
@@ -2811,6 +3163,11 @@ const deleteJob = async () => {
   padding: 2px 8px;
   border-radius: 4px;
   border: 1px solid var(--line);
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .hr-badge-contact:hover {
   text-decoration: underline;
@@ -2913,7 +3270,9 @@ const deleteJob = async () => {
 }
 
 .hr-refine-btn {
-  padding: 8px 16px;
+  padding: 8px 12px;
+  min-width: 38px;
+  min-height: 38px;
   font-size: 0.8rem;
   font-weight: 600;
   border-radius: 6px;
@@ -2925,7 +3284,7 @@ const deleteJob = async () => {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-width: 80px;
+  flex-shrink: 0;
 }
 .hr-refine-btn:disabled {
   opacity: 0.6;

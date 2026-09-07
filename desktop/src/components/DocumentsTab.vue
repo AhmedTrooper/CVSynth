@@ -20,7 +20,8 @@ import {
   Hash,
   Check,
   ArrowRight,
-  Copy
+  Copy,
+  Settings2
 } from '@lucide/vue';
 import { copyToClipboard } from '../utils/clipboard';
 
@@ -36,6 +37,7 @@ const isSelectionMode = ref(false);
 const selectedIds = ref<Set<string>>(new Set());
 const isSubmitting = ref(false);
 const isErrorCopied = ref(false);
+const activeTooltip = ref<string | null>(null);
 
 const handleCopyError = async () => {
   if (!documentsStore.error) return;
@@ -190,10 +192,23 @@ const formatRelative = (s: string | null) => {
   <div class="documents-container">
     <header class="header">
       <div class="header-left">
-        <button class="btn-primary labeled" @click="showCreateForm = true">
-          <Plus :size="16" />
-          <span>New Document</span>
-        </button>
+        <div class="btn-tooltip-wrapper" @mouseenter="activeTooltip = 'new-document'" @mouseleave="activeTooltip = null">
+          <button class="btn-icon btn-icon-primary" @click="showCreateForm = true">
+            <Plus :size="18" />
+          </button>
+          <AnimatePresence>
+            <Motion
+              v-if="activeTooltip === 'new-document'"
+              :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+              :animate="{ opacity: 1, y: 0, scale: 1 }"
+              :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+              :transition="{ duration: 0.15 }"
+              class="floating-message tooltip-bottom-left"
+            >
+              New Document
+            </Motion>
+          </AnimatePresence>
+        </div>
         <div class="header-meta">
           <h2>DOCUMENTS</h2>
           <span class="subtitle">Overleaf-style multi-file LaTeX workspaces, backed up with your data</span>
@@ -216,13 +231,32 @@ const formatRelative = (s: string | null) => {
             placement="bottom"
           />
         </div>
-        <button
+        <div
           v-if="!isSelectionMode && documentsStore.documents.length > 0"
-          class="btn-ghost"
-          @click="isSelectionMode = true"
+          class="btn-tooltip-wrapper"
+          @mouseenter="activeTooltip = 'selection-mode'"
+          @mouseleave="activeTooltip = null"
         >
-          Select
-        </button>
+          <button
+            class="btn-icon"
+            :class="{ 'active': isSelectionMode }"
+            @click="isSelectionMode = true"
+          >
+            <Settings2 :size="16" />
+          </button>
+          <AnimatePresence>
+            <Motion
+              v-if="activeTooltip === 'selection-mode'"
+              :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+              :animate="{ opacity: 1, y: 0, scale: 1 }"
+              :exit="{ opacity: 0, y: 5, scale: 0.9 }"
+              :transition="{ duration: 0.15 }"
+              class="floating-message tooltip-bottom-left"
+            >
+              Selection Mode
+            </Motion>
+          </AnimatePresence>
+        </div>
         <div v-if="isSelectionMode" class="selection-bar">
           <span class="selection-count">{{ selectedIds.size }} selected</span>
           <button class="btn-danger" :disabled="selectedIds.size === 0 || isSubmitting" @click="batchDelete">
@@ -492,6 +526,38 @@ const formatRelative = (s: string | null) => {
   gap: 8px;
   font-weight: 700;
   font-size: 0.8rem;
+}
+
+.btn-icon {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: 0.2s;
+  background: var(--surface-soft);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  padding: 0;
+}
+
+.btn-icon:hover {
+  border-color: var(--muted);
+}
+
+.btn-icon-primary {
+  background: var(--accent);
+  color: white;
+  border: none;
+}
+
+.btn-icon-primary:hover {
+  border: none;
+  filter: brightness(1.1);
 }
 
 .btn-ghost {
@@ -1002,11 +1068,21 @@ textarea.field-control {
 }
 
 @media (max-width: 720px) {
+  .header {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .header-right {
+    width: 100%;
+  }
+
   .grid {
     grid-template-columns: 1fr;
   }
   .search-input {
-    width: 150px;
+    width: 100%;
+    min-height: 40px;
   }
 }
 

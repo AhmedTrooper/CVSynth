@@ -118,12 +118,12 @@ onUnmounted(() => {
 
 .custom-select-trigger:hover:not(:disabled) {
   background: var(--surface, #121214);
-  border-color: #484f58;
+  border-color: var(--muted, #8b949e);
 }
 
 .custom-select-trigger:focus:not(:disabled),
 .custom-select-trigger.open:not(:disabled) {
-  border-color: #484f58;
+  border-color: var(--muted, #8b949e);
   box-shadow: 0 0 0 2px var(--accent-soft, rgba(35, 134, 54, 0.2));
 }
 
@@ -192,6 +192,7 @@ onUnmounted(() => {
 .custom-select-container.placement-top .custom-select-options {
   top: auto;
   bottom: calc(100% + 6px);
+  margin-bottom: 4px;
 }
 
 .custom-select-option {

@@ -400,7 +400,7 @@ const getStatusClass = (status: string) => {
 
 .jobs-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
   gap: 20px;
   padding-bottom: 32px;
 }
@@ -493,7 +493,7 @@ const getStatusClass = (status: string) => {
 }
 
 .search-box:focus-within {
-  border-color: #484f58;
+  border-color: var(--muted);
 }
 
 .search-icon { color: var(--muted); }
@@ -692,6 +692,11 @@ const getStatusClass = (status: string) => {
   }
   .page-header h1 { font-size: 1.5rem; }
   .subtitle { display: none; }
+
+  .header-actions {
+    flex-shrink: 0;
+    gap: 8px;
+  }
   
   .filters-bar { 
     padding: 12px; 
@@ -700,10 +705,14 @@ const getStatusClass = (status: string) => {
     flex-direction: column;
     align-items: stretch;
   }
+
+  .search-box {
+    width: 100%;
+  }
   
   .controls { 
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 8px;
   }
   
@@ -726,11 +735,55 @@ const getStatusClass = (status: string) => {
     height: 36px;
     border-radius: 10px;
   }
+
+  .jobs-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 480px) {
   .jobs-container {
-    padding: 16px;
+    padding: 12px 10px;
+  }
+
+  .page-header h1 {
+    font-size: 1.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .title-group {
+    min-width: 0;
+    flex: 1;
+  }
+}
+
+@media (max-width: 360px) {
+  .page-header {
+    gap: 8px;
+  }
+
+  .page-header h1 {
+    font-size: 1.05rem;
+  }
+
+  .header-actions {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    padding-bottom: 6px;
+    scrollbar-width: none;
+  }
+
+  .header-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .header-actions > * {
+    flex-shrink: 0;
   }
 }
 </style>

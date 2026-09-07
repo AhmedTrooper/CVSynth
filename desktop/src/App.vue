@@ -223,9 +223,9 @@ const handleExternalClick = (url: string) => {
                         <AnimatePresence>
                             <Motion
                                 v-if="activeTooltip === tab.label"
-                                :initial="{ opacity: 0, x: 5, scale: 0.9 }"
-                                :animate="{ opacity: 1, x: 12, scale: 1 }"
-                                :exit="{ opacity: 0, x: 5, scale: 0.9 }"
+                                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
                                 :transition="{ duration: 0.15 }"
                                 class="flying-message sidebar-tooltip"
                             >
@@ -254,9 +254,9 @@ const handleExternalClick = (url: string) => {
                         <AnimatePresence>
                             <Motion
                                 v-if="activeTooltip === link.label"
-                                :initial="{ opacity: 0, x: 5, scale: 0.9 }"
-                                :animate="{ opacity: 1, x: 12, scale: 1 }"
-                                :exit="{ opacity: 0, x: 5, scale: 0.9 }"
+                                :initial="{ opacity: 0, y: 5, scale: 0.9 }"
+                                :animate="{ opacity: 1, y: 0, scale: 1 }"
+                                :exit="{ opacity: 0, y: 5, scale: 0.9 }"
                                 :transition="{ duration: 0.15 }"
                                 class="flying-message sidebar-tooltip"
                             >
@@ -336,8 +336,8 @@ const handleExternalClick = (url: string) => {
 }
 
 /* =======================================================================
-   Mobile & Tablet Bottom Bar (<960px):
-   Touch-friendly 44px targets, full 20px icons, smooth left-to-right scroll
+   Bottom Bar (all sizes): Touch-friendly 44px targets, full 20px icons,
+   smooth left-to-right scroll when tabs overflow
    ======================================================================= */
 .sidebar {
     order: 2;
@@ -467,73 +467,20 @@ const handleExternalClick = (url: string) => {
 }
 
 /* =======================================================================
-   Desktop (>= 960px): Vertical Left Sidebar
+   Wide screens (>= 960px): same bottom bar, centered items, hover
+   tooltips floating above the bar (no side sidebar anywhere)
    ======================================================================= */
 @media (min-width: 960px) {
-    .app-container {
-        flex-direction: row;
-    }
-
-    .sidebar {
-        order: 0;
-        width: 48px;
-        height: calc(100vh - 36px);
-        flex-direction: column;
-        border-top: none;
-        border-right: 1px solid var(--line);
-        padding: 12px 0;
-        align-items: center;
-    }
-
     .nav-menu {
-        flex-direction: column;
-        gap: 8px;
-        padding: 0;
-        overflow-x: visible;
-        overflow-y: auto;
-        scrollbar-width: none;
-    }
-
-    .nav-menu::-webkit-scrollbar {
-        display: none;
-    }
-
-    .nav-divider {
-        width: 24px;
-        height: 1px;
-        margin: 8px 0;
-    }
-
-    .nav-item {
-        width: 36px;
-        min-width: 36px;
-        height: 36px;
-        padding: 0;
-        margin-bottom: 0;
-    }
-
-    .nav-item.active::after {
-        display: none;
-    }
-
-    .nav-item.active::before {
-        content: "";
-        position: absolute;
-        left: -6px;
-        top: 6px;
-        bottom: 6px;
-        width: 2px;
-        background: var(--accent);
-        border-radius: 2px;
+        justify-content: center;
     }
 
     .flying-message {
         display: block;
         position: absolute;
-        left: 100%;
-        top: 50%;
-        transform: translateY(-50%);
-        margin-left: 12px;
+        bottom: calc(100% + 10px);
+        left: 50%;
+        transform: translateX(-50%);
         background: var(--accent);
         color: white;
         padding: 4px 10px;
@@ -549,11 +496,11 @@ const handleExternalClick = (url: string) => {
     .flying-message::after {
         content: "";
         position: absolute;
-        top: 50%;
-        right: 100%;
-        transform: translateY(-50%);
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
         border: 4px solid transparent;
-        border-right-color: var(--accent);
+        border-top-color: var(--accent);
     }
 }
 </style>

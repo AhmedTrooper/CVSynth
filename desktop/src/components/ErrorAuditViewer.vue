@@ -20,6 +20,7 @@ import {
 import { useErrorAuditStore, ErrorAuditLog } from '../store/error_audit';
 import { useDialogStore } from '../store/dialog';
 import { copyToClipboard } from '../utils/clipboard';
+import CustomSelect from './CustomSelect.vue';
 
 const props = defineProps<{
   compact?: boolean;
@@ -44,9 +45,21 @@ const selectTask = async (task: string) => {
   await errorStore.loadLogs();
 };
 
-const handleSelectErrorType = async () => {
+const handleSelectErrorTypeValue = async (value: any) => {
+  errorStore.selectedErrorTypeFilter = value;
   await errorStore.loadLogs();
 };
+
+const errorTypeOptions = [
+  { value: 'all', label: 'All Error Types' },
+  { value: 'TectonicCompilationError', label: 'Tectonic Compilation' },
+  { value: 'AiError', label: 'AI Generation' },
+  { value: 'DatabaseError', label: 'Database' },
+  { value: 'FileSystemError', label: 'Filesystem' },
+  { value: 'NetworkError', label: 'Network / S3' },
+  { value: 'ValidationError', label: 'Validation' },
+  { value: 'GeneralError', label: 'General' },
+];
 
 let searchTimeout: any = null;
 const handleSearchInput = () => {
@@ -217,21 +230,16 @@ const getTaskBadgeClass = (task: string): string => {
         </div>
 
         <div class="filter-dropdown-wrapper">
-          <Filter :size="14" class="filter-icon" />
-          <select
-            v-model="errorStore.selectedErrorTypeFilter"
-            class="filter-select"
-            @change="handleSelectErrorType"
+          <CustomSelect
+            :model-value="errorStore.selectedErrorTypeFilter"
+            :options="errorTypeOptions"
+            class="audit-error-type-select"
+            @change="handleSelectErrorTypeValue"
           >
-            <option value="all">All Error Types</option>
-            <option value="TectonicCompilationError">Tectonic Compilation</option>
-            <option value="AiError">AI Generation</option>
-            <option value="DatabaseError">Database</option>
-            <option value="FileSystemError">Filesystem</option>
-            <option value="NetworkError">Network / S3</option>
-            <option value="ValidationError">Validation</option>
-            <option value="GeneralError">General</option>
-          </select>
+            <template #icon>
+              <Filter :size="14" class="filter-icon" />
+            </template>
+          </CustomSelect>
         </div>
       </div>
 
@@ -489,11 +497,9 @@ const getTaskBadgeClass = (task: string): string => {
 .filter-dropdown-wrapper {
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 4px 8px;
+  min-width: 200px;
+  max-width: 280px;
+  flex-shrink: 0;
 }
 
 .filter-icon {
@@ -501,33 +507,12 @@ const getTaskBadgeClass = (task: string): string => {
   flex-shrink: 0;
 }
 
-.filter-select {
-  background-color: transparent;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%238b949e'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 6px center;
-  background-size: 14px;
-  border: none;
-  color: var(--ink);
+/* Theme-following dropdown: shared CustomSelect trigger renders the
+   chevron + options purely from theme vars (no native popup) */
+.audit-error-type-select {
   font-size: 0.85rem;
   font-weight: 500;
-  padding: 8px 30px 8px 4px;
   min-height: 38px;
-  outline: none;
-  cursor: pointer;
-  max-width: 100%;
-}
-
-.filter-select:focus {
-  border: none;
-  outline: none;
-}
-
-.filter-select option {
-  background-color: var(--surface);
-  color: var(--ink);
-  font-size: 0.85rem;
-  padding: 8px 10px;
 }
 
 .toolbar-right {
@@ -1048,12 +1033,10 @@ const getTaskBadgeClass = (task: string): string => {
 
   .filter-dropdown-wrapper {
     width: 100%;
-    justify-content: space-between;
+    max-width: 100%;
   }
 
-  .filter-select {
-    flex: 1;
-    width: 100%;
+  .audit-error-type-select {
     min-height: 40px;
   }
 
@@ -1186,7 +1169,7 @@ const getTaskBadgeClass = (task: string): string => {
     padding: 8px 6px;
   }
 
-  .filter-select {
+  .audit-error-type-select {
     font-size: 0.82rem;
     min-height: 40px;
   }

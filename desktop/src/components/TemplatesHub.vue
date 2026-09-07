@@ -92,12 +92,36 @@ const isActive = (tab: SubTab) => {
   background: var(--bg-accent);
   border-bottom: 1px solid var(--line);
   user-select: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+/* Horizontal scrollbar styling with clearance margins */
+.hub-header::-webkit-scrollbar {
+  height: 3px;
+}
+
+.hub-header::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 0 8px;
+}
+
+.hub-header::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
+.hub-header::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
 
 .hub-nav-track {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: max-content;
 }
 
 .hub-nav-item {
@@ -105,6 +129,8 @@ const isActive = (tab: SubTab) => {
   align-items: center;
   gap: 8px;
   padding: 6px 14px;
+  min-height: 38px;
+  box-sizing: border-box;
   border-radius: 8px;
   font-size: 0.8rem;
   font-weight: 600;
@@ -113,6 +139,7 @@ const isActive = (tab: SubTab) => {
   background: transparent;
   border: 1px solid transparent;
   transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
 .hub-nav-item:hover {
@@ -152,6 +179,7 @@ const isActive = (tab: SubTab) => {
   color: var(--muted);
   border: 1px solid var(--line);
   transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
 .hub-nav-item.active .tab-tag {
@@ -163,7 +191,53 @@ const isActive = (tab: SubTab) => {
 .hub-content {
   flex: 1;
   height: calc(100% - 48px);
-  overflow-y: auto;
+  min-height: 0;
+  overflow: hidden;
   position: relative;
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 959px) {
+  .hub-header {
+    padding: 0 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .hub-header {
+    padding: 0 10px;
+  }
+
+  .hub-nav-track {
+    gap: 6px;
+  }
+
+  .hub-nav-item {
+    padding: 6px 10px;
+    font-size: 0.78rem;
+    gap: 6px;
+    min-height: 38px;
+  }
+
+  .tab-tag {
+    font-size: 0.6rem;
+    padding: 1px 4px;
+  }
+}
+
+@media (max-width: 360px) {
+  .hub-header {
+    padding: 0 6px;
+  }
+
+  .hub-nav-track {
+    gap: 4px;
+  }
+
+  .hub-nav-item {
+    padding: 5px 8px;
+    font-size: 0.74rem;
+    gap: 4px;
+  }
 }
 </style>

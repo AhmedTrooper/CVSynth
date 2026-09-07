@@ -452,11 +452,31 @@ const insertVariable = (variable: string) => {
 
 <style scoped>
 .hr-container {
-  padding: 40px;
+  padding: 36px 40px;
   max-width: 1200px;
   margin: 0 auto;
   overflow-y: auto;
   height: 100%;
+}
+
+/* Scrollbar track clearance margins */
+.hr-container::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.hr-container::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 10px 0;
+}
+
+.hr-container::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
+.hr-container::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
 
 .page-header {
@@ -464,10 +484,15 @@ const insertVariable = (variable: string) => {
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 32px;
+  gap: 16px;
+}
+
+.title-group {
+  min-width: 0;
 }
 
 .title-group h1 {
-  font-size: 2rem;
+  font-size: 1.85rem;
   margin: 0 0 8px 0;
   color: var(--ink);
   font-weight: 800;
@@ -489,11 +514,14 @@ const insertVariable = (variable: string) => {
   display: flex;
   gap: 12px;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .btn-icon {
   width: 44px;
   height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -504,6 +532,7 @@ const insertVariable = (variable: string) => {
   color: var(--ink);
   border: 1px solid var(--line);
   padding: 0;
+  flex-shrink: 0;
 }
 
 .btn-icon:hover { background: var(--surface); border-color: var(--accent); }
@@ -527,12 +556,14 @@ const insertVariable = (variable: string) => {
   color: white;
   border: none;
   padding: 12px 24px;
+  min-height: 44px;
   border-radius: 12px;
   font-weight: 700;
   cursor: pointer;
   transition: 0.2s;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -555,6 +586,7 @@ const insertVariable = (variable: string) => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  word-break: break-word;
 }
 
 .banner-actions {
@@ -568,7 +600,8 @@ const insertVariable = (variable: string) => {
   background: var(--surface);
   border: 1px solid var(--line);
   color: var(--ink);
-  padding: 4px 8px;
+  padding: 6px 10px;
+  min-height: 32px;
   border-radius: 6px;
   font-size: 0.75rem;
   cursor: pointer;
@@ -588,7 +621,12 @@ const insertVariable = (variable: string) => {
   border: none;
   color: var(--muted);
   cursor: pointer;
-  padding: 4px;
+  padding: 6px;
+  min-width: 32px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .banner-close-btn:hover {
@@ -599,8 +637,8 @@ const insertVariable = (variable: string) => {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 20px;
-  padding: 32px;
-  margin-bottom: 40px;
+  padding: 28px 32px;
+  margin-bottom: 36px;
   box-shadow: var(--shadow);
   max-width: 100%;
 }
@@ -619,15 +657,22 @@ const insertVariable = (variable: string) => {
   border: none;
   color: var(--muted);
   cursor: pointer;
+  padding: 6px;
+  min-width: 36px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
   transition: 0.2s;
 }
 
-.close-btn:hover { color: var(--ink); }
+.close-btn:hover { color: var(--ink); background: var(--surface-soft); }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
   margin-bottom: 24px;
 }
 
@@ -643,14 +688,16 @@ const insertVariable = (variable: string) => {
 
 .form-input {
   width: 100%;
-  padding: 12px 16px;
+  padding: 10px 14px;
+  min-height: 42px;
   background: var(--surface-soft);
   border: 1px solid var(--line);
   border-radius: 10px;
   color: var(--ink);
-  font-size: 1rem;
+  font-size: 0.95rem;
   outline: none;
   transition: 0.2s;
+  box-sizing: border-box;
 }
 
 .form-input:focus {
@@ -667,7 +714,7 @@ const insertVariable = (variable: string) => {
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .var-pills-row {
@@ -686,12 +733,15 @@ const insertVariable = (variable: string) => {
   background: var(--surface-soft);
   border: 1px solid var(--line);
   color: var(--accent);
-  padding: 2px 8px;
+  padding: 4px 10px;
+  min-height: 30px;
   border-radius: 6px;
   font-size: 0.72rem;
   font-family: monospace;
   cursor: pointer;
   transition: 0.15s;
+  display: inline-flex;
+  align-items: center;
 }
 
 .var-pill-btn:hover {
@@ -701,7 +751,8 @@ const insertVariable = (variable: string) => {
 
 .form-textarea {
   width: 100%;
-  padding: 12px 16px;
+  padding: 12px 14px;
+  min-height: 120px;
   background: var(--surface-soft);
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -712,6 +763,7 @@ const insertVariable = (variable: string) => {
   outline: none;
   transition: 0.2s;
   resize: vertical;
+  box-sizing: border-box;
 }
 
 .form-textarea:focus {
@@ -725,6 +777,7 @@ const insertVariable = (variable: string) => {
   color: white;
   border: none;
   padding: 12px 32px;
+  min-height: 44px;
   border-radius: 12px;
   font-weight: 700;
   cursor: pointer;
@@ -750,8 +803,8 @@ const insertVariable = (variable: string) => {
 
 .resumes-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 20px;
   padding-bottom: 40px;
 }
 
@@ -759,7 +812,7 @@ const insertVariable = (variable: string) => {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 16px;
-  padding: 24px;
+  padding: 22px;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
@@ -776,7 +829,7 @@ const insertVariable = (variable: string) => {
 }
 
 .resume-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-3px);
   border-color: var(--accent);
   box-shadow: 0 8px 24px rgba(0,0,0,0.06);
 }
@@ -786,6 +839,7 @@ const insertVariable = (variable: string) => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
+  gap: 8px;
 }
 
 .selection-overlay {
@@ -794,6 +848,13 @@ const insertVariable = (variable: string) => {
   justify-content: center;
   color: var(--muted);
   transition: 0.2s;
+  min-width: 38px;
+  min-height: 38px;
+  border-radius: 8px;
+}
+
+.selection-overlay:hover {
+  background: var(--surface-soft);
 }
 
 .select-icon.active {
@@ -810,10 +871,15 @@ const insertVariable = (variable: string) => {
   display: flex;
   align-items: center;
   gap: 6px;
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
 }
 
 .resume-name {
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   margin: 0 0 12px 0;
   color: var(--ink);
   font-weight: 800;
@@ -832,6 +898,7 @@ const insertVariable = (variable: string) => {
   -webkit-box-orient: vertical;
   overflow: hidden;
   white-space: pre-wrap;
+  word-break: break-word;
   flex: 1;
 }
 
@@ -868,8 +935,10 @@ const insertVariable = (variable: string) => {
 .card-action-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 6px 12px;
+  min-height: 34px;
   background: var(--surface-soft);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -897,7 +966,7 @@ const insertVariable = (variable: string) => {
 
 .loading-state, .empty-state {
   text-align: center;
-  padding: 80px 0;
+  padding: 60px 16px;
   color: var(--muted);
 }
 
@@ -910,10 +979,111 @@ const insertVariable = (variable: string) => {
 .slide-down-enter-active, .slide-down-leave-active { transition: all 0.3s ease-out; }
 .slide-down-enter-from, .slide-down-leave-to { opacity: 0; transform: translateY(-20px); }
 
-@media (max-width: 768px) {
-  .hr-container { padding: 16px; }
-  .page-header { flex-direction: column; gap: 16px; align-items: stretch; margin-bottom: 20px; }
-  .header-actions { justify-content: space-between; }
-  .form-grid { grid-template-columns: 1fr; }
+/* Responsive Breakpoints */
+@media (max-width: 959px) {
+  .hr-container { padding: 24px; }
+  .title-group h1 { font-size: 1.6rem; }
+  .resumes-grid { gap: 16px; }
+}
+
+@media (max-width: 600px) {
+  .hr-container { padding: 16px 12px; }
+  .page-header {
+    flex-direction: column;
+    gap: 14px;
+    align-items: stretch;
+    margin-bottom: 20px;
+  }
+  .title-group h1 { font-size: 1.35rem; }
+  .subtitle { font-size: 0.84rem; }
+  .header-actions {
+    justify-content: flex-end;
+    width: 100%;
+  }
+  .form-card {
+    padding: 16px 14px;
+    border-radius: 16px;
+    margin-bottom: 24px;
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .content-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .var-pill-btn {
+    min-height: 32px;
+    padding: 4px 8px;
+  }
+  .form-actions {
+    width: 100%;
+  }
+  .form-actions .btn-tooltip-wrapper {
+    width: 100%;
+  }
+  .btn-save {
+    width: 100%;
+    min-width: 0;
+  }
+  .resumes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+    gap: 14px;
+    padding-bottom: 24px;
+  }
+  .resume-card {
+    padding: 16px 14px;
+    border-radius: 14px;
+  }
+  .resume-name { font-size: 1.1rem; }
+  .card-action-btn {
+    min-height: 36px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
+  }
+  .error-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .banner-actions {
+    align-self: flex-end;
+  }
+}
+
+@media (max-width: 360px) {
+  .hr-container { padding: 12px 8px; }
+  .page-header { margin-bottom: 14px; gap: 10px; }
+  .title-group h1 { font-size: 1.15rem; }
+  .subtitle { font-size: 0.78rem; }
+  .btn-icon {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .form-card {
+    padding: 12px 10px;
+    border-radius: 12px;
+  }
+  .resumes-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .resume-card {
+    padding: 12px 10px;
+    border-radius: 12px;
+  }
+  .card-footer-actions {
+    flex-wrap: wrap;
+    justify-content: stretch;
+  }
+  .card-action-btn {
+    flex: 1;
+    min-width: 60px;
+  }
 }
 </style>

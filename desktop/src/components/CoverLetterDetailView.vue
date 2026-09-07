@@ -79,7 +79,13 @@ onMounted(async () => {
   }
 });
 
-const goBack = () => router.push('/cover-letters');
+const goBack = () => {
+  if (window.history.length > 1) {
+    router.back();
+  } else {
+    router.push('/templates/cover-letters');
+  }
+};
 
 const toggleEditMode = () => {
   if (isEditing.value) {
@@ -330,15 +336,20 @@ const hasLatexContent = () => {
   color: var(--muted);
   cursor: pointer;
   padding: 8px;
+  min-width: 38px;
+  min-height: 38px;
   border-radius: 8px;
   display: flex;
+  align-items: center;
+  justify-content: center;
   transition: 0.2s;
+  flex-shrink: 0;
 }
 .back-btn:hover { background: var(--surface); color: var(--ink); }
 
 .header-main { flex: 1; min-width: 0; }
-.title-group { display: flex; align-items: center; gap: 12px; }
-.title-group h1 { font-size: 1.1rem; font-weight: 700; color: var(--ink); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.title-group { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.title-group h1 { font-size: 1.1rem; font-weight: 700; color: var(--ink); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 
 .category-tag {
   background: var(--surface);
@@ -350,6 +361,8 @@ const hasLatexContent = () => {
   border: 1px solid var(--line);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .edit-group { display: flex; gap: 12px; }
@@ -359,11 +372,13 @@ const hasLatexContent = () => {
   border-radius: 6px;
   color: var(--ink);
   padding: 6px 12px;
+  min-height: 38px;
   font-size: 0.9rem;
   outline: none;
+  box-sizing: border-box;
 }
-.name-input { font-weight: 700; flex: 1; }
-.category-input { width: fit-content; }
+.name-input { font-weight: 700; flex: 1; min-width: 0; }
+.category-input { width: fit-content; min-width: 120px; }
 
 .edit-input:focus {
   border-color: var(--accent);
@@ -373,20 +388,24 @@ const hasLatexContent = () => {
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .action-btn {
   background: var(--surface);
   border: 1px solid var(--line);
   color: var(--muted);
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 8px;
   cursor: pointer;
   transition: 0.2s;
+  flex-shrink: 0;
 }
 .action-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -402,6 +421,27 @@ const hasLatexContent = () => {
   max-width: 1000px;
   width: 100%;
   margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* Content wrapper scrollbar track clearance margins */
+.content-wrapper::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.content-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 10px 0;
+}
+
+.content-wrapper::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
+.content-wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
 
 .error-banner {
@@ -416,6 +456,7 @@ const hasLatexContent = () => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  word-break: break-word;
 }
 
 .banner-actions {
@@ -429,7 +470,8 @@ const hasLatexContent = () => {
   background: var(--surface);
   border: 1px solid var(--line);
   color: var(--ink);
-  padding: 4px 8px;
+  padding: 6px 10px;
+  min-height: 32px;
   border-radius: 6px;
   font-size: 0.75rem;
   cursor: pointer;
@@ -449,7 +491,12 @@ const hasLatexContent = () => {
   border: none;
   color: var(--muted);
   cursor: pointer;
-  padding: 4px;
+  padding: 6px;
+  min-width: 32px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .banner-close-btn:hover {
@@ -483,6 +530,8 @@ const hasLatexContent = () => {
 
 .latex-editor-cm {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   background-color: #282c34; /* One Dark background */
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -511,8 +560,9 @@ const hasLatexContent = () => {
 
 .latex-preview {
   width: 100%;
-  min-height: 340px;
-  max-height: 520px;
+  box-sizing: border-box;
+  min-height: 280px;
+  max-height: min(520px, 60vh);
   background-color: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -524,10 +574,27 @@ const hasLatexContent = () => {
   overflow: auto;
 }
 
+/* Latex preview scrollbar track clearance */
+.latex-preview::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.latex-preview::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px;
+}
+
+.latex-preview::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
 .latex-preview pre { margin: 0; white-space: pre-wrap; }
 
 .empty-latex {
   width: 100%;
+  box-sizing: border-box;
   min-height: 220px;
   background-color: var(--surface);
   border: 1px dashed var(--line);
@@ -547,6 +614,7 @@ const hasLatexContent = () => {
   color: white;
   border: none;
   padding: 8px 16px;
+  min-height: 38px;
   border-radius: 8px;
   cursor: pointer;
 }
@@ -625,5 +693,92 @@ const hasLatexContent = () => {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 959px) {
+  .detail-header {
+    padding: 0 16px;
+    gap: 14px;
+  }
+  .content-wrapper {
+    padding: 24px 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .detail-header {
+    height: auto;
+    min-height: 52px;
+    padding: 10px 12px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .title-group h1 {
+    font-size: 0.95rem;
+  }
+  .category-tag {
+    font-size: 0.58rem;
+  }
+  .edit-group {
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+  }
+  .name-input,
+  .category-input {
+    width: 100%;
+  }
+  .action-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .back-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .content-wrapper {
+    padding: 16px 12px;
+  }
+  .latex-editor-cm {
+    font-size: 0.82rem;
+  }
+  .latex-preview {
+    padding: 12px 10px;
+    font-size: 0.76rem;
+  }
+  .meta-info {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding-top: 16px;
+  }
+  .error-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .banner-actions {
+    align-self: flex-end;
+  }
+}
+
+@media (max-width: 360px) {
+  .detail-header {
+    padding: 8px;
+    gap: 8px;
+  }
+  .content-wrapper {
+    padding: 12px 8px;
+  }
+  .title-group h1 {
+    font-size: 0.88rem;
+  }
+  .latex-preview {
+    font-size: 0.72rem;
+  }
 }
 </style>

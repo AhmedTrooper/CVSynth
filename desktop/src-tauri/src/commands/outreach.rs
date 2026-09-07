@@ -298,14 +298,21 @@ pub async fn tailor_outreach_message(
     } else {
         args.char_limit
     };
+    let min_target = if char_limit_val >= 50 {
+        char_limit_val.saturating_sub(15)
+    } else {
+        (char_limit_val * 8) / 10
+    };
 
     let system_prompt = format!(
         r#"You are an elite, highly authentic executive outreach copywriter. Your goal is to write a personalized, compelling, and respectful direct outreach message (e.g. for LinkedIn InMail, connection request, Twitter DM, or email) to a specific professional.
 
 MANDATORY RULES:
-1. STRICT HARD CHARACTER LIMIT:
-   - The final generated message MUST STRICTLY be at or under {} characters total (including all spaces, letters, numbers, and punctuation).
-   - Do NOT write more than {} characters under any condition. Be concise, punchy, and make every single character count.
+1. STRICT TARGET LENGTH & BUDGET UTILIZATION:
+   - UPPER BOUND (HARD CEILING): Exactly {0} characters total (including all spaces, letters, numbers, and punctuation). You must NEVER exceed {0} characters.
+   - LOWER BOUND (MINIMUM TARGET): The final message MUST strictly be between {1} and {0} characters total (at most 10 to 15 characters below the {0} limit).
+   - NEVER generate a short fragment or single clipped sentence (e.g. generating 20-50 characters when {0} is requested is completely unacceptable and invalid).
+   - Take full advantage of the allocated budget of {1} to {0} characters to deliver a complete, compelling message.
 2. STRICT FACTUAL HONESTY (ZERO INVENTED SKILLS / NO HALLUCINATIONS):
    - NEVER lie, fabricate, or invent skills, achievements, companies, past interactions, or mutual connections.
    - Base any common ground honestly on what is provided in the recipient's bio/posts or candidate's authentic background.
@@ -318,12 +325,10 @@ MANDATORY RULES:
    - Output ONLY the final message text ready to send, as plain raw text.
    - Do NOT include subject lines, greetings labels like 'Subject:', markdown quotes, or commentary.
    - NEVER emit LaTeX commands, LaTeX environments, code fences, or surrounding quotation marks — plain message text only.
-5. BREVITY CRAFT (short notes get read; long ones get skipped):
-   - Front-load the hook: the first line must earn the open — name the specific thing about THEIR work, not yourself.
-   - Cut throat-clearing openers ("Hope you're well", "I came across your profile", "Allow me to introduce myself").
-   - One idea per sentence, ONE single low-friction call-to-action, zero restated filler.
-   - Every character must earn its place: prefer a tighter message over padding up to the limit."#,
-        char_limit_val, char_limit_val
+5. COMPLETE THOUGHT ARCHITECTURE:
+   - Structure: Warm tailored hook identifying their specific work -> 1-2 sentences of specific value or mutual synergy -> courteous low-friction closing/call-to-action.
+   - Calibrate your wording so the full message comfortably fills {1} to {0} characters."#,
+        char_limit_val, min_target
     );
 
     let posts_formatted = if args.recent_posts.is_empty() {
@@ -352,7 +357,8 @@ RECIPIENT'S RECENT POSTS:
 
 {}
 
-CRITICAL CONSTRAINT: The message MUST strictly be {} characters or less.
+CRITICAL TARGET LENGTH CONSTRAINT:
+- The message MUST strictly be between {} and {} characters long (close to {} characters, never exceeding {} characters).
 Generate the tailored outreach message now:"#,
         args.person_name,
         args.profile_url,
@@ -368,6 +374,9 @@ Generate the tailored outreach message now:"#,
             .filter(|c| !c.trim().is_empty())
             .map(|c| format!("USER CUSTOM INSTRUCTION:\n{}", c))
             .unwrap_or_default(),
+        min_target,
+        char_limit_val,
+        char_limit_val,
         char_limit_val
     );
 
@@ -399,15 +408,20 @@ Generate the tailored outreach message now:"#,
 
     if tailored_message.chars().count() > char_limit_val {
         let truncated: String = tailored_message.chars().take(char_limit_val).collect();
+        let min_acceptable_cut = char_limit_val.saturating_sub(15);
         if let Some(boundary) =
             truncated.rfind(|c: char| c.is_whitespace() || c == '.' || c == '!' || c == '?')
         {
-            if boundary > char_limit_val * 6 / 10 {
+            if boundary >= min_acceptable_cut {
                 let mut clean = truncated[..boundary].trim_end().to_string();
                 if !clean.ends_with('.') && !clean.ends_with('?') && !clean.ends_with('!') {
                     clean.push('.');
                 }
-                tailored_message = clean;
+                if clean.chars().count() <= char_limit_val {
+                    tailored_message = clean;
+                } else {
+                    tailored_message = truncated;
+                }
             } else {
                 tailored_message = truncated;
             }

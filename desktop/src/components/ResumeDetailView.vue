@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { useResumesStore, type ResumeDetail } from '../store/resumes';
 import { useDialogStore } from '../store/dialog';
 import { Motion, AnimatePresence } from 'motion-v';
@@ -24,6 +24,7 @@ import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorView } from '@codemirror/view';
 
 const router = useRouter();
+const route = useRoute();
 const resumesStore = useResumesStore();
 const dialog = useDialogStore();
 
@@ -36,7 +37,7 @@ const extensions = [
   EditorView.lineWrapping
 ];
 
-const props = defineProps<{ id: string }>();
+const props = defineProps<{ id: string; editMode?: boolean }>();
 
 interface UsageRecord {
   job_id: string;
@@ -80,38 +81,40 @@ onMounted(async () => {
   }
 });
 
+watch(
+  () => [route.path, props.editMode],
+  () => {
+    const shouldEdit = route.path.endsWith('/edit') || !!props.editMode;
+    isEditing.value = shouldEdit;
+    if (!shouldEdit && resume.value) {
+      editedName.value = resume.value.name;
+      editedCategory.value = resume.value.category;
+      editedLatex.value = resume.value.latex_content;
+    }
+  },
+  { immediate: true }
+);
+
 const goBack = () => {
-  if (window.history.length > 1) {
+  if (isEditing.value) {
+    router.push(`/resume/${props.id}`);
+  } else if (window.history.length > 1) {
     router.back();
   } else {
     router.push('/templates/resumes');
   }
 };
 
-const toggleEditMode = async () => {
+const toggleEditMode = () => {
   if (isEditing.value) {
-    const hasChanges =
-      editedName.value !== (resume.value?.name || '') ||
-      editedCategory.value !== (resume.value?.category || '') ||
-      editedLatex.value !== (resume.value?.latex_content || '');
-
-    if (hasChanges) {
-      const confirmed = await dialog.showConfirm(
-        'Are you sure you want to discard your unsaved changes?',
-        'Discard Changes'
-      );
-      if (!confirmed) return;
-    }
-
     // Reset to current values if cancelling
     editedName.value = resume.value?.name || '';
     editedCategory.value = resume.value?.category || '';
     editedLatex.value = resume.value?.latex_content || '';
-    isEditing.value = false;
-    await dialog.showAlert('Editing cancelled.', 'Cancelled');
+    router.push(`/resume/${props.id}`);
     return;
   }
-  isEditing.value = true;
+  router.push(`/resume/${props.id}/edit`);
 };
 
 const handleSave = async () => {
@@ -135,8 +138,8 @@ const handleSave = async () => {
     // Reload the resume
     const updated = await resumesStore.getResumeById(props.id);
     resume.value = updated;
-    isEditing.value = false;
     await dialog.showAlert('Template saved successfully.', 'Success');
+    router.push(`/resume/${props.id}`);
   } catch (err: any) {
     error.value = err.toString();
     await dialog.showAlert(`Failed to save template: ${err.message || err.toString()}`, 'Save Error');

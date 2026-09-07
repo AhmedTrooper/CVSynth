@@ -104,19 +104,12 @@ const handleBatchDelete = async () => {
   }
 };
 
-const toggleNewForm = async () => {
-  if (showNewResumeForm.value) {
-    if (newResumeName.value.trim() || newResumeCategory.value.trim()) {
-      const confirmed = await dialog.showConfirm('Discard new template?', 'Discard Changes');
-      if (!confirmed) return;
-    }
-    showNewResumeForm.value = false;
+const toggleNewForm = () => {
+  showNewResumeForm.value = !showNewResumeForm.value;
+  if (!showNewResumeForm.value) {
     newResumeName.value = '';
     newResumeCategory.value = '';
-    await dialog.showAlert('Template creation cancelled.', 'Cancelled');
-    return;
   }
-  showNewResumeForm.value = true;
 };
 
 const handleCreateResume = async () => {

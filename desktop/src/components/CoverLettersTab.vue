@@ -104,19 +104,12 @@ const handleBatchDelete = async () => {
   }
 };
 
-const toggleNewForm = async () => {
-  if (showNewClForm.value) {
-    if (newClName.value.trim() || newClCategory.value.trim()) {
-      const confirmed = await dialog.showConfirm('Discard new template?', 'Discard Changes');
-      if (!confirmed) return;
-    }
-    showNewClForm.value = false;
+const toggleNewForm = () => {
+  showNewClForm.value = !showNewClForm.value;
+  if (!showNewClForm.value) {
     newClName.value = '';
     newClCategory.value = '';
-    await dialog.showAlert('Template creation cancelled.', 'Cancelled');
-    return;
   }
-  showNewClForm.value = true;
 };
 
 const handleCreateCl = async () => {

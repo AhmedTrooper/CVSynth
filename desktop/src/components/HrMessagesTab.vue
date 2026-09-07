@@ -99,21 +99,14 @@ const handleBatchDelete = async () => {
   }
 };
 
-const toggleNewForm = async () => {
-  if (showNewForm.value) {
-    if (formName.value.trim() || formCategory.value.trim() || formContent.value.trim()) {
-      const confirmed = await dialog.showConfirm('Discard changes to template?', 'Discard Changes');
-      if (!confirmed) return;
-    }
-    showNewForm.value = false;
+const toggleNewForm = () => {
+  showNewForm.value = !showNewForm.value;
+  if (!showNewForm.value) {
     editingTemplateId.value = null;
     formName.value = '';
     formCategory.value = '';
     formContent.value = '';
-    await dialog.showAlert('Action cancelled.', 'Cancelled');
-    return;
   }
-  showNewForm.value = true;
 };
 
 const openEditForm = (template: HrMessageTemplate) => {

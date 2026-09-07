@@ -113,10 +113,22 @@ const routes = [
     props: true
   },
   {
+    path: '/resume/:id/edit',
+    name: 'ResumeEdit',
+    component: ResumeDetailView,
+    props: (route: any) => ({ id: route.params.id, editMode: true })
+  },
+  {
     path: '/cover-letter/:id',
     name: 'CoverLetterDetail',
     component: CoverLetterDetailView,
     props: true
+  },
+  {
+    path: '/cover-letter/:id/edit',
+    name: 'CoverLetterEdit',
+    component: CoverLetterDetailView,
+    props: (route: any) => ({ id: route.params.id, editMode: true })
   },
   { 
     path: '/parse', 
